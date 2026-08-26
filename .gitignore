@@ -1,0 +1,24 @@
+# Variables de entorno
+.env
+backend/.env
+frontend/.env
+
+# Dependencias Backend
+backend/vendor/
+
+# Dependencias Frontend
+frontend/node_modules/
+
+# Compilación Frontend
+frontend/dist/
+
+# Logs
+*.log
+
+# Editores
+.vscode/
+.idea/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
