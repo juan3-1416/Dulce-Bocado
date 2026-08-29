@@ -1,146 +1,127 @@
-class ApiError extends Error {
-  constructor(message, status, data = {}) {
-    super(message)
-    this.name = 'ApiError'
-    this.status = status
-    this.data = data
-  }
+export class ApiError extends Error {
+    constructor(message, status = 500, data = null) {
+        super(message);
+        this.name = 'ApiError';
+        this.status = status;
+        this.data = data;
+    }
 }
 
 function obtenerCookie(nombre) {
-  const cookies = document.cookie.split(';')
+    const cookies = document.cookie.split(';');
 
-  for (const cookie of cookies) {
-    const [clave, ...valor] = cookie.trim().split('=')
+    for (const cookie of cookies) {
+        const [clave, ...valor] = cookie.trim().split('=');
 
-    if (clave === nombre) {
-      return valor.join('=')
+        if (clave === nombre) {
+            return valor.join('=');
+        }
     }
-  }
 
-  return null
+    return null;
 }
 
-async function leerRespuesta(respuesta) {
-  try {
-    return await respuesta.json()
-  } catch {
-    return {}
-  }
+function obtenerTokenCsrf() {
+    const token = obtenerCookie('XSRF-TOKEN');
+
+    return token
+        ? decodeURIComponent(token)
+        : null;
 }
 
-async function prepararCsrf() {
-  const respuesta = await fetch('/sanctum/csrf-cookie', {
-    method: 'GET',
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-    },
-  })
+async function procesarRespuesta(response) {
+    let data = {};
 
-  if (!respuesta.ok) {
-    throw new ApiError(
-      'No se pudo establecer la protección CSRF.',
-      respuesta.status,
-    )
-  }
+    try {
+        data = await response.json();
+    } catch {
+        data = {};
+    }
 
-  const cookie = obtenerCookie('XSRF-TOKEN')
+    if (!response.ok) {
+        throw new ApiError(
+            data.message || 'Ocurrió un error al procesar la solicitud.',
+            response.status,
+            data
+        );
+    }
 
-  if (!cookie) {
-    throw new ApiError(
-      'No se pudo obtener el token CSRF.',
-      500,
-    )
-  }
+    return data;
+}
 
-  return decodeURIComponent(cookie)
+export async function prepararCsrf() {
+    const response = await fetch('/sanctum/csrf-cookie', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+            Accept: 'application/json',
+        },
+    });
+
+    if (!response.ok) {
+        throw new ApiError(
+            'No se pudo preparar la protección CSRF.',
+            response.status
+        );
+    }
 }
 
 export async function obtenerUsuarioAutenticado() {
-  const respuesta = await fetch('/api/auth/usuario', {
-    method: 'GET',
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-    },
-  })
+    const response = await fetch('/api/auth/usuario', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+            Accept: 'application/json',
+        },
+    });
 
-  if (respuesta.status === 401) {
-    return null
-  }
+    if (response.status === 401) {
+        return null;
+    }
 
-  const datos = await leerRespuesta(respuesta)
+    const data = await procesarRespuesta(response);
 
-  if (!respuesta.ok) {
-    throw new ApiError(
-      datos.message || 'No se pudo comprobar la sesión.',
-      respuesta.status,
-      datos,
-    )
-  }
-
-  return datos.usuario
+    return data.usuario;
 }
 
-export async function iniciarSesion(nombreUsuario, contrasena) {
-  const token = await prepararCsrf()
+export async function iniciarSesion(credenciales) {
+    await prepararCsrf();
 
-  const respuesta = await fetch('/api/auth/login', {
-    method: 'POST',
-    credentials: 'include',
+    const token = obtenerTokenCsrf();
 
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      'X-XSRF-TOKEN': token,
-    },
+    const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-XSRF-TOKEN': token ?? '',
+        },
+        body: JSON.stringify(credenciales),
+    });
 
-    body: JSON.stringify({
-      nombre_usuario: nombreUsuario,
-      contrasena,
-    }),
-  })
-
-  const datos = await leerRespuesta(respuesta)
-
-  if (!respuesta.ok) {
-    throw new ApiError(
-      datos.message || 'No se pudo iniciar sesión.',
-      respuesta.status,
-      datos,
-    )
-  }
-
-  return datos
+    return procesarRespuesta(response);
 }
 
 export async function cerrarSesion() {
-  // Después del login Laravel puede regenerar la sesión,
-  // por lo que solicitamos un token CSRF actualizado.
-  const token = await prepararCsrf()
+    /*
+     * Laravel regenera la sesión después del login,
+     * por eso obtenemos un CSRF actualizado antes
+     * de cerrar la sesión.
+     */
+    await prepararCsrf();
 
-  const respuesta = await fetch('/api/auth/logout', {
-    method: 'POST',
-    credentials: 'include',
+    const token = obtenerTokenCsrf();
 
-    headers: {
-      Accept: 'application/json',
-      'X-XSRF-TOKEN': token,
-    },
-  })
+    const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-XSRF-TOKEN': token ?? '',
+        },
+    });
 
-  const datos = await leerRespuesta(respuesta)
-
-  if (!respuesta.ok) {
-    throw new ApiError(
-      datos.message || 'No se pudo cerrar la sesión.',
-      respuesta.status,
-      datos,
-    )
-  }
-
-  return datos
+    return procesarRespuesta(response);
 }
-
-export { ApiError }

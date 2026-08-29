@@ -1,10 +1,35 @@
 import { useState } from 'react'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
-function LoginPage({ onLogin }) {
+function LoginPage() {
+  const {
+    autenticado,
+    verificandoSesion,
+    login,
+  } = useAuth()
+
+  const navigate = useNavigate()
+  const location = useLocation()
+
   const [nombreUsuario, setNombreUsuario] = useState('')
   const [contrasena, setContrasena] = useState('')
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(false)
+
+  if (verificandoSesion) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-100">
+        <p className="text-slate-600">
+          Verificando sesión...
+        </p>
+      </main>
+    )
+  }
+
+  if (autenticado) {
+    return <Navigate to="/" replace />
+  }
 
   const manejarSubmit = async (event) => {
     event.preventDefault()
@@ -13,26 +38,38 @@ function LoginPage({ onLogin }) {
     setCargando(true)
 
     try {
-      await onLogin(nombreUsuario, contrasena)
+      await login(nombreUsuario, contrasena)
+
+      const destino =
+        location.state?.desde?.pathname || '/'
+
+      navigate(destino, { replace: true })
     } catch (errorLogin) {
       if (errorLogin.status === 401) {
-        const restantes = errorLogin.data?.intentos_restantes
+        const restantes =
+          errorLogin.data?.intentos_restantes
 
         if (typeof restantes === 'number') {
           setError(
             `Credenciales incorrectas. Intentos restantes: ${restantes}.`,
           )
         } else {
-          setError('El usuario o la contraseña son incorrectos.')
+          setError(
+            'El usuario o la contraseña son incorrectos.',
+          )
         }
       } else if (errorLogin.status === 423) {
         setError(
-          'El usuario está bloqueado temporalmente. Intenta nuevamente más tarde.',
+          'El usuario está bloqueado temporalmente.',
         )
       } else if (errorLogin.status === 403) {
-        setError('El usuario se encuentra inactivo.')
+        setError(
+          'El usuario se encuentra inactivo.',
+        )
       } else if (errorLogin.status === 422) {
-        setError('Revisa los datos ingresados.')
+        setError(
+          'Revisa los datos ingresados.',
+        )
       } else {
         setError(
           errorLogin.message ||
@@ -57,7 +94,8 @@ function LoginPage({ onLogin }) {
           </h1>
 
           <p className="mt-2 text-sm text-slate-500">
-            Sistema de gestión de ventas, pedidos, producción e inventario
+            Sistema de gestión de ventas, pedidos,
+            producción e inventario
           </p>
         </div>
 
@@ -84,8 +122,7 @@ function LoginPage({ onLogin }) {
               maxLength={80}
               required
               disabled={cargando}
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-100 disabled:bg-slate-100"
-              placeholder="Ingresa tu usuario"
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
             />
           </div>
 
@@ -107,8 +144,7 @@ function LoginPage({ onLogin }) {
               autoComplete="current-password"
               required
               disabled={cargando}
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-100 disabled:bg-slate-100"
-              placeholder="Ingresa tu contraseña"
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
             />
           </div>
 
@@ -121,9 +157,11 @@ function LoginPage({ onLogin }) {
           <button
             type="submit"
             disabled={cargando}
-            className="w-full rounded-xl bg-pink-600 px-4 py-3 font-semibold text-white transition hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-xl bg-pink-600 px-4 py-3 font-semibold text-white hover:bg-pink-700 disabled:opacity-60"
           >
-            {cargando ? 'Ingresando...' : 'Iniciar sesión'}
+            {cargando
+              ? 'Ingresando...'
+              : 'Iniciar sesión'}
           </button>
         </form>
       </section>

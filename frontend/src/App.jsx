@@ -1,93 +1,95 @@
-import { useEffect, useState } from 'react'
+import { Navigate, Route, Routes } from 'react-router-dom'
+import ProtectedRoute from './components/ProtectedRoute'
+import MainLayout from './layouts/MainLayout.jsx'
+import AccesoDenegadoPage from './pages/AccesoDenegadoPage'
 import InicioPage from './pages/InicioPage'
 import LoginPage from './pages/LoginPage'
-import {
-  cerrarSesion,
-  iniciarSesion,
-  obtenerUsuarioAutenticado,
-} from './services/authService'
-
+import NotFoundPage from './pages/NotFoundPage'
+import SeguridadPage from './pages/SeguridadPage'
+import UsuariosPage from './pages/seguridad/UsuariosPage';
+import RolesPage from './pages/seguridad/RolesPage';
 function App() {
-  const [usuario, setUsuario] = useState(null)
-  const [verificandoSesion, setVerificandoSesion] = useState(true)
-  const [cerrandoSesion, setCerrandoSesion] = useState(false)
-
-  useEffect(() => {
-    const verificarSesion = async () => {
-      try {
-        const usuarioActual =
-          await obtenerUsuarioAutenticado()
-
-        setUsuario(usuarioActual)
-      } catch (error) {
-        console.error(
-          'Error al verificar la sesión:',
-          error,
-        )
-
-        setUsuario(null)
-      } finally {
-        setVerificandoSesion(false)
-      }
-    }
-
-    verificarSesion()
-  }, [])
-
-  const manejarLogin = async (
-    nombreUsuario,
-    contrasena,
-  ) => {
-    const respuesta = await iniciarSesion(
-      nombreUsuario,
-      contrasena,
-    )
-
-    setUsuario(respuesta.usuario)
-  }
-
-  const manejarLogout = async () => {
-    setCerrandoSesion(true)
-
-    try {
-      await cerrarSesion()
-      setUsuario(null)
-    } catch (error) {
-      console.error(
-        'Error al cerrar sesión:',
-        error,
-      )
-
-      alert(
-        'No se pudo cerrar la sesión correctamente.',
-      )
-    } finally {
-      setCerrandoSesion(false)
-    }
-  }
-
-  if (verificandoSesion) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-100">
-        <div className="rounded-2xl bg-white px-8 py-6 shadow-sm">
-          <p className="text-slate-600">
-            Verificando sesión...
-          </p>
-        </div>
-      </main>
-    )
-  }
-
-  if (!usuario) {
-    return <LoginPage onLogin={manejarLogin} />
-  }
-
   return (
-    <InicioPage
-      usuario={usuario}
-      onLogout={manejarLogout}
-      cerrandoSesion={cerrandoSesion}
-    />
+    <Routes>
+      <Route
+        path="/login"
+        element={<LoginPage />}
+      />
+
+      <Route
+        path="/acceso-denegado"
+        element={<AccesoDenegadoPage />}
+      />
+
+      <Route element={<ProtectedRoute />}>
+        <Route element={<MainLayout />}>
+          <Route
+            index
+            element={<InicioPage />}
+          />
+
+          <Route
+            element={
+              <ProtectedRoute permiso="seguridad.gestionar_usuario" />
+            }
+          >
+            <Route
+              path="seguridad/usuarios"
+              element={<UsuariosPage />}
+            />
+          </Route>
+
+          <Route
+            element={
+              <ProtectedRoute permiso="seguridad.gestionar_rol" />
+            }
+          >
+            <Route
+              path="seguridad/roles"
+              element={<RolesPage />}
+            />
+          </Route>
+
+          <Route
+            element={
+              <ProtectedRoute permiso="seguridad.gestionar_permiso" />
+            }
+          >
+            <Route
+              path="seguridad/permisos"
+              element={<SeguridadPage />}
+            />
+          </Route>
+
+          <Route
+            element={
+              <ProtectedRoute permiso="seguridad.gestionar_rol_permiso" />
+            }
+          >
+            <Route
+              path="seguridad/rol-permiso"
+              element={<SeguridadPage />}
+            />
+          </Route>
+
+          <Route
+            element={
+              <ProtectedRoute permiso="seguridad.asignar_roles_permisos" />
+            }
+          >
+            <Route
+              path="seguridad/asignaciones"
+              element={<SeguridadPage />}
+            />
+          </Route>
+        </Route>
+      </Route>
+
+      <Route
+        path="*"
+        element={<NotFoundPage />}
+      />
+    </Routes>
   )
 }
 

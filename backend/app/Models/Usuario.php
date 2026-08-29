@@ -56,4 +56,24 @@ class Usuario extends Authenticatable
     {
         return $this->contrasena;
     }
+    public function tienePermiso(string $nombrePermiso): bool
+{
+    if (!$this->activo) {
+        return false;
+    }
+
+    return $this->usuarioRolPermisos()
+        ->whereHas('rolPermiso', function ($query) use ($nombrePermiso) {
+            $query
+                ->whereHas('rol', function ($query) {
+                    $query->where('activo', true);
+                })
+                ->whereHas('permiso', function ($query) use ($nombrePermiso) {
+                    $query
+                        ->where('nombre', $nombrePermiso)
+                        ->where('activo', true);
+                });
+        })
+        ->exists();
+}
 }
