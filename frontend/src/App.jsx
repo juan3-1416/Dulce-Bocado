@@ -8,6 +8,8 @@ import NotFoundPage from './pages/NotFoundPage'
 import SeguridadPage from './pages/SeguridadPage'
 import UsuariosPage from './pages/seguridad/UsuariosPage';
 import RolesPage from './pages/seguridad/RolesPage';
+import PermisosPage from './pages/seguridad/PermisosPage';
+import RolPermisoPage from './pages/seguridad/RolPermisoPage';
 function App() {
   return (
     <Routes>
@@ -57,7 +59,7 @@ function App() {
           >
             <Route
               path="seguridad/permisos"
-              element={<SeguridadPage />}
+              element={<PermisosPage />}
             />
           </Route>
 
@@ -68,7 +70,7 @@ function App() {
           >
             <Route
               path="seguridad/rol-permiso"
-              element={<SeguridadPage />}
+              element={<RolPermisoPage />}
             />
           </Route>
 

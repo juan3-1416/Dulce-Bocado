@@ -5,6 +5,8 @@ use App\Http\Controllers\Api\Seguridad\UsuarioController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Seguridad\RolController;
+use App\Http\Controllers\Api\Seguridad\PermisoController;
+use App\Http\Controllers\Api\Seguridad\RolPermisoController;
 
 Route::get('/health', function () {
     try {
@@ -99,5 +101,62 @@ Route::prefix('seguridad')
         Route::patch(
             '/roles/{id}/estado',
             [RolController::class, 'updateEstado']
+        )->whereNumber('id');
+    });
+Route::prefix('seguridad')
+    ->middleware([
+        'auth:sanctum',
+        'permiso:seguridad.gestionar_permiso',
+    ])
+    ->group(function () {
+        Route::get(
+            '/permisos',
+            [PermisoController::class, 'index']
+        );
+
+        Route::get(
+            '/permisos/{id}',
+            [PermisoController::class, 'show']
+        )->whereNumber('id');
+
+        Route::post(
+            '/permisos',
+            [PermisoController::class, 'store']
+        );
+
+        Route::put(
+            '/permisos/{id}',
+            [PermisoController::class, 'update']
+        )->whereNumber('id');
+
+        Route::patch(
+            '/permisos/{id}/estado',
+            [PermisoController::class, 'updateEstado']
+        )->whereNumber('id');
+    });
+Route::prefix('seguridad')
+    ->middleware([
+        'auth:sanctum',
+        'permiso:seguridad.gestionar_rol_permiso',
+    ])
+    ->group(function () {
+        Route::get(
+            '/rol-permisos',
+            [RolPermisoController::class, 'index']
+        );
+
+        Route::get(
+            '/rol-permisos/catalogos',
+            [RolPermisoController::class, 'catalogos']
+        );
+
+        Route::post(
+            '/rol-permisos',
+            [RolPermisoController::class, 'store']
+        );
+
+        Route::delete(
+            '/rol-permisos/{id}',
+            [RolPermisoController::class, 'destroy']
         )->whereNumber('id');
     });

@@ -1,4 +1,11 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
+
 import {
   cerrarSesion,
   iniciarSesion,
@@ -9,15 +16,22 @@ const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [usuario, setUsuario] = useState(null)
-  const [verificandoSesion, setVerificandoSesion] = useState(true)
+  const [verificandoSesion, setVerificandoSesion] =
+    useState(true)
 
   useEffect(() => {
     const verificarSesion = async () => {
       try {
-        const usuarioActual = await obtenerUsuarioAutenticado()
+        const usuarioActual =
+          await obtenerUsuarioAutenticado()
+
         setUsuario(usuarioActual)
       } catch (error) {
-        console.error('Error al verificar la sesión:', error)
+        console.error(
+          'Error al verificar la sesión:',
+          error,
+        )
+
         setUsuario(null)
       } finally {
         setVerificandoSesion(false)
@@ -27,8 +41,15 @@ export function AuthProvider({ children }) {
     verificarSesion()
   }, [])
 
-  const login = async (nombreUsuario, contrasena) => {
-    const respuesta = await iniciarSesion(nombreUsuario, contrasena)
+  const login = async (
+    nombreUsuario,
+    contrasena,
+  ) => {
+    const respuesta = await iniciarSesion({
+      nombre_usuario: nombreUsuario,
+      contrasena: contrasena,
+    })
+
     setUsuario(respuesta.usuario)
 
     return respuesta
@@ -40,7 +61,10 @@ export function AuthProvider({ children }) {
   }
 
   const tienePermiso = (permiso) => {
-    if (!usuario || !Array.isArray(usuario.permisos)) {
+    if (
+      !usuario ||
+      !Array.isArray(usuario.permisos)
+    ) {
       return false
     }
 
@@ -70,7 +94,9 @@ export function useAuth() {
   const contexto = useContext(AuthContext)
 
   if (!contexto) {
-    throw new Error('useAuth debe utilizarse dentro de AuthProvider.')
+    throw new Error(
+      'useAuth debe utilizarse dentro de AuthProvider.',
+    )
   }
 
   return contexto
