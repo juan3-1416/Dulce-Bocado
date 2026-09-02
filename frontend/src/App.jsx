@@ -10,6 +10,7 @@ import UsuariosPage from './pages/seguridad/UsuariosPage';
 import RolesPage from './pages/seguridad/RolesPage';
 import PermisosPage from './pages/seguridad/PermisosPage';
 import RolPermisoPage from './pages/seguridad/RolPermisoPage';
+import AsignacionesPage from './pages/seguridad/AsignacionesPage';
 function App() {
   return (
     <Routes>
@@ -81,7 +82,7 @@ function App() {
           >
             <Route
               path="seguridad/asignaciones"
-              element={<SeguridadPage />}
+              element={<AsignacionesPage />}
             />
           </Route>
         </Route>

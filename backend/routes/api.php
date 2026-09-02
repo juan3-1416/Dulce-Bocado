@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Seguridad\RolController;
 use App\Http\Controllers\Api\Seguridad\PermisoController;
 use App\Http\Controllers\Api\Seguridad\RolPermisoController;
+use App\Http\Controllers\Api\Seguridad\UsuarioRolPermisoController;
 
 Route::get('/health', function () {
     try {
@@ -159,4 +160,41 @@ Route::prefix('seguridad')
             '/rol-permisos/{id}',
             [RolPermisoController::class, 'destroy']
         )->whereNumber('id');
+    });
+
+Route::prefix('seguridad')
+    ->middleware([
+        'auth:sanctum',
+        'permiso:seguridad.asignar_roles_permisos',
+    ])
+    ->group(function () {
+        Route::get(
+            '/usuario-rol-permisos',
+            [UsuarioRolPermisoController::class, 'index']
+        );
+
+        Route::get(
+            '/usuario-rol-permisos/catalogos',
+            [UsuarioRolPermisoController::class, 'catalogos']
+        );
+
+        Route::post(
+            '/usuario-rol-permisos',
+            [UsuarioRolPermisoController::class, 'store']
+        );
+
+        Route::post(
+            '/usuario-rol-permisos/asignar-rol',
+            [UsuarioRolPermisoController::class, 'asignarRol']
+        );
+
+        Route::delete(
+            '/usuario-rol-permisos/{id}',
+            [UsuarioRolPermisoController::class, 'destroy']
+        )->whereNumber('id');
+
+        Route::post(
+            '/usuario-rol-permisos/quitar-rol',
+            [UsuarioRolPermisoController::class, 'quitarRol']
+        );
     });

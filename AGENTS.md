@@ -1,1085 +1,298 @@
-# AGENTS.md — Dulce Bocado
+# AGENTS.md — Dulce Bocado (resumen oficial)
 
-## 1. Propósito de este archivo
+> Versión condensada del AGENTS.md original (~1085 líneas). Contiene solo
+> las reglas, decisiones y estado que un agente de IA necesita para no
+> desviarse del proyecto. Ante cualquier duda de detalle no cubierto aquí,
+> revisar el proyecto real antes de asumir.
 
-Este archivo contiene las reglas técnicas, arquitectura, convenciones,
-estado actual y decisiones oficiales del proyecto universitario
-"Dulce Bocado".
+## 0. Regla principal
 
-Todo agente de IA que trabaje en este repositorio debe leer y respetar
-este archivo antes de crear, modificar, eliminar o refactorizar código.
+NO ASUMIR QUE EL PROYECTO NECESITA SER REDISEÑADO.
 
-NO rediseñar el proyecto por iniciativa propia.
+1. Entender la implementación existente antes de tocar código.
+2. Extenderla siguiendo exactamente los patrones ya usados.
+3. Si una solicitud entra en conflicto con este archivo, **informar el
+   conflicto antes de actuar**.
+4. Prioridad: consistencia > funcionalidad > claridad > trazabilidad >
+   cumplimiento de casos de uso (CU) > preferencias del agente.
 
-Si una solicitud entra en conflicto con este archivo, informar el
-conflicto antes de realizar cambios.
+## 1. Proyecto
 
----
+Sistema web académico (Ing. en Sistemas) para gestión de ventas, pedidos,
+producción e inventario de una pastelería simulada, **Dulce Bocado**.
+Debe ser funcional, modular y comprensible — sin sobrearquitectura
+empresarial innecesaria.
 
-# 2. Proyecto
+## 2. Stack tecnológico INMUTABLE
 
-Nombre oficial:
+- **Frontend:** React + Vite + Tailwind CSS + JavaScript
+- **Backend:** Laravel (PHP), API REST
+- **Base de datos:** PostgreSQL 16
+- **Infraestructura:** Docker + Docker Compose
+- **Arquitectura:** cliente-servidor, monolito modular, lógica de negocio
+  en el backend
+- **Auth:** Laravel Sanctum, SPA vía cookies/sesión
+- **Control de versiones:** Git / GitHub
 
-SISTEMA DE INFORMACIÓN WEB PARA LA GESTIÓN DE VENTAS, PEDIDOS,
-PRODUCCIÓN E INVENTARIO DE UNA PASTELERÍA Y REPOSTERÍA
+**Prohibido sin autorización expresa:**
+- Sustituir React→Blade, PostgreSQL→MySQL, REST→GraphQL, Laravel→otro backend.
+- Instalar sin aprobación: Spatie Permission, Redux, GraphQL, Firebase,
+  Supabase, otro ORM, otro sistema de auth, otro framework frontend,
+  microservicios, o cualquier paquete nuevo.
+- Si un paquete nuevo parece necesario: **explicar por qué y esperar
+  aprobación** antes de instalarlo.
 
-Nombre de la empresa simulada:
+## 3. Estructura del repo (no reorganizar globalmente)
 
-Dulce Bocado
-
-Tipo:
-
-Proyecto universitario de Ingeniería en Sistemas.
-
-El objetivo es desarrollar un sistema web académico, funcional,
-modular y comprensible.
-
-No se busca sobrearquitectura empresarial innecesaria.
-
----
-
-# 3. Stack tecnológico INMUTABLE
-
-Frontend:
-
-- React
-- Vite
-- Tailwind CSS
-- JavaScript
-- CSS cuando sea necesario
-
-Backend:
-
-- Laravel / PHP
-- API REST
-
-Base de datos:
-
-- PostgreSQL 16
-
-Infraestructura:
-
-- Docker
-- Docker Compose
-
-Arquitectura:
-
-- Cliente-servidor
-- Monolito modular
-- Lógica principal de negocio en backend
-
-Autenticación:
-
-- Laravel Sanctum
-- SPA mediante cookies/sesión
-
-Control de versiones:
-
-- Git
-- GitHub
-
-Despliegue final:
-
-- Nube
-
-NO cambiar estas tecnologías sin autorización expresa.
-
----
-
-# 4. Tecnologías prohibidas sin autorización
-
-NO sustituir:
-
-- React por Blade
-- PostgreSQL por MySQL
-- REST por GraphQL
-- Laravel por otro backend
-
-NO introducir automáticamente:
-
-- Spatie Permission
-- Redux
-- GraphQL
-- Firebase
-- Supabase
-- otro sistema de autenticación
-- otro ORM
-- otro framework frontend
-- microservicios
-- paquetes nuevos
-
-Si un paquete nuevo parece necesario, explicar primero por qué y esperar
-aprobación.
-
----
-
-# 5. Estructura principal
-
-Repositorio:
-
+```
 Dulce-Bocado/
-
-Estructura general:
-
-Dulce-Bocado/
-├── backend/
-├── frontend/
+├── backend/        (app/, routes/, database/, config/)
+├── frontend/src/    (components/, contexts/, layouts/, pages/, services/)
 ├── docker-compose.yml
 ├── .env.example
 ├── README.md
 └── AGENTS.md
+```
 
-Backend Laravel:
+## 4. Base de datos y migraciones — REGLA CRÍTICA
 
-backend/app/
-backend/routes/
-backend/database/
-backend/config/
+**Una migración ya ejecutada nunca se modifica.** Si una tabla necesita
+cambiar: crear una migración nueva, aplicar solo el cambio requerido,
+mantener compatibilidad con lo existente.
 
-Frontend React:
-
-frontend/src/
-├── components/
-├── contexts/
-├── layouts/
-├── pages/
-├── services/
-└── ...
-
-No reorganizar globalmente estas carpetas.
-
----
-
-# 6. Base de datos y migraciones
-
-Motor oficial:
-
-PostgreSQL 16
-
-REGLA CRÍTICA:
-
-Una migración que ya fue ejecutada NO debe modificarse para agregar
-funcionalidades nuevas.
-
-Si la estructura de una tabla necesita cambiar:
-
-1. Crear una migración nueva.
-2. Aplicar solamente el cambio requerido.
-3. Mantener compatibilidad con la estructura existente.
-
-NO:
-
-- borrar la base de datos
-- recrear todas las tablas
-- modificar migraciones históricas
-- ejecutar migrate:fresh sin autorización
-- cambiar nombres existentes arbitrariamente
-
----
-
-# 7. Seguridad
-
-La seguridad utiliza las tablas:
-
-usuarios
-roles
-permisos
-rol_permiso
-usuario_rol_permiso
-
-No existe una columna de rol como texto dentro de usuarios.
-
-Modelo conceptual:
-
-Usuario
-    ↓
-UsuarioRolPermiso
-    ↓
-RolPermiso
-    ↓
-Rol + Permiso
-
-Relaciones:
-
-Rol 1:N RolPermiso
-
-Permiso 1:N RolPermiso
-
-Usuario 1:N UsuarioRolPermiso
-
-RolPermiso 1:N UsuarioRolPermiso
-
----
-
-# 8. Roles base
-
-Los roles mínimos oficiales son:
-
-- Administrador
-- Vendedor
-- Producción
-
-No crear roles alternativos para reemplazar estos roles base.
-
----
-
-# 9. Permisos de seguridad existentes
-
-Actualmente existen como permisos base:
-
-seguridad.gestionar_usuario
-seguridad.gestionar_rol
-seguridad.gestionar_permiso
-seguridad.gestionar_rol_permiso
-seguridad.asignar_roles_permisos
-
-Los módulos futuros deberán seguir el mismo patrón de permisos.
-
----
-
-# 10. Middleware de permisos
-
-El backend utiliza protección mediante middleware:
-
-permiso:nombre.del.permiso
-
-Ejemplo:
-
-auth:sanctum
-permiso:seguridad.gestionar_usuario
-
-No crear un segundo sistema de autorización.
-
-La validación de permisos del backend tiene prioridad sobre cualquier
-control visual del frontend.
-
----
-
-# 11. Seguridad frontend
-
-El frontend también utiliza permisos para:
-
-- mostrar u ocultar opciones del menú
-- proteger rutas
-- controlar acceso funcional
-
-Se utiliza ProtectedRoute.
-
-Patrón esperado:
-
-Permiso
-    ↓
-Middleware Laravel
-    ↓
-Endpoint REST
-    ↓
-ProtectedRoute React
-    ↓
-Menú dinámico
-
-No romper este patrón.
-
----
-
-# 12. Usuario
-
-Campos conceptuales oficiales de Usuario:
-
-id_usuario
-nombre
-nombre_usuario
-correo_electronico
-contrasena
-activo
-intentos_fallidos
-bloqueado_hasta
-fecha_creacion
-fecha_actualizacion
-
-La contraseña nunca se almacena en texto plano.
-
-Laravel debe utilizar hashing seguro.
-
----
-
-# 13. Reglas de contraseña
-
-Al crear o cambiar una contraseña:
-
-- mínimo 8 caracteres
-- al menos una mayúscula
-- al menos una minúscula
-- al menos un número
-- al menos un carácter especial
-
-Estas reglas no deben aplicarse como validación de complejidad durante
-el login.
-
----
-
-# 14. Login y bloqueo
-
-Login mediante:
-
-nombre_usuario
-contrasena
-
-Reglas:
-
-- usuario inactivo no puede iniciar sesión
-- máximo 5 intentos fallidos
-- bloqueo durante 15 minutos
-- login correcto reinicia intentos fallidos
-- contraseñas almacenadas mediante hash
-
----
-
-# 15. Sanctum
-
-El proyecto usa Laravel Sanctum para SPA mediante cookies.
-
-NO migrar a tokens personales sin autorización.
-
-El flujo actual usa:
-
-/sanctum/csrf-cookie
-
-y luego endpoints protegidos con:
-
-auth:sanctum
-
-No modificar la configuración de Sanctum salvo necesidad comprobada y
-autorización.
-
----
-
-# 16. Casos de uso oficiales
-
-El proyecto tiene exactamente 27 casos de uso:
-
-CU1  Autenticar Usuario
-CU2  Gestionar Usuario
-CU3  Gestionar Rol
-CU4  Gestionar Permiso
-CU5  Gestionar Rol-Permiso
-CU6  Asignar Roles y Permisos
-CU7  Gestionar Productos y Presentaciones
-CU8  Gestionar Cliente
-CU9  Gestionar Receta
-CU10 Gestionar Venta
-CU11 Gestionar Pago
-CU12 Gestionar Pago por Internet
-CU13 Gestionar Recibo
-CU14 Gestionar Pedido
-CU15 Gestionar Estado y Entrega de Pedido
-CU16 Gestionar Producción
-CU17 Registrar Consumo, Costo y Desperdicio
-CU18 Gestionar Almacenes y Existencias
-CU19 Gestionar Ingreso de Inventario
-CU20 Gestionar Egreso de Inventario
-CU21 Gestionar Ajuste de Inventario
-CU22 Gestionar Proveedores y Compras
-CU23 Gestionar Caja y Turnos
-CU24 Registrar Visitas
-CU25 Seleccionar Tema
-CU26 Consultar Dashboard
-CU27 Generar y Enviar Reportes
-
-No agregar casos de uso nuevos sin autorización.
-
----
-
-# 17. Casos de uso eliminados
-
-Los siguientes casos de uso fueron eliminados oficialmente:
-
-- Gestionar Traspaso
-- Gestionar Stock Mínimo y Alertas
-- Buscar Información
-
-NO volver a agregarlos.
-
----
-
-# 18. Estado actual del desarrollo
-
-ETAPA 1 — Infraestructura:
-
-COMPLETADA.
-
-Funcionan:
-
-- PostgreSQL
-- Laravel
-- React
-- Docker Compose
-- conexión Laravel → PostgreSQL
-- conexión React → Laravel
-- proxy Vite
-- endpoint de salud
-
-ETAPA 2 — Seguridad:
-
-CU1 Autenticar Usuario:
-COMPLETADO
-
-CU2 Gestionar Usuario:
-COMPLETADO
-
-CU3 Gestionar Rol:
-COMPLETADO
-
-CU4 Gestionar Permiso:
-COMPLETADO
-
-CU5 Gestionar Rol-Permiso:
-COMPLETADO
-
-CU6 Asignar Roles y Permisos:
-EN DESARROLLO
-
-No rehacer CU1-CU5.
-
----
-
-# 19. CU5 Rol-Permiso
-
-La tabla:
-
-rol_permiso
-
-relaciona:
-
-Rol + Permiso
-
-Operaciones implementadas:
-
-- listar relaciones
-- asignar permiso a rol
-- evitar duplicados
-- quitar relación
-- impedir eliminar una relación utilizada por usuarios
-- obtener catálogos de roles/permisos
-- frontend React de gestión
-
-No crear campo "activo" en rol_permiso.
-
-Para quitar una relación se elimina exclusivamente el vínculo.
-
----
-
-# 20. CU6 Asignaciones
-
-La tabla:
-
-usuario_rol_permiso
-
-asigna una relación existente de RolPermiso a un Usuario.
-
-La asignación NO debe crear directamente:
-
-usuario → rol
-
-ni:
-
-usuario → permiso
-
-Debe utilizar:
-
-Usuario
-    ↓
-UsuarioRolPermiso
-    ↓
-RolPermiso
-
-CU6 se encuentra actualmente en desarrollo.
-
-Antes de modificar código relacionado con CU6, revisar su implementación
-actual.
-
----
-
-# 21. Productos y presentaciones
-
-Para CU7:
-
-Un producto puede tener varias presentaciones.
-
-Cada presentación puede tener:
-
-- precio propio
-- receta propia
-- stock propio
-- disponibilidad propia
-
-La personalización puede incluir:
-
-- decoración
-- mensaje
-- costo adicional definido por vendedor
-
-No simplificar Producto + Presentación en una sola entidad si esto
-elimina esta relación.
-
----
-
-# 22. Recetas
-
-Cada presentación puede tener una receta.
-
-La receta contiene:
-
-- materias primas
-- cantidades necesarias
-
-Las recetas son utilizadas posteriormente por producción.
-
----
-
-# 23. Inventario
-
-Almacenes definidos:
-
-- Materias Primas
-- Producción
-- Mostrador
-
-El stock se controla por almacén.
-
-Reglas:
-
-- ventas consultan Mostrador
-- entregas consultan Mostrador
-- producción consume materias primas
-- solamente unidades buenas incrementan producto terminado
-- no permitir stock negativo
-
-Movimientos:
-
-- ingreso
-- egreso
-- ajuste positivo
-- ajuste negativo
-
-Debe existir trazabilidad cuando corresponda:
-
-- usuario
-- fecha
-- motivo
-- observación
-
----
-
-# 24. Métodos de valoración prohibidos
-
-No implementar:
-
-- PEPS / FIFO
-- UEPS / LIFO
-- promedio ponderado
-
-No forman parte del alcance.
-
----
-
-# 25. Producción
-
-Producción debe permitir:
-
-- seleccionar presentación
-- consultar receta
-- calcular requerimientos
-- verificar disponibilidad
-- registrar cantidad
-- registrar consumo real
-- registrar costo
-- registrar desperdicio
-- registrar unidades buenas
-- mantener trazabilidad
-
-Las operaciones críticas deben utilizar transacciones de base de datos.
-
----
-
-# 26. Ventas
-
-Una venta puede contener una o varias presentaciones.
-
-Puede asociarse a:
-
-- cliente registrado
-- cliente ocasional
-
-Debe manejar:
-
-- cantidades
-- precios
-- total
-- stock de Mostrador
-- usuario responsable
-
-No permitir vender más unidades que el stock disponible.
-
----
-
-# 27. Pagos
-
-Una venta o pedido puede tener uno o varios pagos.
-
-Reglas:
-
-- pagos acumulados no pueden superar el total
-- calcular saldo pendiente
-
-Métodos contemplados:
-
-- efectivo
-- QR
-- pago por internet
-
----
-
-# 28. Pago por Internet
-
-Debe existir una transacción de pago con datos como:
-
-- pago
-- estado
-- referencia
-- proveedor
-- fecha de solicitud
-- fecha de confirmación
-
-Estados:
-
-PENDIENTE
-APROBADO
-RECHAZADO
-
-Puede utilizar servicio de pago externo.
-
-No se está construyendo un ecommerce público completo.
-
----
-
-# 29. Pedidos
-
-Pedido:
-
-- cliente
-- uno o varios productos/presentaciones
-- precios congelados
-- fecha de entrega
-- hora de entrega
-- observaciones
-- personalización opcional
-
-Un pedido NO reserva automáticamente inventario.
-
-Para entregar:
-
-- saldo = 0
-- stock suficiente en Mostrador
-
----
-
-# 30. Recibos
-
-El sistema genera recibos internos.
-
-Debe permitir:
-
-- generar
-- consultar
-- visualizar
-- imprimir
-- reimprimir
-- anular
-
-No implementar facturación electrónica fiscal.
-
----
-
-# 31. Proveedores y compras
-
-CU22 comprende:
-
-- proveedor
-- compra
-- detalle de compra
-- materias primas
-- almacén destino
-- actualización de inventario
-
-Las operaciones críticas deben utilizar transacciones.
-
----
-
-# 32. Caja y turnos
-
-Existe una sola caja física.
-
-Reglas:
-
-- solamente un turno abierto a la vez
-- registrar usuario
-- apertura
-- cierre
-- ingresos
-- egresos autorizados
-
-No convertir el módulo en un sistema contable completo.
-
----
-
-# 33. Visitas
-
-CU24 registra visitas al sistema/página.
-
-Debe existir un contador visible según la interfaz definida.
-
-Puede manejar:
-
-- ruta
-- contador
-- actualización
-
----
-
-# 34. Temas visuales
-
-CU25 debe ofrecer al menos:
-
-- Claro
-- Oscuro
-- Dulce Bocado
-
-No instalar sistemas complejos de theming si Tailwind/CSS resuelve el
-requerimiento.
-
----
-
-# 35. Dashboard
-
-CU26 es principalmente administrativo.
-
-Debe ofrecer información resumida y útil del sistema.
-
-No convertirlo en una plataforma de inteligencia de negocios externa.
-
----
-
-# 36. Reportes
-
-CU27 debe ofrecer al menos tres reportes parametrizados relacionados con:
-
-- ventas
-- pedidos
-- inventario
-
-Puede incluir:
-
-- filtros
-- consultas
-- PDF
-- descarga
-- envío por correo
-
-El correo puede utilizar un servicio externo.
-
----
-
-# 37. Alcance excluido
-
-No implementar salvo petición expresa:
-
-- aplicación móvil nativa
-- API oficial de WhatsApp
-- servicio propio de delivery
-- facturación electrónica fiscal
-- contabilidad completa
-- nómina
-- cuentas por pagar complejas
-- MRP avanzado
-- planificación avanzada de producción
-- lotes complejos
-- conversiones complejas de unidades
-- FIFO
-- LIFO
-- promedio ponderado
-- ecommerce público
-- integración con redes sociales
-
----
-
-# 38. Convenciones backend
-
-Mantener:
-
-- Laravel
-- API REST
-- controladores organizados
-- Form Requests para validación cuando corresponda
-- Models Eloquent
-- respuestas JSON consistentes
-- códigos HTTP apropiados
-
-Ejemplos:
-
-200 OK
-201 Created
-401 Unauthorized
-403 Forbidden
-404 Not Found
-409 Conflict
-422 Unprocessable Entity
-
-No colocar toda la lógica en rutas.
-
-No duplicar lógica existente.
-
----
-
-# 39. Convenciones frontend
-
-Mantener separación entre:
-
-pages/
-components/
-services/
-contexts/
-layouts/
-
-Las llamadas API deben ubicarse preferentemente en:
-
-frontend/src/services/
-
-No duplicar funciones fetch en cada página si existe un servicio
-correspondiente.
-
-Mantener:
-
-credentials: 'include'
-
-cuando la llamada utiliza sesión Sanctum.
-
-Para mutaciones protegidas por CSRF utilizar el patrón existente del
-proyecto.
-
----
-
-# 40. Nombres
-
-La base de datos y el dominio de negocio utilizan nombres en español.
-
-Mantener convenciones existentes.
-
-No renombrar campos, tablas, rutas o clases existentes solamente por
+Prohibido: borrar la BD, recrear tablas, editar migraciones históricas,
+`migrate:fresh` sin autorización, renombrar campos/tablas existentes por
 preferencia personal.
 
----
+## 5. Seguridad (RBAC)
 
-# 41. Forma obligatoria de trabajar
+Tablas: `usuarios`, `roles`, `permisos`, `rol_permiso`, `usuario_rol_permiso`.
+No existe columna de rol como texto en `usuarios`.
+
+Flujo conceptual:
+```
+Usuario → UsuarioRolPermiso → RolPermiso → (Rol + Permiso)
+```
+
+- **Roles base** (no reemplazar): Administrador, Vendedor, Producción.
+- **Permisos base**: `seguridad.gestionar_usuario`, `seguridad.gestionar_rol`,
+  `seguridad.gestionar_permiso`, `seguridad.gestionar_rol_permiso`,
+  `seguridad.asignar_roles_permisos`. Módulos nuevos siguen el mismo
+  patrón `modulo.accion`.
+- **Backend**: middleware `permiso:nombre.del.permiso` sobre `auth:sanctum`.
+  No crear un segundo sistema de autorización. El backend siempre tiene
+  prioridad sobre cualquier control visual del frontend.
+- **Frontend**: `ProtectedRoute` + menú dinámico según permisos. Patrón:
+  `Permiso → Middleware Laravel → Endpoint REST → ProtectedRoute → Menú`.
+  No romper este patrón.
+- `rol_permiso`: no tiene campo `activo`; quitar relación = borrar el
+  vínculo; no permitir eliminar una relación en uso por usuarios.
+- `usuario_rol_permiso` (CU6, en desarrollo): asigna una `RolPermiso`
+  **existente** a un usuario. Nunca crear directamente `usuario→rol` o
+  `usuario→permiso`.
+
+## 6. Usuario y login
+
+Campos: `id_usuario, nombre, nombre_usuario, correo_electronico,
+contrasena, activo, intentos_fallidos, bloqueado_hasta, fecha_creacion,
+fecha_actualizacion`. Contraseña siempre hasheada (nunca texto plano).
+
+Reglas de contraseña (crear/cambiar, **no** en login): mín. 8 caracteres,
+1 mayúscula, 1 minúscula, 1 número, 1 carácter especial.
+
+Login por `nombre_usuario` + `contrasena`. Máx. 5 intentos fallidos →
+bloqueo 15 min. Login correcto reinicia contador. Usuario inactivo no
+puede iniciar sesión.
+
+**Sanctum**: SPA vía `/sanctum/csrf-cookie` + `auth:sanctum`. No migrar a
+tokens personales ni tocar su configuración sin autorización.
+
+## 7. Casos de uso oficiales (exactamente 27, no agregar sin autorización)
+
+| CU | Nombre | Estado |
+|----|--------|--------|
+| CU1 | Autenticar Usuario | ✅ COMPLETADO |
+| CU2 | Gestionar Usuario | ✅ COMPLETADO |
+| CU3 | Gestionar Rol | ✅ COMPLETADO |
+| CU4 | Gestionar Permiso | ✅ COMPLETADO |
+| CU5 | Gestionar Rol-Permiso | ✅ COMPLETADO |
+| CU6 | Asignar Roles y Permisos | ✅ COMPLETADO |
+| CU7 | Gestionar Productos y Presentaciones | ⏳ No iniciado |
+| CU8 | Gestionar Cliente | ⏳ No iniciado |
+| CU9 | Gestionar Receta | ⏳ No iniciado |
+| CU10 | Gestionar Venta | ⏳ No iniciado |
+| CU11 | Gestionar Pago | ⏳ No iniciado |
+| CU12 | Gestionar Pago por Internet | ⏳ No iniciado |
+| CU13 | Gestionar Recibo | ⏳ No iniciado |
+| CU14 | Gestionar Pedido | ⏳ No iniciado |
+| CU15 | Gestionar Estado y Entrega de Pedido | ⏳ No iniciado |
+| CU16 | Gestionar Producción | ⏳ No iniciado |
+| CU17 | Registrar Consumo, Costo y Desperdicio | ⏳ No iniciado |
+| CU18 | Gestionar Almacenes y Existencias | ⏳ No iniciado |
+| CU19 | Gestionar Ingreso de Inventario | ⏳ No iniciado |
+| CU20 | Gestionar Egreso de Inventario | ⏳ No iniciado |
+| CU21 | Gestionar Ajuste de Inventario | ⏳ No iniciado |
+| CU22 | Gestionar Proveedores y Compras | ⏳ No iniciado |
+| CU23 | Gestionar Caja y Turnos | ⏳ No iniciado |
+| CU24 | Registrar Visitas | ⏳ No iniciado |
+| CU25 | Seleccionar Tema | ⏳ No iniciado |
+| CU26 | Consultar Dashboard | ⏳ No iniciado |
+| CU27 | Generar y Enviar Reportes | ⏳ No iniciado |
+
+**No rehacer CU1–CU5** (cerrados). Antes de tocar CU6, revisar su
+implementación actual.
+
+**Eliminados oficialmente — no volver a agregar:** Gestionar Traspaso,
+Gestionar Stock Mínimo y Alertas, Buscar Información.
+
+> ⚠️ Actualizar esta tabla cada vez que se cierre un CU (ver sección 15).
+
+## 8. Estado de infraestructura (Etapa 1)
+
+✅ COMPLETADA: PostgreSQL, Laravel, React, Docker Compose, conexión
+Laravel↔PostgreSQL, conexión React↔Laravel, proxy Vite, endpoint de salud.
+
+## 9. Reglas de negocio por módulo (resumen)
+
+- **Productos/Presentaciones (CU7):** un producto → varias presentaciones;
+  cada una con precio, receta, stock y disponibilidad propios.
+  Personalización opcional (decoración, mensaje, costo adicional). No
+  fusionar Producto+Presentación en una sola entidad.
+- **Recetas (CU9):** materias primas + cantidades por presentación; las
+  usa producción.
+- **Inventario (CU18–21):** 3 almacenes fijos — Materias Primas,
+  Producción, Mostrador. Ventas y entregas consultan Mostrador;
+  producción consume materias primas; solo unidades buenas incrementan
+  producto terminado; **stock nunca negativo**. Movimientos: ingreso,
+  egreso, ajuste +/-, con trazabilidad (usuario, fecha, motivo,
+  observación). **Prohibido:** FIFO, LIFO, promedio ponderado.
+- **Producción (CU16–17):** seleccionar presentación → consultar receta →
+  calcular requerimientos → verificar disponibilidad → registrar
+  cantidad/consumo real/costo/desperdicio/unidades buenas, con
+  trazabilidad. Operaciones críticas en transacciones DB.
+- **Ventas (CU10):** una o varias presentaciones; cliente registrado u
+  ocasional; controla cantidades, precios, total, stock de Mostrador y
+  usuario responsable. No vender más que el stock disponible.
+- **Pagos (CU11–12):** uno o varios pagos por venta/pedido; acumulado ≤
+  total; calcular saldo pendiente. Métodos: efectivo, QR, pago por
+  internet (transacción con estado PENDIENTE/APROBADO/RECHAZADO,
+  referencia, proveedor, fechas). No es un ecommerce público completo.
+- **Pedidos (CU14–15):** cliente + productos/presentaciones + precios
+  congelados + fecha/hora de entrega + observaciones + personalización
+  opcional. **No reserva inventario automáticamente.** Para entregar:
+  saldo = 0 y stock suficiente en Mostrador.
+- **Recibos (CU13):** generar, consultar, visualizar, imprimir,
+  reimprimir, anular. No es facturación electrónica fiscal.
+- **Proveedores/Compras (CU22):** proveedor, compra, detalle, materias
+  primas, almacén destino, actualización de inventario. Operaciones
+  críticas en transacciones.
+- **Caja y turnos (CU23):** una sola caja física, un turno abierto a la
+  vez; registra usuario, apertura, cierre, ingresos, egresos
+  autorizados. No es un sistema contable completo.
+- **Visitas (CU24):** contador de visitas visible; maneja ruta, contador,
+  actualización.
+- **Temas (CU25):** mínimo Claro, Oscuro y Dulce Bocado. Resolver con
+  Tailwind/CSS, sin sistemas de theming complejos.
+- **Dashboard (CU26):** resumen administrativo. No convertirlo en una
+  plataforma de BI externa.
+- **Reportes (CU27):** mínimo 3 reportes parametrizados (ventas, pedidos,
+  inventario). Puede incluir filtros, PDF, descarga, envío por correo
+  (servicio externo).
+
+## 10. Fuera de alcance (no implementar sin pedido expreso)
+
+App móvil nativa, API oficial de WhatsApp, delivery propio, facturación
+electrónica fiscal, contabilidad completa, nómina, cuentas por pagar
+complejas, MRP avanzado, planificación avanzada de producción, lotes
+complejos, conversiones complejas de unidades, FIFO/LIFO/promedio
+ponderado, ecommerce público, integración con redes sociales.
+
+## 11. Convenciones de código
+
+**Backend:** Laravel + REST, controladores organizados, Form Requests
+para validación, Models Eloquent, JSON consistente, códigos HTTP
+correctos (200/201/401/403/404/409/422). No poner lógica en las rutas.
+No duplicar lógica existente.
+
+**Frontend:** separar `pages/ components/ services/ contexts/ layouts/`.
+Llamadas API en `frontend/src/services/` (no duplicar fetch por página).
+Usar `credentials: 'include'` en llamadas con sesión Sanctum. CSRF:
+seguir el patrón ya existente en el proyecto.
+
+**Nombres:** dominio de negocio y BD en español. No renombrar campos,
+tablas, rutas o clases existentes por preferencia personal.
+
+## 12. Flujo de trabajo obligatorio
 
 Antes de modificar código:
-
 1. Revisar archivos existentes relacionados.
 2. Comprender la implementación actual.
 3. Identificar exactamente qué archivo necesita cambio.
 4. Evitar modificaciones innecesarias.
 
-Al proponer un cambio indicar:
+Al proponer un cambio, indicar: **archivo, ruta exacta, si se crea o
+modifica, y motivo.** Reemplazo de archivo → entregar el archivo
+completo. Modificación parcial → indicar exactamente dónde colocarla.
+Después indicar: comandos exactos, prueba, resultado esperado.
 
-- archivo
-- ruta exacta
-- si se crea o modifica
-- motivo
-
-Si se reemplaza un archivo:
-
-proporcionar el archivo completo.
-
-Si se realiza una modificación parcial:
-
-indicar exactamente dónde colocarla.
-
-Después indicar:
-
-- comandos exactos
-- prueba
-- resultado esperado
-
----
-
-# 42. Desarrollo paso a paso
-
-No desarrollar varios casos de uso de golpe.
-
-Secuencia:
-
-1. Backend
-2. Pruebas backend
-3. Frontend
-4. Pruebas frontend
-5. Cierre del caso de uso
-
+**Desarrollo paso a paso** (no varios CU a la vez):
+`Backend → Pruebas backend → Frontend → Pruebas frontend → Cierre del CU`.
 No continuar automáticamente al siguiente paso si el desarrollador está
 probando el anterior.
 
----
+## 13. Manejo de errores
 
-# 43. Manejo de errores
+**NO:** reinstalar todo automáticamente, borrar `node_modules` sin
+diagnóstico, reconstruir la BD, usar `migrate:fresh`, borrar volúmenes
+Docker, cambiar arquitectura, reemplazar configuraciones que ya
+funcionan.
 
-Si aparece un error:
+**SÍ:** leer el error → encontrar la causa → revisar el archivo
+involucrado → corregir solo lo necesario → volver a probar.
 
-NO:
+## 14. Archivos sensibles/compartidos (cuidado especial)
 
-- reinstalar todo automáticamente
-- eliminar node_modules sin diagnóstico
-- reconstruir toda la base de datos
-- usar migrate:fresh
-- borrar Docker volumes
-- cambiar arquitectura
-- reemplazar configuraciones que ya funcionan
+`docker-compose.yml`, `backend/.env`, `backend/config/*`,
+`backend/bootstrap/app.php`, `backend/routes/api.php`,
+`backend/app/Models/Usuario.php`, archivos de autenticación, middleware
+de permisos, configuración Sanctum, `frontend/src/App.jsx`,
+`ProtectedRoute`, `AuthContext`, `MainLayout`. Son compartidos por muchos
+módulos — no hacer cambios globales sin necesidad.
 
-Primero:
+## 15. Git y trabajo en equipo
 
-1. Leer el error.
-2. Encontrar la causa.
-3. Revisar el archivo involucrado.
-4. Corregir solamente lo necesario.
-5. Volver a probar.
+No desarrollar directo sobre la rama estable compartida en paralelo.
+Usar ramas `feature/cuX-nombre` (ej. `feature/cu7-productos`). Revisar
+`git diff main...nombre-rama` antes de merge. No mergear automáticamente
+cambios grandes generados por IA sin revisión humana.
 
----
+Dos desarrolladores no trabajan el mismo CU sin coordinación expresa.
+Evitar conflictos en: `routes/api.php`, `App.jsx`, `MainLayout.jsx`,
+migraciones, seeders.
 
-# 44. Archivos sensibles/compartidos
+**Actualizar este archivo** al completar un CU importante o tomar una
+decisión arquitectónica permanente (ver tabla de la sección 7). No
+eliminar decisiones anteriores sin autorización.
 
-Modificar con especial cuidado:
+## 16. Refactorización
 
-docker-compose.yml
+No refactorizar globalmente "porque se puede hacer mejor". La
+arquitectura ya está aprobada. Prioridad: consistencia, funcionalidad,
+claridad, trazabilidad, cumplimiento de CU. No imponer patrones nuevos
+innecesarios.
 
-backend/.env
-backend/config/*
-backend/bootstrap/app.php
-backend/routes/api.php
+## 17. Checklist antes de escribir código
 
-backend/app/Models/Usuario.php
-
-archivos de autenticación
-middleware de permisos
-configuración Sanctum
-
-frontend/src/App.jsx
-ProtectedRoute
-AuthContext
-MainLayout
-
-Estos archivos pueden ser compartidos por muchos módulos.
-
-No hacer cambios globales sin necesidad.
-
----
-
-# 45. Git y trabajo entre desarrolladores
-
-Nunca desarrollar directamente sobre una rama estable compartida si
-se está trabajando en paralelo.
-
-Usar ramas feature.
-
-Ejemplos:
-
-feature/cu7-productos
-feature/cu8-clientes
-feature/cu9-recetas
-
-Antes de hacer merge revisar:
-
-git diff main...nombre-rama
-
-No hacer merge automático de cambios grandes generados por IA sin
-revisión humana.
-
----
-
-# 46. Trabajo paralelo
-
-Dos desarrolladores NO deben trabajar simultáneamente en el mismo caso
-de uso salvo coordinación expresa.
-
-Si CU6 está siendo desarrollado por otra persona, escoger otro CU que
-no modifique las mismas tablas/controladores/páginas.
-
-Evitar conflictos especialmente en:
-
-routes/api.php
-App.jsx
-MainLayout.jsx
-migraciones
-seeders
-
----
-
-# 47. Refactorización
-
-No realizar refactorizaciones globales porque "se puede hacer mejor".
-
-Este es un proyecto académico que ya tiene una arquitectura aprobada.
-
-La prioridad es:
-
-- consistencia
-- funcionalidad
-- claridad
-- trazabilidad
-- cumplimiento de casos de uso
-
-No imponer patrones nuevos innecesarios.
-
----
-
-# 48. Antes de escribir código
-
-Todo agente debe preguntarse:
-
-1. ¿Esto respeta React + Laravel + REST + PostgreSQL?
-2. ¿Estoy manteniendo la estructura existente?
-3. ¿Estoy reutilizando el sistema actual de seguridad?
-4. ¿Estoy evitando modificar módulos terminados?
-5. ¿Estoy creando solo lo necesario?
-6. ¿Estoy respetando los casos de uso oficiales?
-7. ¿Estoy evitando funcionalidades fuera de alcance?
-8. ¿Necesito realmente modificar un archivo compartido?
-9. ¿Estoy creando una nueva migración en vez de editar una histórica?
+1. ¿Respeta React + Laravel + REST + PostgreSQL?
+2. ¿Mantengo la estructura existente?
+3. ¿Reutilizo el sistema de seguridad actual?
+4. ¿Evito modificar módulos ya terminados?
+5. ¿Creo solo lo necesario?
+6. ¿Respeto los casos de uso oficiales?
+7. ¿Evito funcionalidades fuera de alcance?
+8. ¿Necesito realmente tocar un archivo compartido?
+9. ¿Creo una migración nueva en vez de editar una histórica?
 10. ¿Puedo probar el cambio sin afectar otros módulos?
 
-Si alguna respuesta genera duda, revisar el proyecto antes de modificar
+Si alguna respuesta genera duda: revisar el proyecto antes de modificar
 código.
-
----
-
-# 49. Regla principal para agentes de IA
-
-NO ASUMIR QUE EL PROYECTO NECESITA SER REDISEÑADO.
-
-Primero entender la implementación existente.
-
-Después extenderla siguiendo exactamente los patrones ya utilizados.
-
-La consistencia con el proyecto tiene mayor prioridad que las
-preferencias arquitectónicas del agente.
-
----
-
-# 50. Actualización de este archivo
-
-Cuando se complete un CU importante o se tome una decisión arquitectónica
-permanente, actualizar AGENTS.md.
-
-Ejemplo:
-
-CU6 Asignar Roles y Permisos — COMPLETADO
-
-Así los futuros agentes conocen siempre el estado real del proyecto.
-
-NO eliminar decisiones anteriores sin autorización.
