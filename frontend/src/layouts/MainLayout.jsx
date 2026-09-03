@@ -1,14 +1,10 @@
 import { useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import Sidebar from '../components/Sidebar'
 
 function MainLayout() {
-  const {
-    usuario,
-    logout,
-    tienePermiso,
-  } = useAuth()
-
+  const { usuario, logout } = useAuth()
   const navigate = useNavigate()
 
   const [cerrandoSesion, setCerrandoSesion] = useState(false)
@@ -28,46 +24,6 @@ function MainLayout() {
       setCerrandoSesion(false)
     }
   }
-
-  const opcionesSeguridad = [
-    {
-      nombre: 'Usuarios',
-      ruta: '/seguridad/usuarios',
-      permiso: 'seguridad.gestionar_usuario',
-    },
-    {
-      nombre: 'Roles',
-      ruta: '/seguridad/roles',
-      permiso: 'seguridad.gestionar_rol',
-    },
-    {
-      nombre: 'Permisos',
-      ruta: '/seguridad/permisos',
-      permiso: 'seguridad.gestionar_permiso',
-    },
-    {
-      nombre: 'Rol - Permiso',
-      ruta: '/seguridad/rol-permiso',
-      permiso: 'seguridad.gestionar_rol_permiso',
-    },
-    {
-      nombre: 'Asignaciones',
-      ruta: '/seguridad/asignaciones',
-      permiso: 'seguridad.asignar_roles_permisos',
-    },
-  ]
-
-  const opcionesVisibles = opcionesSeguridad.filter(
-    (opcion) => tienePermiso(opcion.permiso),
-  )
-
-  const claseEnlace = ({ isActive }) =>
-    [
-      'block rounded-lg px-4 py-2.5 text-sm font-medium transition',
-      isActive
-        ? 'bg-pink-100 text-pink-700'
-        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
-    ].join(' ')
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -90,8 +46,8 @@ function MainLayout() {
 
               <p className="text-xs text-slate-500">
                 {usuario?.roles?.length
-    ? usuario.roles.join(', ')
-    : 'Sin rol asignado'}
+                  ? usuario.roles.join(', ')
+                  : 'Sin rol asignado'}
               </p>
             </div>
 
@@ -109,42 +65,16 @@ function MainLayout() {
         </div>
       </header>
 
+      {errorLogout && (
+        <div className="mx-auto max-w-7xl px-6 pt-4">
+          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            {errorLogout}
+          </div>
+        </div>
+      )}
+
       <div className="mx-auto grid max-w-7xl gap-6 p-6 lg:grid-cols-[240px_1fr]">
-        <aside className="rounded-2xl bg-white p-4 shadow-sm">
-          <nav className="space-y-2">
-            <NavLink
-              to="/"
-              end
-              className={claseEnlace}
-            >
-              Inicio
-            </NavLink>
-
-            {opcionesVisibles.length > 0 && (
-              <>
-                <p className="px-4 pb-1 pt-5 text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Seguridad
-                </p>
-
-                {opcionesVisibles.map((opcion) => (
-                  <NavLink
-                    key={opcion.ruta}
-                    to={opcion.ruta}
-                    className={claseEnlace}
-                  >
-                    {opcion.nombre}
-                  </NavLink>
-                ))}
-              </>
-            )}
-          </nav>
-
-          {errorLogout && (
-            <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
-              {errorLogout}
-            </div>
-          )}
-        </aside>
+        <Sidebar />
 
         <section>
           <Outlet />
