@@ -1,6 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\Clientes\ClienteController;
+use App\Http\Controllers\Api\Productos\CategoriaController;
+use App\Http\Controllers\Api\Productos\ProductoController;
+use App\Http\Controllers\Api\Productos\PresentacionController;
 use App\Http\Controllers\Api\Seguridad\UsuarioController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -172,29 +176,55 @@ Route::prefix('seguridad')
             '/usuario-rol-permisos',
             [UsuarioRolPermisoController::class, 'index']
         );
-
         Route::get(
             '/usuario-rol-permisos/catalogos',
             [UsuarioRolPermisoController::class, 'catalogos']
         );
-
         Route::post(
             '/usuario-rol-permisos',
             [UsuarioRolPermisoController::class, 'store']
         );
-
         Route::post(
             '/usuario-rol-permisos/asignar-rol',
             [UsuarioRolPermisoController::class, 'asignarRol']
         );
-
-        Route::delete(
-            '/usuario-rol-permisos/{id}',
-            [UsuarioRolPermisoController::class, 'destroy']
-        )->whereNumber('id');
-
-        Route::post(
-            '/usuario-rol-permisos/quitar-rol',
-            [UsuarioRolPermisoController::class, 'quitarRol']
-        );
+        Route::delete('/usuario-rol-permisos/{id}', [UsuarioRolPermisoController::class, 'destroy'])->whereNumber('id');
+        Route::post('/usuario-rol-permisos/quitar-rol', [UsuarioRolPermisoController::class, 'quitarRol']);
     });
+
+Route::middleware(['auth:sanctum'])->prefix('productos')->group(function () {
+    // Categorías y Productos (gestión de producto)
+    Route::middleware('permiso:productos.gestionar_producto')->group(function () {
+        Route::get('/categorias', [CategoriaController::class, 'index']);
+        Route::post('/categorias', [CategoriaController::class, 'store']);
+        Route::put('/categorias/{id}', [CategoriaController::class, 'update'])->whereNumber('id');
+
+        Route::get('/', [ProductoController::class, 'index']);
+        Route::post('/', [ProductoController::class, 'store']);
+        Route::get('/{id}', [ProductoController::class, 'show'])->whereNumber('id');
+        Route::put('/{id}', [ProductoController::class, 'update'])->whereNumber('id');
+        Route::patch('/{id}/estado', [ProductoController::class, 'updateEstado'])->whereNumber('id');
+    });
+
+    // Presentaciones (gestión de presentaciones, asignaciones y precios)
+    Route::middleware('permiso:productos.gestionar_presentacion')->group(function () {
+        Route::get('/presentaciones', [PresentacionController::class, 'index']);
+        Route::post('/presentaciones', [PresentacionController::class, 'store']);
+        Route::put('/presentaciones/{id}', [PresentacionController::class, 'update'])->whereNumber('id');
+        Route::patch('/presentaciones/{id}/estado', [PresentacionController::class, 'updateEstado'])->whereNumber('id');
+
+        Route::post('/{id}/presentaciones', [ProductoController::class, 'asignarPresentacion'])->whereNumber('id');
+        Route::put('/{id}/presentaciones/{id_presentacion}', [ProductoController::class, 'actualizarPrecioPresentacion'])->whereNumber('id')->whereNumber('id_presentacion');
+        Route::delete('/{id}/presentaciones/{id_presentacion}', [ProductoController::class, 'desvincularPresentacion'])->whereNumber('id')->whereNumber('id_presentacion');
+    });
+});
+
+Route::middleware(['auth:sanctum'])->prefix('clientes')->group(function () {
+    Route::middleware('permiso:clientes.gestionar_cliente')->group(function () {
+        Route::get('/', [ClienteController::class, 'index']);
+        Route::post('/', [ClienteController::class, 'store']);
+        Route::get('/{id}', [ClienteController::class, 'show'])->whereNumber('id');
+        Route::put('/{id}', [ClienteController::class, 'update'])->whereNumber('id');
+        Route::patch('/{id}/estado', [ClienteController::class, 'updateEstado'])->whereNumber('id');
+    });
+});

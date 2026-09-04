@@ -11,6 +11,9 @@ import RolesPage from './pages/seguridad/RolesPage';
 import PermisosPage from './pages/seguridad/PermisosPage';
 import RolPermisoPage from './pages/seguridad/RolPermisoPage';
 import AsignacionesPage from './pages/seguridad/AsignacionesPage';
+import ProductosPage from './pages/productos/ProductosPage';
+import ClientesPage from './pages/clientes/ClientesPage';
+
 function App() {
   return (
     <Routes>
@@ -83,6 +86,28 @@ function App() {
             <Route
               path="seguridad/asignaciones"
               element={<AsignacionesPage />}
+            />
+          </Route>
+
+          <Route
+            element={
+              <ProtectedRoute permiso="productos.gestionar_producto" />
+            }
+          >
+            <Route
+              path="productos"
+              element={<ProductosPage />}
+            />
+          </Route>
+
+          <Route
+            element={
+              <ProtectedRoute permiso="clientes.gestionar_cliente" />
+            }
+          >
+            <Route
+              path="clientes"
+              element={<ClientesPage />}
             />
           </Route>
         </Route>

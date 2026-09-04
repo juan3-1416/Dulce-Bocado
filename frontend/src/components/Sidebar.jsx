@@ -144,7 +144,7 @@ const SECCIONES_MENU = [
     titulo: 'Clientes',
     opciones: [
       {
-        nombre: 'Clientes',
+        nombre: 'Directorio de Clientes',
         ruta: '/clientes',
         permiso: 'clientes.gestionar_cliente',
       },

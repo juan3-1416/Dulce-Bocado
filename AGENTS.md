@@ -117,8 +117,8 @@ tokens personales ni tocar su configuración sin autorización.
 | CU4 | Gestionar Permiso | ✅ COMPLETADO |
 | CU5 | Gestionar Rol-Permiso | ✅ COMPLETADO |
 | CU6 | Asignar Roles y Permisos | ✅ COMPLETADO |
-| CU7 | Gestionar Productos y Presentaciones | ⏳ No iniciado |
-| CU8 | Gestionar Cliente | ⏳ No iniciado |
+| CU7 | Gestionar Productos y Presentaciones | ✅ COMPLETADO |
+| CU8 | Gestionar Cliente | ✅ COMPLETADO |
 | CU9 | Gestionar Receta | ⏳ No iniciado |
 | CU10 | Gestionar Venta | ⏳ No iniciado |
 | CU11 | Gestionar Pago | ⏳ No iniciado |

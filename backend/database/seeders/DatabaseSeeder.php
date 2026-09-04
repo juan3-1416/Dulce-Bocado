@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             SeguridadInicialSeeder::class,
             AdministradorInicialSeeder::class,
             ProductosInicialSeeder::class,
+            ClientesInicialSeeder::class,
         ]);
     }
 }
