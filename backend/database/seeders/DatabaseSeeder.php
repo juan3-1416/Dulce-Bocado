@@ -13,6 +13,8 @@ class DatabaseSeeder extends Seeder
             AdministradorInicialSeeder::class,
             ProductosInicialSeeder::class,
             ClientesInicialSeeder::class,
+            RecetasInicialSeeder::class,
+            VentasInicialSeeder::class,
         ]);
     }
 }

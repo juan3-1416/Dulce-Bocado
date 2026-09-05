@@ -11,8 +11,10 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Seguridad\RolController;
 use App\Http\Controllers\Api\Seguridad\PermisoController;
 use App\Http\Controllers\Api\Seguridad\RolPermisoController;
+use App\Http\Controllers\Api\Recetas\MateriaPrimaController;
 use App\Http\Controllers\Api\Seguridad\UsuarioRolPermisoController;
-
+use App\Http\Controllers\Api\Recetas\RecetaController;
+use App\Http\Controllers\Api\Ventas\VentaController;
 Route::get('/health', function () {
     try {
         $database = DB::selectOne(
@@ -228,3 +230,121 @@ Route::middleware(['auth:sanctum'])->prefix('clientes')->group(function () {
         Route::patch('/{id}/estado', [ClienteController::class, 'updateEstado'])->whereNumber('id');
     });
 });
+Route::prefix('recetas')
+    ->middleware([
+        'auth:sanctum',
+        'permiso:recetas.gestionar_receta',
+    ])
+    ->group(function () {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Materias primas
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get(
+            '/materias-primas',
+            [MateriaPrimaController::class, 'index']
+        );
+
+        Route::post(
+            '/materias-primas',
+            [MateriaPrimaController::class, 'store']
+        );
+
+        Route::get(
+            '/materias-primas/{id}',
+            [MateriaPrimaController::class, 'show']
+        )->whereNumber('id');
+
+        Route::put(
+            '/materias-primas/{id}',
+            [MateriaPrimaController::class, 'update']
+        )->whereNumber('id');
+
+        Route::patch(
+            '/materias-primas/{id}/estado',
+            [MateriaPrimaController::class, 'updateEstado']
+        )->whereNumber('id');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Recetas
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get(
+            '/',
+            [RecetaController::class, 'index']
+        );
+
+        Route::post(
+            '/',
+            [RecetaController::class, 'store']
+        );
+
+        Route::get(
+            '/{id}',
+            [RecetaController::class, 'show']
+        )->whereNumber('id');
+
+        Route::put(
+            '/{id}',
+            [RecetaController::class, 'update']
+        )->whereNumber('id');
+
+        Route::patch(
+            '/{id}/estado',
+            [RecetaController::class, 'updateEstado']
+        )->whereNumber('id');
+
+        Route::get(
+    '/catalogos',
+    [RecetaController::class, 'catalogos']
+);
+
+    });
+    /*
+|--------------------------------------------------------------------------
+| CU10 - Gestionar Venta
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('ventas')
+    ->middleware([
+        'auth:sanctum',
+        'permiso:ventas.gestionar_venta',
+    ])
+    ->group(function () {
+
+        Route::get(
+            '/',
+            [VentaController::class, 'index']
+        );
+
+        Route::post(
+            '/',
+            [VentaController::class, 'store']
+        );
+
+        Route::get(
+            '/catalogos',
+            [VentaController::class, 'catalogos']
+        );
+
+        Route::get(
+            '/{id}',
+            [VentaController::class, 'show']
+        )->whereNumber('id');
+
+        Route::put(
+            '/{id}',
+            [VentaController::class, 'update']
+        )->whereNumber('id');
+
+        Route::patch(
+            '/{id}/anular',
+            [VentaController::class, 'anular']
+        )->whereNumber('id');
+    });

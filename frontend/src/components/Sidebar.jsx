@@ -53,6 +53,11 @@ const SECCIONES_MENU = [
         ruta: '/recetas',
         permiso: 'recetas.gestionar_receta',
       },
+      {
+        nombre: 'Materias Primas',
+        ruta: '/recetas/materias-primas',
+        permiso: 'recetas.gestionar_receta',
+      },
     ],
   },
   {

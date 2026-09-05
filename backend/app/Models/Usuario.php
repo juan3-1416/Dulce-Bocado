@@ -76,4 +76,13 @@ class Usuario extends Authenticatable
         })
         ->exists();
 }
+
+public function ventas(): HasMany
+{
+    return $this->hasMany(
+        Venta::class,
+        'id_usuario',
+        'id_usuario'
+    );
+}
 }

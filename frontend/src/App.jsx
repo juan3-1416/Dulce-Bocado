@@ -13,6 +13,9 @@ import RolPermisoPage from './pages/seguridad/RolPermisoPage';
 import AsignacionesPage from './pages/seguridad/AsignacionesPage';
 import ProductosPage from './pages/productos/ProductosPage';
 import ClientesPage from './pages/clientes/ClientesPage';
+import RecetasPage from './pages/recetas/RecetasPage';
+import MateriasPrimasPage from './pages/recetas/MateriasPrimasPage'
+import VentasPage from './pages/ventas/VentasPage'
 
 function App() {
   return (
@@ -108,6 +111,39 @@ function App() {
             <Route
               path="clientes"
               element={<ClientesPage />}
+            />
+          </Route>
+
+          <Route
+            element={
+              <ProtectedRoute permiso="recetas.gestionar_receta" />
+            }
+          >
+            <Route
+              path="recetas"
+              element={<RecetasPage />}
+            />
+          </Route>
+
+          <Route
+            element={
+              <ProtectedRoute permiso="recetas.gestionar_receta" />
+            }
+          >
+            <Route
+              path="recetas/materias-primas"
+              element={<MateriasPrimasPage />}
+            />
+          </Route>
+
+          <Route
+            element={
+              <ProtectedRoute permiso="ventas.gestionar_venta" />
+            }
+          >
+            <Route
+              path="ventas"
+              element={<VentasPage />}
             />
           </Route>
         </Route>
