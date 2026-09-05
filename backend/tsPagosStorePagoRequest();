@@ -1,0 +1,18 @@
+[90m= [39m[34;4mApp\Models\Venta[39;24m {#7966
+    [34mid_venta[39m: [35m1[39m,
+    [34mid_cliente[39m: [36mnull[39m,
+    [34mid_usuario[39m: [35m1[39m,
+    [34mnombre_cliente_ocasional[39m: [32m"[39m[32mCliente mostrador[39m[32m"[39m,
+    [34mfecha_venta[39m: [32m"[39m[32m2026-09-05 03:45:29[39m[32m"[39m,
+    [34mtotal[39m: [32m"[39m[32m620.00[39m[32m"[39m,
+    [34mestado[39m: [32m"[39m[32mANULADA[39m[32m"[39m,
+    [34mobservaciones[39m: [32m"[39m[32mVenta modificada durante prueba CU10[39m[32m"[39m,
+    [34mfecha_creacion[39m: [32m"[39m[32m2026-09-05 03:45:29[39m[32m"[39m,
+    [34mfecha_actualizacion[39m: [32m"[39m[32m2026-09-05 03:47:27[39m[32m"[39m,
+    [34mid_usuario_anulacion[39m: [35m1[39m,
+    [34mmotivo_anulacion[39m: [32m"[39m[32mVenta anulada por prueba funcional de CU10.[39m[32m"[39m,
+    [34mfecha_anulacion[39m: [32m"[39m[32m2026-09-05 03:47:27[39m[32m"[39m,
+    [34mpagos[39m: [34;4mIlluminate\Database\Eloquent\Collection[39;24m {#7962
+      [34mall[39m: [],
+    },
+  }

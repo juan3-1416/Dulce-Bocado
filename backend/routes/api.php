@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\Recetas\MateriaPrimaController;
 use App\Http\Controllers\Api\Seguridad\UsuarioRolPermisoController;
 use App\Http\Controllers\Api\Recetas\RecetaController;
 use App\Http\Controllers\Api\Ventas\VentaController;
+use App\Http\Controllers\Api\Pagos\PagoController;
 Route::get('/health', function () {
     try {
         $database = DB::selectOne(
@@ -346,5 +347,46 @@ Route::prefix('ventas')
         Route::patch(
             '/{id}/anular',
             [VentaController::class, 'anular']
+        )->whereNumber('id');
+    });
+    /*
+|--------------------------------------------------------------------------
+| CU11 - Gestionar Pago
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('pagos')
+    ->middleware([
+        'auth:sanctum',
+        'permiso:pagos.gestionar_pago',
+    ])
+    ->group(function () {
+
+        Route::get(
+            '/',
+            [PagoController::class, 'index']
+        );
+
+        Route::post(
+            '/',
+            [PagoController::class, 'store']
+        );
+
+        /*
+         * Antes de /{id}
+         */
+        Route::get(
+            '/catalogos',
+            [PagoController::class, 'catalogos']
+        );
+
+        Route::get(
+            '/{id}',
+            [PagoController::class, 'show']
+        )->whereNumber('id');
+
+        Route::patch(
+            '/{id}/anular',
+            [PagoController::class, 'anular']
         )->whereNumber('id');
     });

@@ -286,6 +286,20 @@ class VentaController extends Controller
                     );
                 }
 
+                if (
+    $venta->pagos()
+        ->where(
+            'estado',
+            'REGISTRADO'
+        )
+        ->exists()
+) {
+    abort(
+        409,
+        'No se puede editar una venta que tiene pagos registrados. Anule primero los pagos asociados.'
+    );
+}
+
                 $venta->update([
                     'id_cliente' =>
                         $datos['id_cliente'] ?? null,
@@ -379,6 +393,20 @@ class VentaController extends Controller
                         'La venta ya se encuentra anulada.'
                     );
                 }
+
+                if (
+    $venta->pagos()
+        ->where(
+            'estado',
+            'REGISTRADO'
+        )
+        ->exists()
+) {
+    abort(
+        409,
+        'No se puede anular una venta que tiene pagos registrados. Anule primero los pagos asociados.'
+    );
+}
 
                 /*
                  * Estado + auditoría se actualizan

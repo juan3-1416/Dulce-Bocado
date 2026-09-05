@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             ClientesInicialSeeder::class,
             RecetasInicialSeeder::class,
             VentasInicialSeeder::class,
+            PagosInicialSeeder::class,
         ]);
     }
 }

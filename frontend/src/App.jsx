@@ -16,7 +16,7 @@ import ClientesPage from './pages/clientes/ClientesPage';
 import RecetasPage from './pages/recetas/RecetasPage';
 import MateriasPrimasPage from './pages/recetas/MateriasPrimasPage'
 import VentasPage from './pages/ventas/VentasPage'
-
+import PagosPage from './pages/pagos/PagosPage'
 function App() {
   return (
     <Routes>
@@ -144,6 +144,17 @@ function App() {
             <Route
               path="ventas"
               element={<VentasPage />}
+            />
+          </Route>
+
+          <Route
+            element={
+              <ProtectedRoute permiso="pagos.gestionar_pago" />
+            }
+          >
+            <Route
+              path="pagos"
+              element={<PagosPage />}
             />
           </Route>
         </Route>
