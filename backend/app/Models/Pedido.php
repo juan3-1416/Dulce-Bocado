@@ -6,34 +6,33 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Venta extends Model
+class Pedido extends Model
 {
-    protected $table = 'venta';
+    protected $table = 'pedido';
 
-    protected $primaryKey = 'id_venta';
+    protected $primaryKey = 'id_pedido';
 
     public const CREATED_AT = 'fecha_creacion';
     public const UPDATED_AT = 'fecha_actualizacion';
 
     protected $fillable = [
         'id_cliente',
-        'id_usuario',
         'nombre_cliente_ocasional',
-        'fecha_venta',
+        'id_usuario',
+        'fecha_pedido',
+        'fecha_entrega',
+        'hora_entrega',
         'total',
         'estado',
-        'id_usuario_anulacion',
-        'motivo_anulacion',
-        'fecha_anulacion',
         'observaciones',
     ];
 
     protected $casts = [
-        'fecha_venta' => 'datetime',
+        'fecha_pedido' => 'datetime',
+        'fecha_entrega' => 'date',
         'total' => 'decimal:2',
         'fecha_creacion' => 'datetime',
         'fecha_actualizacion' => 'datetime',
-        'fecha_anulacion' => 'datetime',
     ];
 
     public function cliente(): BelongsTo
@@ -54,37 +53,12 @@ class Venta extends Model
         );
     }
 
-    public function usuarioAnulacion(): BelongsTo
-{
-    return $this->belongsTo(
-        Usuario::class,
-        'id_usuario_anulacion',
-        'id_usuario'
-    );
-}
-
     public function detalles(): HasMany
     {
         return $this->hasMany(
-            DetalleVenta::class,
-            'id_venta',
-            'id_venta'
+            DetallePedido::class,
+            'id_pedido',
+            'id_pedido'
         );
     }
-    public function pagos(): HasMany
-{
-    return $this->hasMany(
-        Pago::class,
-        'id_venta',
-        'id_venta'
-    );
-}
-public function pagosInternet(): HasMany
-{
-    return $this->hasMany(
-        PagoInternet::class,
-        'id_venta',
-        'id_venta'
-    );
-}
 }

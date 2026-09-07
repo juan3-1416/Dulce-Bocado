@@ -12,12 +12,17 @@ class Producto extends Model
 {
     use HasFactory;
 
-    protected $table = 'producto';
-    protected $primaryKey = 'id_producto';
+    protected $table =
+        'producto';
 
-    // Solo posee fecha_creacion
-    public const CREATED_AT = 'fecha_creacion';
-    public const UPDATED_AT = null;
+    protected $primaryKey =
+        'id_producto';
+
+    public const CREATED_AT =
+        'fecha_creacion';
+
+    public const UPDATED_AT =
+        null;
 
     protected $fillable = [
         'id_categoria',
@@ -30,18 +35,40 @@ class Producto extends Model
     protected function casts(): array
     {
         return [
-            'id_categoria' => 'integer',
-            'estado' => 'boolean',
-            'fecha_creacion' => 'datetime',
+            'id_categoria' =>
+                'integer',
+
+            'estado' =>
+                'boolean',
+
+            'fecha_creacion' =>
+                'datetime',
         ];
     }
 
     public function categoria(): BelongsTo
     {
-        return $this->belongsTo(Categoria::class, 'id_categoria', 'id_categoria');
+        return $this->belongsTo(
+            Categoria::class,
+            'id_categoria',
+            'id_categoria'
+        );
     }
 
-    // Relación N:M con Presentación
+    /*
+    |--------------------------------------------------------------------------
+    | Relación N:M con Presentación
+    |--------------------------------------------------------------------------
+    |
+    | La configuración comercial específica del producto-presentación
+    | vive en producto_presentacion:
+    |
+    | - precio
+    | - permite_personalizacion
+    | - fecha_actualizacion
+    |
+    */
+
     public function presentaciones(): BelongsToMany
     {
         return $this->belongsToMany(
@@ -50,11 +77,19 @@ class Producto extends Model
             'id_producto',
             'id_presentacion'
         )
-        ->withPivot('precio', 'fecha_actualizacion');
+        ->withPivot([
+            'precio',
+            'permite_personalizacion',
+            'fecha_actualizacion',
+        ]);
     }
 
     public function productoPresentaciones(): HasMany
     {
-        return $this->hasMany(ProductoPresentacion::class, 'id_producto', 'id_producto');
+        return $this->hasMany(
+            ProductoPresentacion::class,
+            'id_producto',
+            'id_producto'
+        );
     }
 }

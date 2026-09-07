@@ -55,4 +55,12 @@ class Cliente extends Model
         'id_cliente'
     );
 }
+public function pedidos(): HasMany
+{
+    return $this->hasMany(
+        Pedido::class,
+        'id_cliente',
+        'id_cliente'
+    );
+}
 }

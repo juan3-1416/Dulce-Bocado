@@ -117,6 +117,11 @@ const SECCIONES_MENU = [
         permiso: 'pagos.gestionar_pago',
       },
       {
+  nombre: 'Pagos por Internet',
+  ruta: '/pagos-internet',
+  permiso: 'pagos.gestionar_pago_internet',
+},
+      {
         nombre: 'Recibos',
         ruta: '/recibos',
         permiso: 'recibos.gestionar_recibo',

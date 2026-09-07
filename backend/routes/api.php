@@ -16,6 +16,9 @@ use App\Http\Controllers\Api\Seguridad\UsuarioRolPermisoController;
 use App\Http\Controllers\Api\Recetas\RecetaController;
 use App\Http\Controllers\Api\Ventas\VentaController;
 use App\Http\Controllers\Api\Pagos\PagoController;
+use App\Http\Controllers\Api\Recibos\ReciboController;
+use App\Http\Controllers\Api\PagosInternet\PagoInternetController;
+use App\Http\Controllers\Api\Pedidos\PedidoController;
 Route::get('/health', function () {
     try {
         $database = DB::selectOne(
@@ -388,5 +391,130 @@ Route::prefix('pagos')
         Route::patch(
             '/{id}/anular',
             [PagoController::class, 'anular']
+        )->whereNumber('id');
+    });
+    /*
+|--------------------------------------------------------------------------
+| CU12 - Gestionar Pago por Internet
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('pagos-internet')
+    ->middleware([
+        'auth:sanctum',
+        'permiso:pagos.gestionar_pago_internet',
+    ])
+    ->group(function () {
+
+        Route::get(
+            '/',
+            [PagoInternetController::class, 'index']
+        );
+
+        Route::post(
+            '/',
+            [PagoInternetController::class, 'store']
+        );
+
+        Route::get(
+            '/catalogos',
+            [PagoInternetController::class, 'catalogos']
+        );
+
+        Route::get(
+            '/{id}',
+            [PagoInternetController::class, 'show']
+        )->whereNumber('id');
+
+        Route::patch(
+            '/{id}/confirmar',
+            [PagoInternetController::class, 'confirmar']
+        )->whereNumber('id');
+    });
+    /*
+|--------------------------------------------------------------------------
+| CU13 - Gestionar Recibo
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('recibos')
+    ->middleware([
+        'auth:sanctum',
+        'permiso:recibos.gestionar_recibo',
+    ])
+    ->group(function () {
+
+        Route::get(
+            '/',
+            [ReciboController::class, 'index']
+        );
+
+        Route::post(
+            '/',
+            [ReciboController::class, 'store']
+        );
+
+        /*
+         * Debe ir antes de /{id}
+         */
+        Route::get(
+            '/catalogos',
+            [ReciboController::class, 'catalogos']
+        );
+
+        Route::get(
+            '/{id}',
+            [ReciboController::class, 'show']
+        )->whereNumber('id');
+
+        Route::patch(
+            '/{id}/anular',
+            [ReciboController::class, 'anular']
+        )->whereNumber('id');
+
+        Route::patch(
+            '/{id}/imprimir',
+            [ReciboController::class, 'imprimir']
+        )->whereNumber('id');
+    });
+    /*
+|--------------------------------------------------------------------------
+| CU14 - Gestionar Pedido
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('pedidos')
+    ->middleware([
+        'auth:sanctum',
+        'permiso:pedidos.gestionar_pedido',
+    ])
+    ->group(function () {
+
+        Route::get(
+            '/',
+            [PedidoController::class, 'index']
+        );
+
+        Route::post(
+            '/',
+            [PedidoController::class, 'store']
+        );
+
+        /*
+         * Catálogos debe ir antes de /{id}
+         */
+        Route::get(
+            '/catalogos',
+            [PedidoController::class, 'catalogos']
+        );
+
+        Route::get(
+            '/{id}',
+            [PedidoController::class, 'show']
+        )->whereNumber('id');
+
+        Route::put(
+            '/{id}',
+            [PedidoController::class, 'update']
         )->whereNumber('id');
     });

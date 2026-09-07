@@ -142,43 +142,58 @@ export async function asignarPresentacionProducto(idProducto, datos) {
     await prepararCsrf();
     const token = obtenerTokenCsrf();
 
-    const response = await fetch(`/api/productos/${idProducto}/presentaciones`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            'X-XSRF-TOKEN': token ?? '',
-        },
-        body: JSON.stringify({
-            id_presentacion: datos.id_presentacion,
-            precio: datos.precio,
-        }),
-    });
+    const response = await fetch(
+        `/api/productos/${idProducto}/presentaciones`,
+        {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-XSRF-TOKEN': token ?? '',
+            },
+            body: JSON.stringify({
+                id_presentacion: datos.id_presentacion,
+                precio: datos.precio,
+                permite_personalizacion: Boolean(
+                    datos.permite_personalizacion
+                ),
+            }),
+        }
+    );
 
     return procesarRespuesta(response);
 }
 
-export async function actualizarPrecioPresentacionProducto(idProducto, idPresentacion, datos) {
+export async function actualizarPrecioPresentacionProducto(
+    idProducto,
+    idPresentacion,
+    datos
+) {
     await prepararCsrf();
     const token = obtenerTokenCsrf();
 
-    const response = await fetch(`/api/productos/${idProducto}/presentaciones/${idPresentacion}`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            'X-XSRF-TOKEN': token ?? '',
-        },
-        body: JSON.stringify({
-            precio: datos.precio,
-        }),
-    });
+    const response = await fetch(
+        `/api/productos/${idProducto}/presentaciones/${idPresentacion}`,
+        {
+            method: 'PUT',
+            credentials: 'include',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-XSRF-TOKEN': token ?? '',
+            },
+            body: JSON.stringify({
+                precio: datos.precio,
+                permite_personalizacion: Boolean(
+                    datos.permite_personalizacion
+                ),
+            }),
+        }
+    );
 
     return procesarRespuesta(response);
 }
-
 export async function desvincularPresentacionProducto(idProducto, idPresentacion) {
     await prepararCsrf();
     const token = obtenerTokenCsrf();

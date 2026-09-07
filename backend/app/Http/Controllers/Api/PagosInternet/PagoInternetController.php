@@ -1,31 +1,38 @@
 <?php
 
-namespace App\Http\Controllers\Api\Pagos;
+namespace App\Http\Controllers\Api\PagosInternet;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Pagos\AnularPagoRequest;
-use App\Http\Requests\Pagos\StorePagoRequest;
+use App\Http\Requests\PagosInternet\ConfirmarPagoInternetRequest;
+use App\Http\Requests\PagosInternet\StorePagoInternetRequest;
 use App\Models\Pago;
+use App\Models\PagoInternet;
 use App\Models\Venta;
+use App\Services\PagosInternet\PasarelaPagoSimulada;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-class PagoController extends Controller
+class PagoInternetController extends Controller
 {
+    public function __construct(
+        private readonly PasarelaPagoSimulada $pasarela
+    ) {
+    }
+
     /*
     |--------------------------------------------------------------------------
-    | Listar pagos
+    | Listar transacciones online
     |--------------------------------------------------------------------------
     */
     public function index(Request $request): JsonResponse
     {
-        $pagos = Pago::query()
+        $transacciones = PagoInternet::query()
             ->with([
                 'venta.cliente',
                 'usuario',
-                'usuarioAnulacion',
+                'pago',
             ])
             ->when(
                 $request->filled('estado'),
@@ -33,14 +40,6 @@ class PagoController extends Controller
                     $query->where(
                         'estado',
                         $request->string('estado')->toString()
-                    )
-            )
-            ->when(
-                $request->filled('metodo_pago'),
-                fn ($query) =>
-                    $query->where(
-                        'metodo_pago',
-                        $request->string('metodo_pago')->toString()
                     )
             )
             ->when(
@@ -54,7 +53,12 @@ class PagoController extends Controller
                         function ($subQuery) use ($buscar) {
                             $subQuery
                                 ->where(
-                                    'referencia',
+                                    'referencia_transaccion',
+                                    'ILIKE',
+                                    $buscar
+                                )
+                                ->orWhere(
+                                    'proveedor',
                                     'ILIKE',
                                     $buscar
                                 )
@@ -94,59 +98,60 @@ class PagoController extends Controller
                     );
                 }
             )
-            ->orderByDesc('fecha_pago')
-            ->orderByDesc('id_pago')
+            ->orderByDesc('fecha_solicitud')
+            ->orderByDesc('id_pago_internet')
             ->get();
 
         return response()->json([
-            'pagos' => $pagos,
+            'transacciones' => $transacciones,
         ]);
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Consultar pago
+    | Consultar una transacción
     |--------------------------------------------------------------------------
     */
     public function show(int $id): JsonResponse
     {
-        $pago = Pago::query()
+        $transaccion = PagoInternet::query()
             ->with([
                 'venta.cliente',
                 'venta.detalles.productoPresentacion.producto',
                 'venta.detalles.productoPresentacion.presentacion',
                 'usuario',
-                'usuarioAnulacion',
+                'pago.usuario',
             ])
             ->find($id);
 
-        if (!$pago) {
+        if (!$transaccion) {
             return response()->json([
-                'message' => 'Pago no encontrado.',
+                'message' =>
+                    'Transacción de pago por internet no encontrada.',
             ], 404);
         }
 
         return response()->json([
-            'pago' => $pago,
+            'transaccion' =>
+                $transaccion,
         ]);
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Catálogo de ventas cobrables
+    | Catálogo de ventas disponibles
     |--------------------------------------------------------------------------
     |
     | Solo aparecen ventas:
     | - REGISTRADAS
-    | - con saldo pendiente mayor a cero
+    | - con saldo pendiente
+    | - sin otra transacción online PENDIENTE
     |--------------------------------------------------------------------------
     */
     public function catalogos(): JsonResponse
     {
         $ventas = Venta::query()
-            ->with([
-                'cliente',
-            ])
+            ->with('cliente')
             ->withSum(
                 [
                     'pagos as total_pagado' =>
@@ -162,6 +167,14 @@ class PagoController extends Controller
                 'estado',
                 'REGISTRADA'
             )
+            ->whereDoesntHave(
+                'pagosInternet',
+                fn ($query) =>
+                    $query->where(
+                        'estado',
+                        'PENDIENTE'
+                    )
+            )
             ->orderByDesc('fecha_venta')
             ->get()
             ->map(function ($venta) {
@@ -170,7 +183,7 @@ class PagoController extends Controller
                     2
                 );
 
-                $totalPagado = round(
+                $pagado = round(
                     (float) (
                         $venta->total_pagado ?? 0
                     ),
@@ -178,7 +191,7 @@ class PagoController extends Controller
                 );
 
                 $saldo = round(
-                    $total - $totalPagado,
+                    $total - $pagado,
                     2
                 );
 
@@ -208,7 +221,7 @@ class PagoController extends Controller
 
                     'total_pagado' =>
                         number_format(
-                            $totalPagado,
+                            $pagado,
                             2,
                             '.',
                             ''
@@ -216,7 +229,7 @@ class PagoController extends Controller
 
                     'saldo' =>
                         number_format(
-                            $saldo,
+                            max(0, $saldo),
                             2,
                             '.',
                             ''
@@ -232,28 +245,26 @@ class PagoController extends Controller
         return response()->json([
             'ventas' => $ventas,
 
-            'metodos_pago' => [
-                'EFECTIVO',
-                'QR',
-            ],
+            'proveedor' =>
+                PasarelaPagoSimulada::PROVEEDOR,
         ]);
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Registrar pago
+    | Iniciar pago por internet
     |--------------------------------------------------------------------------
     */
     public function store(
-        StorePagoRequest $request
+        StorePagoInternetRequest $request
     ): JsonResponse {
         $datos = $request->validated();
 
-        $pago = DB::transaction(
+        $transaccion = DB::transaction(
             function () use ($datos, $request) {
                 /*
-                 * Bloqueamos la venta para serializar
-                 * pagos concurrentes sobre la misma venta.
+                 * Bloqueamos la venta para evitar que dos
+                 * operaciones financieras se inicien al mismo tiempo.
                  */
                 $venta = Venta::query()
                     ->lockForUpdate()
@@ -274,27 +285,30 @@ class PagoController extends Controller
                 ) {
                     throw ValidationException::withMessages([
                         'id_venta' =>
-                            'No se pueden registrar pagos sobre una venta anulada.',
+                            'No se puede iniciar un pago sobre una venta anulada.',
                     ]);
                 }
-                if (
-    $venta->pagosInternet()
-        ->where(
-            'estado',
-            'PENDIENTE'
-        )
-        ->exists()
-) {
-    throw ValidationException::withMessages([
-        'id_venta' =>
-            'La venta tiene una transacción de pago por internet pendiente. Debe resolverse antes de registrar otro pago.',
-    ]);
-}
 
                 /*
-                 * Solo se consideran pagos REGISTRADOS.
-                 * Los pagos anulados dejan de afectar el saldo.
+                 * Solo permitimos una transacción online
+                 * PENDIENTE por venta.
                  */
+                $existePendiente =
+                    $venta
+                        ->pagosInternet()
+                        ->where(
+                            'estado',
+                            'PENDIENTE'
+                        )
+                        ->exists();
+
+                if ($existePendiente) {
+                    abort(
+                        409,
+                        'La venta ya tiene una transacción de pago por internet pendiente.'
+                    );
+                }
+
                 $totalPagado = round(
                     (float) $venta
                         ->pagos()
@@ -343,7 +357,250 @@ class PagoController extends Controller
                     ]);
                 }
 
-                return Pago::create([
+                /*
+                 * Solicitud al proveedor simulado.
+                 */
+                $respuesta =
+                    $this->pasarela->iniciar(
+                        $venta->id_venta,
+                        $monto
+                    );
+
+                return PagoInternet::create([
+                    'id_venta' =>
+                        $venta->id_venta,
+
+                    'id_pago' =>
+                        null,
+
+                    'id_usuario' =>
+                        $request->user()->getKey(),
+
+                    'monto' =>
+                        $monto,
+
+                    'proveedor' =>
+                        $respuesta['proveedor'],
+
+                    'referencia_transaccion' =>
+                        $respuesta[
+                            'referencia_transaccion'
+                        ],
+
+                    'estado' =>
+                        'PENDIENTE',
+
+                    'motivo_rechazo' =>
+                        null,
+
+                    'respuesta_proveedor' =>
+                        $respuesta[
+                            'respuesta_proveedor'
+                        ],
+
+                    'fecha_solicitud' =>
+                        now(),
+
+                    'fecha_confirmacion' =>
+                        null,
+                ]);
+            }
+        );
+
+        $transaccion->load([
+            'venta.cliente',
+            'usuario',
+        ]);
+
+        return response()->json([
+            'message' =>
+                'Pago por internet iniciado correctamente.',
+
+            'transaccion' =>
+                $transaccion,
+        ], 201);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Confirmar resultado del proveedor
+    |--------------------------------------------------------------------------
+    |
+    | En producción esta operación normalmente sería realizada
+    | a partir de la respuesta segura de una pasarela/webhook.
+    |
+    | En CU12 se simula manualmente APROBADO o RECHAZADO.
+    |--------------------------------------------------------------------------
+    */
+    public function confirmar(
+        ConfirmarPagoInternetRequest $request,
+        int $id
+    ): JsonResponse {
+        $datos = $request->validated();
+
+        $transaccion = DB::transaction(
+            function () use (
+                $datos,
+                $request,
+                $id
+            ) {
+                $transaccion =
+                    PagoInternet::query()
+                        ->lockForUpdate()
+                        ->find($id);
+
+                if (!$transaccion) {
+                    abort(
+                        404,
+                        'Transacción de pago por internet no encontrada.'
+                    );
+                }
+
+                if (
+                    $transaccion->estado !==
+                    'PENDIENTE'
+                ) {
+                    abort(
+                        409,
+                        'La transacción ya fue confirmada y no puede procesarse nuevamente.'
+                    );
+                }
+
+                /*
+                 * Bloqueamos también la venta.
+                 */
+                $venta = Venta::query()
+                    ->lockForUpdate()
+                    ->find(
+                        $transaccion->id_venta
+                    );
+
+                if (!$venta) {
+                    abort(
+                        404,
+                        'La venta asociada ya no existe.'
+                    );
+                }
+
+                /*
+                 * Obtener respuesta simulada del proveedor.
+                 */
+                $respuesta =
+                    $this->pasarela->confirmar(
+                        $datos['resultado'],
+                        $datos[
+                            'motivo_rechazo'
+                        ] ?? null
+                    );
+
+                /*
+                |--------------------------------------------------------------------------
+                | RECHAZADO
+                |--------------------------------------------------------------------------
+                */
+                if (
+                    $respuesta['estado'] ===
+                    'RECHAZADO'
+                ) {
+                    $transaccion->update([
+                        'estado' =>
+                            'RECHAZADO',
+
+                        'id_pago' =>
+                            null,
+
+                        'motivo_rechazo' =>
+                            $respuesta[
+                                'motivo_rechazo'
+                            ],
+
+                        'respuesta_proveedor' =>
+                            $respuesta[
+                                'respuesta_proveedor'
+                            ],
+
+                        'fecha_confirmacion' =>
+                            now(),
+                    ]);
+
+                    return $transaccion;
+                }
+
+                /*
+                |--------------------------------------------------------------------------
+                | APROBADO
+                |--------------------------------------------------------------------------
+                */
+
+                if (
+                    $venta->estado !==
+                    'REGISTRADA'
+                ) {
+                    abort(
+                        409,
+                        'La venta ya no se encuentra registrada y el pago no puede aprobarse.'
+                    );
+                }
+
+                /*
+                 * Recalculamos el saldo EN EL MOMENTO
+                 * de la aprobación.
+                 *
+                 * Nunca confiamos solamente en el saldo
+                 * existente cuando se inició la operación.
+                 */
+                $totalPagado = round(
+                    (float) $venta
+                        ->pagos()
+                        ->where(
+                            'estado',
+                            'REGISTRADO'
+                        )
+                        ->sum('monto'),
+                    2
+                );
+
+                $totalVenta = round(
+                    (float) $venta->total,
+                    2
+                );
+
+                $saldo = round(
+                    $totalVenta -
+                    $totalPagado,
+                    2
+                );
+
+                $monto = round(
+                    (float) $transaccion->monto,
+                    2
+                );
+
+                if ($saldo <= 0) {
+                    abort(
+                        409,
+                        'La venta ya se encuentra completamente pagada y la transacción no puede aprobarse.'
+                    );
+                }
+
+                if ($monto > $saldo) {
+                    abort(
+                        409,
+                        'El saldo de la venta cambió desde que se inició la transacción. Saldo actual: Bs ' .
+                        number_format(
+                            $saldo,
+                            2,
+                            '.',
+                            ''
+                        ) .
+                        '.'
+                    );
+                }
+
+                /*
+                 * Solo aquí se genera el Pago real.
+                 */
+                $pago = Pago::create([
                     'id_venta' =>
                         $venta->id_venta,
 
@@ -354,161 +611,75 @@ class PagoController extends Controller
                         $monto,
 
                     'metodo_pago' =>
-                        $datos['metodo_pago'],
+                        'ONLINE',
 
                     'referencia' =>
-                        !empty($datos['referencia'])
-                            ? trim(
-                                $datos['referencia']
-                            )
-                            : null,
+                        $transaccion
+                            ->referencia_transaccion,
 
                     'estado' =>
                         'REGISTRADO',
 
                     'observaciones' =>
-                        $datos['observaciones']
-                            ?? null,
+                        'Pago generado automáticamente desde una transacción por internet.',
 
                     'fecha_pago' =>
                         now(),
                 ]);
-            }
-        );
-
-        $pago->load([
-            'venta.cliente',
-            'usuario',
-        ]);
-
-        $resumen = $this->obtenerResumenVenta(
-            $pago->id_venta
-        );
-
-        return response()->json([
-            'message' =>
-                'Pago registrado correctamente.',
-
-            'pago' =>
-                $pago,
-
-            'resumen_venta' =>
-                $resumen,
-        ], 201);
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Anular pago
-    |--------------------------------------------------------------------------
-    |
-    | No se edita un pago registrado.
-    | Si existe un error, se anula y posteriormente
-    | se registra uno nuevo.
-    |--------------------------------------------------------------------------
-    */
-    public function anular(
-        AnularPagoRequest $request,
-        int $id
-    ): JsonResponse {
-        $datos = $request->validated();
-
-        $pago = DB::transaction(
-            function () use (
-                $request,
-                $datos,
-                $id
-            ) {
-                $pago = Pago::query()
-                    ->lockForUpdate()
-                    ->find($id);
-
-                if (!$pago) {
-                    abort(
-                        404,
-                        'Pago no encontrado.'
-                    );
-                }
 
                 /*
-                 * También bloqueamos la venta para
-                 * serializar la anulación respecto
-                 * de otros pagos concurrentes.
+                 * Actualizamos todos los campos requeridos
+                 * por el CHECK en una sola operación.
                  */
-                Venta::query()
-                    ->lockForUpdate()
-                    ->find($pago->id_venta);
-
-                if (
-                    $pago->estado ===
-                    'ANULADO'
-                ) {
-                    abort(
-                        409,
-                        'El pago ya se encuentra anulado.'
-                    );
-                }
-                if (
-    $pago->recibos()
-        ->where(
-            'estado',
-            'EMITIDO'
-        )
-        ->exists()
-) {
-    abort(
-        409,
-        'No se puede anular un pago que tiene un recibo emitido. Anule primero el recibo asociado.'
-    );
-}
-
-                $pago->update([
+                $transaccion->update([
                     'estado' =>
-                        'ANULADO',
+                        'APROBADO',
 
-                    'id_usuario_anulacion' =>
-                        $request->user()->getKey(),
+                    'id_pago' =>
+                        $pago->id_pago,
 
-                    'motivo_anulacion' =>
-                        trim(
-                            $datos[
-                                'motivo_anulacion'
-                            ]
-                        ),
+                    'motivo_rechazo' =>
+                        null,
 
-                    'fecha_anulacion' =>
+                    'respuesta_proveedor' =>
+                        $respuesta[
+                            'respuesta_proveedor'
+                        ],
+
+                    'fecha_confirmacion' =>
                         now(),
                 ]);
 
-                return $pago;
+                return $transaccion;
             }
         );
 
-        $pago->load([
+        $transaccion->load([
             'venta.cliente',
             'usuario',
-            'usuarioAnulacion',
+            'pago.usuario',
         ]);
-
-        $resumen = $this->obtenerResumenVenta(
-            $pago->id_venta
-        );
 
         return response()->json([
             'message' =>
-                'Pago anulado correctamente.',
+                $transaccion->estado ===
+                'APROBADO'
+                    ? 'Pago por internet aprobado correctamente.'
+                    : 'Pago por internet rechazado correctamente.',
 
-            'pago' =>
-                $pago,
+            'transaccion' =>
+                $transaccion,
 
             'resumen_venta' =>
-                $resumen,
+                $this->obtenerResumenVenta(
+                    $transaccion->id_venta
+                ),
         ]);
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Resumen financiero de una venta
+    | Resumen de una venta
     |--------------------------------------------------------------------------
     */
     private function obtenerResumenVenta(
@@ -517,12 +688,12 @@ class PagoController extends Controller
         $venta = Venta::query()
             ->findOrFail($idVenta);
 
-        $totalVenta = round(
+        $total = round(
             (float) $venta->total,
             2
         );
 
-        $totalPagado = round(
+        $pagado = round(
             (float) $venta
                 ->pagos()
                 ->where(
@@ -534,8 +705,7 @@ class PagoController extends Controller
         );
 
         $saldo = round(
-            $totalVenta -
-            $totalPagado,
+            $total - $pagado,
             2
         );
 
@@ -545,7 +715,7 @@ class PagoController extends Controller
 
             'total' =>
                 number_format(
-                    $totalVenta,
+                    $total,
                     2,
                     '.',
                     ''
@@ -553,7 +723,7 @@ class PagoController extends Controller
 
             'total_pagado' =>
                 number_format(
-                    $totalPagado,
+                    $pagado,
                     2,
                     '.',
                     ''

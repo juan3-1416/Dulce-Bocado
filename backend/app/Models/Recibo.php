@@ -4,54 +4,60 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Pago extends Model
+class Recibo extends Model
 {
-    protected $table = 'pago';
+    protected $table = 'recibo';
 
-    protected $primaryKey = 'id_pago';
+    protected $primaryKey = 'id_recibo';
 
     public const CREATED_AT = 'fecha_creacion';
     public const UPDATED_AT = 'fecha_actualizacion';
 
     protected $fillable = [
-        'id_venta',
-        'id_usuario',
+        'id_pago',
+        'id_usuario_emision',
+        'nombre_cliente',
+        'ci_nit_cliente',
         'monto',
         'metodo_pago',
-        'referencia',
-        'estado',
-        'observaciones',
+        'referencia_pago',
         'fecha_pago',
+        'estado',
+        'fecha_emision',
         'id_usuario_anulacion',
         'motivo_anulacion',
         'fecha_anulacion',
+        'cantidad_impresiones',
+        'id_usuario_ultima_impresion',
+        'fecha_ultima_impresion',
     ];
 
     protected $casts = [
         'monto' => 'decimal:2',
         'fecha_pago' => 'datetime',
+        'fecha_emision' => 'datetime',
         'fecha_anulacion' => 'datetime',
+        'fecha_ultima_impresion' => 'datetime',
         'fecha_creacion' => 'datetime',
         'fecha_actualizacion' => 'datetime',
+        'cantidad_impresiones' => 'integer',
     ];
 
-    public function venta(): BelongsTo
+    public function pago(): BelongsTo
     {
         return $this->belongsTo(
-            Venta::class,
-            'id_venta',
-            'id_venta'
+            Pago::class,
+            'id_pago',
+            'id_pago'
         );
     }
 
-    public function usuario(): BelongsTo
+    public function usuarioEmision(): BelongsTo
     {
         return $this->belongsTo(
             Usuario::class,
-            'id_usuario',
+            'id_usuario_emision',
             'id_usuario'
         );
     }
@@ -64,20 +70,13 @@ class Pago extends Model
             'id_usuario'
         );
     }
-    public function pagoInternet(): HasOne
-{
-    return $this->hasOne(
-        PagoInternet::class,
-        'id_pago',
-        'id_pago'
-    );
-}
-public function recibos(): HasMany
-{
-    return $this->hasMany(
-        Recibo::class,
-        'id_pago',
-        'id_pago'
-    );
-}
+
+    public function usuarioUltimaImpresion(): BelongsTo
+    {
+        return $this->belongsTo(
+            Usuario::class,
+            'id_usuario_ultima_impresion',
+            'id_usuario'
+        );
+    }
 }

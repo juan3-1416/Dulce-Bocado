@@ -16,6 +16,9 @@ class DatabaseSeeder extends Seeder
             RecetasInicialSeeder::class,
             VentasInicialSeeder::class,
             PagosInicialSeeder::class,
+            PagosInternetInicialSeeder::class,
+            RecibosInicialSeeder::class,
+            PedidosInicialSeeder::class,
         ]);
     }
 }

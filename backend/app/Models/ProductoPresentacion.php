@@ -21,10 +21,12 @@ class ProductoPresentacion extends Model
         'id_producto',
         'id_presentacion',
         'precio',
+        'permite_personalizacion',
     ];
 
     protected $casts = [
         'precio' => 'decimal:2',
+        'permite_personalizacion' => 'boolean',
         'fecha_actualizacion' => 'datetime',
     ];
 
@@ -57,6 +59,14 @@ public function detallesVenta(): HasMany
 {
     return $this->hasMany(
         DetalleVenta::class,
+        'id_producto_presentacion',
+        'id_producto_presentacion'
+    );
+}
+public function detallesPedido(): HasMany
+{
+    return $this->hasMany(
+        DetallePedido::class,
         'id_producto_presentacion',
         'id_producto_presentacion'
     );

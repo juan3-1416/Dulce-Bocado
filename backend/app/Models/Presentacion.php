@@ -11,12 +11,17 @@ class Presentacion extends Model
 {
     use HasFactory;
 
-    protected $table = 'presentacion';
-    protected $primaryKey = 'id_presentacion';
+    protected $table =
+        'presentacion';
 
-    // Posee fecha_creacion y fecha_actualizacion
-    public const CREATED_AT = 'fecha_creacion';
-    public const UPDATED_AT = 'fecha_actualizacion';
+    protected $primaryKey =
+        'id_presentacion';
+
+    public const CREATED_AT =
+        'fecha_creacion';
+
+    public const UPDATED_AT =
+        'fecha_actualizacion';
 
     protected $fillable = [
         'nombre',
@@ -27,13 +32,23 @@ class Presentacion extends Model
     protected function casts(): array
     {
         return [
-            'estado' => 'boolean',
-            'fecha_creacion' => 'datetime',
-            'fecha_actualizacion' => 'datetime',
+            'estado' =>
+                'boolean',
+
+            'fecha_creacion' =>
+                'datetime',
+
+            'fecha_actualizacion' =>
+                'datetime',
         ];
     }
 
-    // Relación N:M con Producto
+    /*
+    |--------------------------------------------------------------------------
+    | Relación N:M con Producto
+    |--------------------------------------------------------------------------
+    */
+
     public function productos(): BelongsToMany
     {
         return $this->belongsToMany(
@@ -42,11 +57,19 @@ class Presentacion extends Model
             'id_presentacion',
             'id_producto'
         )
-        ->withPivot('precio', 'fecha_actualizacion');
+        ->withPivot([
+            'precio',
+            'permite_personalizacion',
+            'fecha_actualizacion',
+        ]);
     }
 
     public function productoPresentaciones(): HasMany
     {
-        return $this->hasMany(ProductoPresentacion::class, 'id_presentacion', 'id_presentacion');
+        return $this->hasMany(
+            ProductoPresentacion::class,
+            'id_presentacion',
+            'id_presentacion'
+        );
     }
 }

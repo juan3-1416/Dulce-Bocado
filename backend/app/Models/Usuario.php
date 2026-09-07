@@ -85,4 +85,12 @@ public function ventas(): HasMany
         'id_usuario'
     );
 }
+public function pedidos(): HasMany
+{
+    return $this->hasMany(
+        Pedido::class,
+        'id_usuario',
+        'id_usuario'
+    );
+}
 }

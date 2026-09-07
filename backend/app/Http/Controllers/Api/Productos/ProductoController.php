@@ -23,18 +23,36 @@ class ProductoController extends Controller
 
         if ($request->filled('buscar')) {
             $buscar = trim($request->query('buscar'));
+
             $query->where(function ($q) use ($buscar) {
-                $q->where('nombre', 'ilike', "%{$buscar}%")
-                  ->orWhere('descripcion', 'ilike', "%{$buscar}%");
+                $q->where(
+                    'nombre',
+                    'ilike',
+                    "%{$buscar}%"
+                )
+                ->orWhere(
+                    'descripcion',
+                    'ilike',
+                    "%{$buscar}%"
+                );
             });
         }
 
         if ($request->filled('id_categoria')) {
-            $query->where('id_categoria', $request->query('id_categoria'));
+            $query->where(
+                'id_categoria',
+                $request->query('id_categoria')
+            );
         }
 
-        if ($request->has('estado') && $request->query('estado') !== '') {
-            $query->where('estado', $request->boolean('estado'));
+        if (
+            $request->has('estado') &&
+            $request->query('estado') !== ''
+        ) {
+            $query->where(
+                'estado',
+                $request->boolean('estado')
+            );
         }
 
         return response()->json([
@@ -44,128 +62,280 @@ class ProductoController extends Controller
 
     public function show(int $id): JsonResponse
     {
-        $producto = Producto::with(['categoria', 'presentaciones' => function ($q) {
-            $q->orderBy('precio', 'asc');
-        }])->findOrFail($id);
+        $producto = Producto::with([
+            'categoria',
+            'presentaciones' => function ($q) {
+                $q->orderByPivot(
+                    'precio',
+                    'asc'
+                );
+            },
+        ])->findOrFail($id);
 
         return response()->json([
             'producto' => $producto,
         ]);
     }
 
-    public function store(StoreProductoRequest $request): JsonResponse
-    {
-        $producto = DB::transaction(function () use ($request) {
-            $datos = $request->validated();
-            $presentaciones = $datos['presentaciones'] ?? null;
-            unset($datos['presentaciones']);
+    public function store(
+        StoreProductoRequest $request
+    ): JsonResponse {
+        $producto = DB::transaction(
+            function () use ($request) {
+                $datos = $request->validated();
 
-            $producto = Producto::create($datos);
+                $presentaciones =
+                    $datos['presentaciones'] ?? null;
 
-            if (!empty($presentaciones)) {
-                $attachData = [];
-                foreach ($presentaciones as $p) {
-                    $attachData[$p['id_presentacion']] = [
-                        'precio' => $p['precio'],
-                        'fecha_actualizacion' => now(),
-                    ];
+                unset(
+                    $datos['presentaciones']
+                );
+
+                $producto =
+                    Producto::create($datos);
+
+                if (!empty($presentaciones)) {
+                    $attachData = [];
+
+                    foreach (
+                        $presentaciones as $p
+                    ) {
+                        $attachData[
+                            $p['id_presentacion']
+                        ] = [
+                            'precio' =>
+                                $p['precio'],
+
+                            'permite_personalizacion' =>
+                                (bool) (
+                                    $p[
+                                        'permite_personalizacion'
+                                    ] ??
+                                    false
+                                ),
+
+                            'fecha_actualizacion' =>
+                                now(),
+                        ];
+                    }
+
+                    $producto
+                        ->presentaciones()
+                        ->attach($attachData);
                 }
-                $producto->presentaciones()->attach($attachData);
+
+                return $producto;
             }
+        );
 
-            return $producto;
-        });
-
-        $producto->load(['categoria', 'presentaciones']);
+        $producto->load([
+            'categoria',
+            'presentaciones',
+        ]);
 
         return response()->json([
-            'mensaje' => 'Producto creado con éxito.',
-            'producto' => $producto,
+            'mensaje' =>
+                'Producto creado con éxito.',
+
+            'producto' =>
+                $producto,
         ], 201);
     }
 
-    public function update(UpdateProductoRequest $request, int $id): JsonResponse
-    {
-        $producto = Producto::findOrFail($id);
-        $producto->update($request->validated());
+    public function update(
+        UpdateProductoRequest $request,
+        int $id
+    ): JsonResponse {
+        $producto =
+            Producto::findOrFail($id);
+
+        $producto->update(
+            $request->validated()
+        );
+
         $producto->load('categoria');
 
         return response()->json([
-            'mensaje' => 'Producto actualizado con éxito.',
-            'producto' => $producto,
+            'mensaje' =>
+                'Producto actualizado con éxito.',
+
+            'producto' =>
+                $producto,
         ]);
     }
 
-    public function updateEstado(UpdateEstadoProductoRequest $request, int $id): JsonResponse
-    {
-        $producto = Producto::findOrFail($id);
+    public function updateEstado(
+        UpdateEstadoProductoRequest $request,
+        int $id
+    ): JsonResponse {
+        $producto =
+            Producto::findOrFail($id);
+
         $producto->update([
-            'estado' => $request->boolean('estado'),
+            'estado' =>
+                $request->boolean('estado'),
         ]);
 
         return response()->json([
-            'mensaje' => 'Estado del producto actualizado con éxito.',
-            'producto' => $producto,
+            'mensaje' =>
+                'Estado del producto actualizado con éxito.',
+
+            'producto' =>
+                $producto,
         ]);
     }
 
-    public function asignarPresentacion(AsignarPresentacionProductoRequest $request, int $id): JsonResponse
-    {
-        $producto = Producto::findOrFail($id);
-        $idPresentacion = (int) $request->input('id_presentacion');
-        $precio = $request->input('precio');
+    /*
+    |--------------------------------------------------------------------------
+    | Vincular presentación a producto
+    |--------------------------------------------------------------------------
+    */
+    public function asignarPresentacion(
+        AsignarPresentacionProductoRequest $request,
+        int $id
+    ): JsonResponse {
+        $producto =
+            Producto::findOrFail($id);
 
-        $producto->presentaciones()->syncWithoutDetaching([
-            $idPresentacion => [
-                'precio' => $precio,
-                'fecha_actualizacion' => now(),
-            ],
+        $idPresentacion =
+            (int) $request->input(
+                'id_presentacion'
+            );
+
+        $precio =
+            $request->input('precio');
+
+        $permitePersonalizacion =
+            $request->boolean(
+                'permite_personalizacion'
+            );
+
+        $producto
+            ->presentaciones()
+            ->syncWithoutDetaching([
+                $idPresentacion => [
+                    'precio' =>
+                        $precio,
+
+                    'permite_personalizacion' =>
+                        $permitePersonalizacion,
+
+                    'fecha_actualizacion' =>
+                        now(),
+                ],
+            ]);
+
+        $producto->load([
+            'presentaciones' =>
+                function ($q) {
+                    $q->orderByPivot(
+                        'precio',
+                        'asc'
+                    );
+                },
         ]);
 
-        $producto->load(['presentaciones' => function ($q) {
-            $q->orderBy('precio', 'asc');
-        }]);
-
         return response()->json([
-            'mensaje' => 'Presentación asignada al producto con éxito.',
-            'producto' => $producto,
+            'mensaje' =>
+                'Presentación asignada al producto con éxito.',
+
+            'producto' =>
+                $producto,
         ], 200);
     }
 
-    public function actualizarPrecioPresentacion(UpdateProductoPresentacionRequest $request, int $id, int $idPresentacion): JsonResponse
-    {
-        $producto = Producto::findOrFail($id);
+    /*
+    |--------------------------------------------------------------------------
+    | Actualizar configuración de presentación
+    |--------------------------------------------------------------------------
+    */
+    public function actualizarPrecioPresentacion(
+        UpdateProductoPresentacionRequest $request,
+        int $id,
+        int $idPresentacion
+    ): JsonResponse {
+        $producto =
+            Producto::findOrFail($id);
 
-        if (!$producto->presentaciones()->where('presentacion.id_presentacion', $idPresentacion)->exists()) {
+        $existe =
+            $producto
+                ->presentaciones()
+                ->where(
+                    'presentacion.id_presentacion',
+                    $idPresentacion
+                )
+                ->exists();
+
+        if (!$existe) {
             return response()->json([
-                'message' => 'La presentación no está asignada a este producto.',
+                'message' =>
+                    'La presentación no está asignada a este producto.',
             ], 404);
         }
 
-        $producto->presentaciones()->updateExistingPivot($idPresentacion, [
-            'precio' => $request->input('precio'),
-            'fecha_actualizacion' => now(),
-        ]);
+        $producto
+            ->presentaciones()
+            ->updateExistingPivot(
+                $idPresentacion,
+                [
+                    'precio' =>
+                        $request->input(
+                            'precio'
+                        ),
+
+                    'permite_personalizacion' =>
+                        $request->boolean(
+                            'permite_personalizacion'
+                        ),
+
+                    'fecha_actualizacion' =>
+                        now(),
+                ]
+            );
 
         return response()->json([
-            'mensaje' => 'Precio de la presentación actualizado con éxito.',
+            'mensaje' =>
+                'Configuración de la presentación actualizada con éxito.',
         ], 200);
     }
 
-    public function desvincularPresentacion(int $id, int $idPresentacion): JsonResponse
-    {
-        $producto = Producto::findOrFail($id);
+    /*
+    |--------------------------------------------------------------------------
+    | Desvincular presentación
+    |--------------------------------------------------------------------------
+    */
+    public function desvincularPresentacion(
+        int $id,
+        int $idPresentacion
+    ): JsonResponse {
+        $producto =
+            Producto::findOrFail($id);
 
-        if (!$producto->presentaciones()->where('presentacion.id_presentacion', $idPresentacion)->exists()) {
+        $existe =
+            $producto
+                ->presentaciones()
+                ->where(
+                    'presentacion.id_presentacion',
+                    $idPresentacion
+                )
+                ->exists();
+
+        if (!$existe) {
             return response()->json([
-                'message' => 'La presentación no está vinculada a este producto.',
+                'message' =>
+                    'La presentación no está vinculada a este producto.',
             ], 404);
         }
 
-        $producto->presentaciones()->detach($idPresentacion);
+        $producto
+            ->presentaciones()
+            ->detach(
+                $idPresentacion
+            );
 
         return response()->json([
-            'mensaje' => 'Presentación desvinculada del producto con éxito.',
+            'mensaje' =>
+                'Presentación desvinculada del producto con éxito.',
         ], 200);
     }
 }

@@ -299,6 +299,19 @@ class VentaController extends Controller
         'No se puede editar una venta que tiene pagos registrados. Anule primero los pagos asociados.'
     );
 }
+if (
+    $venta->pagosInternet()
+        ->where(
+            'estado',
+            'PENDIENTE'
+        )
+        ->exists()
+) {
+    abort(
+        409,
+        'No se puede editar una venta que tiene un pago por internet pendiente.'
+    );
+}
 
                 $venta->update([
                     'id_cliente' =>
@@ -405,6 +418,19 @@ class VentaController extends Controller
     abort(
         409,
         'No se puede anular una venta que tiene pagos registrados. Anule primero los pagos asociados.'
+    );
+}
+if (
+    $venta->pagosInternet()
+        ->where(
+            'estado',
+            'PENDIENTE'
+        )
+        ->exists()
+) {
+    abort(
+        409,
+        'No se puede anular una venta que tiene un pago por internet pendiente.'
     );
 }
 

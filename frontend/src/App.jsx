@@ -17,6 +17,10 @@ import RecetasPage from './pages/recetas/RecetasPage';
 import MateriasPrimasPage from './pages/recetas/MateriasPrimasPage'
 import VentasPage from './pages/ventas/VentasPage'
 import PagosPage from './pages/pagos/PagosPage'
+import PagosInternetPage from './pages/pagosInternet/PagosInternetPage'
+import RecibosPage from './pages/recibos/RecibosPage.jsx'
+import PedidosPage from './pages/pedidos/PedidosPage.jsx'
+
 function App() {
   return (
     <Routes>
@@ -155,6 +159,39 @@ function App() {
             <Route
               path="pagos"
               element={<PagosPage />}
+            />
+          </Route>
+
+          <Route
+            element={
+              <ProtectedRoute permiso="pagos.gestionar_pago_internet" />
+            }
+          >
+            <Route
+              path="pagos-internet"
+              element={<PagosInternetPage />}
+            />
+          </Route>
+
+          <Route
+            element={
+              <ProtectedRoute permiso="recibos.gestionar_recibo" />
+            }
+          >
+            <Route
+              path="recibos"
+              element={<RecibosPage />}
+            />
+          </Route>
+
+          <Route
+            element={
+              <ProtectedRoute permiso="pedidos.gestionar_pedido" />
+            }
+          >
+            <Route
+              path="pedidos"
+              element={<PedidosPage />}
             />
           </Route>
         </Route>
