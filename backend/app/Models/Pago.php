@@ -18,6 +18,7 @@ class Pago extends Model
 
     protected $fillable = [
         'id_venta',
+        'id_pedido',
         'id_usuario',
         'monto',
         'metodo_pago',
@@ -47,6 +48,15 @@ class Pago extends Model
         );
     }
 
+    public function pedido(): BelongsTo
+    {
+        return $this->belongsTo(
+            Pedido::class,
+            'id_pedido',
+            'id_pedido'
+        );
+    }
+
     public function usuario(): BelongsTo
     {
         return $this->belongsTo(
@@ -64,20 +74,22 @@ class Pago extends Model
             'id_usuario'
         );
     }
+
     public function pagoInternet(): HasOne
-{
-    return $this->hasOne(
-        PagoInternet::class,
-        'id_pago',
-        'id_pago'
-    );
-}
-public function recibos(): HasMany
-{
-    return $this->hasMany(
-        Recibo::class,
-        'id_pago',
-        'id_pago'
-    );
-}
+    {
+        return $this->hasOne(
+            PagoInternet::class,
+            'id_pago',
+            'id_pago'
+        );
+    }
+
+    public function recibos(): HasMany
+    {
+        return $this->hasMany(
+            Recibo::class,
+            'id_pago',
+            'id_pago'
+        );
+    }
 }

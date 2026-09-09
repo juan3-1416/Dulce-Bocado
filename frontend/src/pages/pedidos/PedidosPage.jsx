@@ -6,11 +6,18 @@ import {
 
 import {
     listarPedidos,
-    obtenerPedido
+    obtenerPedido,
+    cambiarEstadoPedido
 } from '../../services/pedidoService.js';
+
+import {
+    obtenerCatalogosPago
+} from '../../services/pagoService.js';
 
 import PedidoModal from './PedidoModal.jsx';
 import PedidoDetalleModal from './PedidoDetalleModal.jsx';
+import CancelarPedidoModal from './CancelarPedidoModal.jsx';
+import PagoModal from '../pagos/PagoModal.jsx';
 
 function PedidosPage() {
     const [pedidos, setPedidos] =
@@ -64,6 +71,43 @@ function PedidosPage() {
     const [
         cargandoDetalle,
         setCargandoDetalle
+    ] = useState(false);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Modal cancelar y estado
+    |--------------------------------------------------------------------------
+    */
+
+    const [
+        modalCancelarAbierto,
+        setModalCancelarAbierto
+    ] = useState(false);
+
+    const [
+        pedidoParaCancelar,
+        setPedidoParaCancelar
+    ] = useState(null);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Modal pago
+    |--------------------------------------------------------------------------
+    */
+
+    const [
+        modalPagoAbierto,
+        setModalPagoAbierto
+    ] = useState(false);
+
+    const [
+        metodosPago,
+        setMetodosPago
+    ] = useState([]);
+
+    const [
+        cargandoPago,
+        setCargandoPago
     ] = useState(false);
 
     /*
@@ -357,6 +401,57 @@ function PedidosPage() {
 
     /*
     |--------------------------------------------------------------------------
+    | Modificar Estado
+    |--------------------------------------------------------------------------
+    */
+
+    const manejarCambioEstado = async (id_pedido, nuevoEstado) => {
+        try {
+            setError('');
+            setCargando(true);
+            await cambiarEstadoPedido(id_pedido, { estado: nuevoEstado });
+            await cargarPedidos();
+        } catch (err) {
+            setError(err.message || 'Error al cambiar el estado del pedido.');
+            setCargando(false);
+        }
+    };
+
+    const abrirCancelarPedido = (pedido) => {
+        setPedidoParaCancelar(pedido);
+        setModalCancelarAbierto(true);
+    };
+
+    const confirmarCancelacion = async (id_pedido, motivo_cancelacion) => {
+        await cambiarEstadoPedido(id_pedido, { 
+            estado: 'CANCELADO',
+            motivo_cancelacion
+        });
+        await cargarPedidos();
+    };
+
+    /*
+    |--------------------------------------------------------------------------
+    | Abrir Pago
+    |--------------------------------------------------------------------------
+    */
+
+    const abrirModalPago = async () => {
+        try {
+            setCargandoPago(true);
+            setError('');
+            const respuesta = await obtenerCatalogosPago();
+            setMetodosPago(respuesta.metodos_pago ?? ['EFECTIVO', 'QR']);
+            setModalPagoAbierto(true);
+        } catch (err) {
+            setError(err.message || 'No se pudieron cargar los métodos de pago.');
+        } finally {
+            setCargandoPago(false);
+        }
+    };
+
+    /*
+    |--------------------------------------------------------------------------
     | Pedido guardado
     |--------------------------------------------------------------------------
     */
@@ -594,7 +689,7 @@ function PedidosPage() {
                                     </th>
 
                                     <th className="px-5 py-3 text-right text-xs font-semibold uppercase text-gray-600">
-                                        Total
+                                        Saldos
                                     </th>
 
                                     <th className="px-5 py-3 text-center text-xs font-semibold uppercase text-gray-600">
@@ -680,13 +775,16 @@ function PedidosPage() {
                                                 </span>
                                             </td>
 
-                                            {/* Total */}
+                                            {/* Saldos */}
                                             <td className="px-5 py-4 text-right">
                                                 <p className="font-bold text-gray-900">
-                                                    Bs{' '}
-                                                    {formatearMonto(
-                                                        pedido.total
-                                                    )}
+                                                    Tot: Bs {formatearMonto(pedido.total)}
+                                                </p>
+                                                <p className="mt-1 text-xs text-green-700 font-semibold">
+                                                    Pag: Bs {formatearMonto(pedido.total_pagado)}
+                                                </p>
+                                                <p className="mt-1 text-xs text-pink-700 font-bold">
+                                                    Sal: Bs {formatearMonto(pedido.saldo)}
                                                 </p>
                                             </td>
 
@@ -705,37 +803,97 @@ function PedidosPage() {
 
                                             {/* Acciones */}
                                             <td className="px-5 py-4 text-right">
-                                                <div className="flex justify-end gap-2">
-
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            abrirDetallePedido(
-                                                                pedido
-                                                            )
-                                                        }
-                                                        disabled={
-                                                            cargandoDetalle
-                                                        }
-                                                        className="rounded border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 disabled:opacity-50"
-                                                    >
-                                                        Ver detalle
-                                                    </button>
-
-                                                    {pedido.estado ===
-                                                        'PROGRAMADO' && (
+                                                <div className="flex flex-col items-end gap-2">
+                                                    <div className="flex justify-end gap-2">
                                                         <button
                                                             type="button"
                                                             onClick={() =>
-                                                                abrirEditarPedido(
+                                                                abrirDetallePedido(
                                                                     pedido
                                                                 )
                                                             }
-                                                            className="rounded border border-pink-200 px-3 py-1.5 text-xs font-semibold text-pink-600 hover:bg-pink-50"
+                                                            disabled={
+                                                                cargandoDetalle
+                                                            }
+                                                            className="rounded border border-blue-200 px-3 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50 disabled:opacity-50"
                                                         >
-                                                            Editar
+                                                            Ver detalle
                                                         </button>
-                                                    )}
+
+                                                        {pedido.estado === 'PROGRAMADO' && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    abrirEditarPedido(
+                                                                        pedido
+                                                                    )
+                                                                }
+                                                                className="rounded border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                                                            >
+                                                                Editar
+                                                            </button>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="flex justify-end gap-2 mt-1">
+                                                        {pedido.estado === 'PROGRAMADO' && (
+                                                            <>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => manejarCambioEstado(pedido.id_pedido, 'EN_PROCESO')}
+                                                                    className="rounded bg-yellow-50 border border-yellow-200 px-2 py-1 text-[10px] font-bold text-yellow-700 hover:bg-yellow-100 uppercase tracking-wider"
+                                                                >
+                                                                    Iniciar Preparación
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => abrirCancelarPedido(pedido)}
+                                                                    className="rounded border border-red-200 px-2 py-1 text-[10px] font-bold text-red-600 hover:bg-red-50 uppercase tracking-wider"
+                                                                >
+                                                                    Cancelar
+                                                                </button>
+                                                                {pedido.saldo > 0 && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={abrirModalPago}
+                                                                        disabled={cargandoPago}
+                                                                        className="rounded bg-pink-50 border border-pink-200 px-2 py-1 text-[10px] font-bold text-pink-700 hover:bg-pink-100 uppercase tracking-wider"
+                                                                    >
+                                                                        Registrar Pago
+                                                                    </button>
+                                                                )}
+                                                            </>
+                                                        )}
+
+                                                        {pedido.estado === 'EN_PROCESO' && (
+                                                            <>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => manejarCambioEstado(pedido.id_pedido, 'ENTREGADO')}
+                                                                    className="rounded bg-green-50 border border-green-200 px-2 py-1 text-[10px] font-bold text-green-700 hover:bg-green-100 uppercase tracking-wider"
+                                                                >
+                                                                    Entregar Pedido
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => abrirCancelarPedido(pedido)}
+                                                                    className="rounded border border-red-200 px-2 py-1 text-[10px] font-bold text-red-600 hover:bg-red-50 uppercase tracking-wider"
+                                                                >
+                                                                    Cancelar
+                                                                </button>
+                                                                {pedido.saldo > 0 && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={abrirModalPago}
+                                                                        disabled={cargandoPago}
+                                                                        className="rounded bg-pink-50 border border-pink-200 px-2 py-1 text-[10px] font-bold text-pink-700 hover:bg-pink-100 uppercase tracking-wider"
+                                                                    >
+                                                                        Registrar Pago
+                                                                    </button>
+                                                                )}
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </td>
                                         </tr>
@@ -801,6 +959,28 @@ function PedidosPage() {
                 pedido={
                     pedidoDetalle
                 }
+            />
+
+            {/* Modales de Cancelación y Pagos */}
+            <CancelarPedidoModal
+                isOpen={modalCancelarAbierto}
+                onClose={() => {
+                    setModalCancelarAbierto(false);
+                    setPedidoParaCancelar(null);
+                }}
+                pedido={pedidoParaCancelar}
+                onConfirm={confirmarCancelacion}
+            />
+
+            <PagoModal
+                abierto={modalPagoAbierto}
+                onCerrar={() => setModalPagoAbierto(false)}
+                onGuardado={async (msg) => {
+                    await cargarPedidos();
+                }}
+                ventas={[]}
+                pedidos={pedidos.filter((p) => p.saldo > 0)}
+                metodosPago={metodosPago}
             />
         </section>
     );

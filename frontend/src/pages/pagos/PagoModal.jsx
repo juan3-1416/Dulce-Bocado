@@ -12,10 +12,15 @@ function PagoModal({
   abierto,
   onCerrar,
   onGuardado,
-  ventas,
+  ventas = [],
+  pedidos = [],
   metodosPago,
 }) {
+  const [tipoCobro, setTipoCobro] = useState('venta') // 'venta' o 'pedido'
+
   const [idVenta, setIdVenta] =
+    useState('')
+  const [idPedido, setIdPedido] =
     useState('')
 
   const [monto, setMonto] =
@@ -48,6 +53,7 @@ function PagoModal({
     }
 
     setIdVenta('')
+    setIdPedido('')
     setMonto('')
     setMetodoPago(
       metodosPago?.[0] ||
@@ -56,6 +62,14 @@ function PagoModal({
     setReferencia('')
     setObservaciones('')
     setError('')
+    
+    // Auto-select type based on what is available
+    if (pedidos.length > 0 && ventas.length === 0) {
+      setTipoCobro('pedido')
+    } else if (ventas.length > 0 && pedidos.length === 0) {
+      setTipoCobro('venta')
+    }
+
   }, [abierto, metodosPago])
 
   const ventaSeleccionada =
@@ -70,24 +84,38 @@ function PagoModal({
       [ventas, idVenta]
     )
 
+  const pedidoSeleccionado =
+    useMemo(
+      () =>
+        pedidos.find(
+          (pedido) =>
+            Number(
+              pedido.id_pedido
+            ) === Number(idPedido)
+        ) ?? null,
+      [pedidos, idPedido]
+    )
+
+  const documentoSeleccionado = tipoCobro === 'venta' ? ventaSeleccionada : pedidoSeleccionado;
+
   const obtenerNombreCliente = (
-    venta
+    doc
   ) => {
-    if (!venta) {
+    if (!doc) {
       return ''
     }
 
-    if (venta.cliente) {
+    if (doc.cliente) {
       return [
-        venta.cliente.nombre,
-        venta.cliente.apellido,
+        doc.cliente.nombre,
+        doc.cliente.apellido,
       ]
         .filter(Boolean)
         .join(' ')
     }
 
     return (
-      venta.nombre_cliente_ocasional ||
+      doc.nombre_cliente_ocasional ||
       'Cliente ocasional'
     )
   }
@@ -103,14 +131,25 @@ function PagoModal({
     setError('')
   }
 
+  const manejarCambioPedido = (
+    event
+  ) => {
+    const valor =
+      event.target.value
+
+    setIdPedido(valor)
+    setMonto('')
+    setError('')
+  }
+
   const usarSaldoCompleto = () => {
-    if (!ventaSeleccionada) {
+    if (!documentoSeleccionado) {
       return
     }
 
     setMonto(
       String(
-        ventaSeleccionada.saldo
+        documentoSeleccionado.saldo
       )
     )
   }
@@ -143,9 +182,16 @@ function PagoModal({
   ) => {
     event.preventDefault()
 
-    if (!idVenta) {
+    if (tipoCobro === 'venta' && !idVenta) {
       setError(
         'Debe seleccionar una venta.'
+      )
+      return
+    }
+
+    if (tipoCobro === 'pedido' && !idPedido) {
+      setError(
+        'Debe seleccionar un pedido.'
       )
       return
     }
@@ -167,7 +213,7 @@ function PagoModal({
 
     const saldo =
       Number(
-        ventaSeleccionada?.saldo ??
+        documentoSeleccionado?.saldo ??
           0
       )
 
@@ -195,24 +241,20 @@ function PagoModal({
       setGuardando(true)
       setError('')
 
-      await crearPago({
-        id_venta:
-          Number(idVenta),
+      const payload = {
+        monto: montoNumero,
+        metodo_pago: metodoPago,
+        referencia: referencia.trim() || null,
+        observaciones: observaciones.trim() || null,
+      }
 
-        monto:
-          montoNumero,
+      if (tipoCobro === 'venta') {
+        payload.id_venta = Number(idVenta)
+      } else {
+        payload.id_pedido = Number(idPedido)
+      }
 
-        metodo_pago:
-          metodoPago,
-
-        referencia:
-          referencia.trim() ||
-          null,
-
-        observaciones:
-          observaciones.trim() ||
-          null,
-      })
+      await crearPago(payload)
 
       await onGuardado(
         'Pago registrado correctamente.'
@@ -269,12 +311,43 @@ function PagoModal({
             </div>
           )}
 
-          {ventas.length === 0 ? (
+          {ventas.length === 0 && pedidos.length === 0 ? (
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-              No existen ventas registradas con saldo pendiente.
+              No existen comprobantes registrados con saldo pendiente.
             </div>
           ) : (
             <>
+              {ventas.length > 0 && pedidos.length > 0 && (
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">
+                    Aplicar cobro a:
+                  </label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        value="venta"
+                        checked={tipoCobro === 'venta'}
+                        onChange={(e) => setTipoCobro(e.target.value)}
+                        className="text-pink-600 focus:ring-pink-500"
+                      />
+                      <span className="text-sm">Venta</span>
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        value="pedido"
+                        checked={tipoCobro === 'pedido'}
+                        onChange={(e) => setTipoCobro(e.target.value)}
+                        className="text-pink-600 focus:ring-pink-500"
+                      />
+                      <span className="text-sm">Pedido</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {tipoCobro === 'venta' && (
               <div>
                 <label
                   htmlFor="venta_pago"
@@ -325,19 +398,73 @@ function PagoModal({
                   )}
                 </select>
               </div>
+              )}
 
-              {ventaSeleccionada && (
+              {tipoCobro === 'pedido' && (
+              <div>
+                <label
+                  htmlFor="pedido_pago"
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                >
+                  Pedido
+                </label>
+
+                <select
+                  id="pedido_pago"
+                  value={idPedido}
+                  onChange={
+                    manejarCambioPedido
+                  }
+                  required
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                >
+                  <option value="">
+                    Seleccionar pedido
+                  </option>
+
+                  {pedidos.map(
+                    (pedido) => (
+                      <option
+                        key={
+                          pedido.id_pedido
+                        }
+                        value={
+                          pedido.id_pedido
+                        }
+                      >
+                        Pedido #
+                        {
+                          pedido.id_pedido
+                        }
+                        {' — '}
+                        {
+                          obtenerNombreCliente(
+                            pedido
+                          )
+                        }
+                        {' — Saldo Bs '}
+                        {Number(
+                          pedido.saldo
+                        ).toFixed(2)}
+                      </option>
+                    )
+                  )}
+                </select>
+              </div>
+              )}
+
+              {documentoSeleccionado && (
                 <div className="grid gap-4 rounded-xl border border-gray-200 bg-gray-50 p-4 sm:grid-cols-4">
 
                   <div>
                     <p className="text-xs font-medium uppercase text-gray-500">
-                      Venta
+                      {tipoCobro === 'venta' ? 'Venta' : 'Pedido'}
                     </p>
 
                     <p className="mt-1 font-bold text-gray-900">
                       #
                       {
-                        ventaSeleccionada.id_venta
+                        tipoCobro === 'venta' ? documentoSeleccionado.id_venta : documentoSeleccionado.id_pedido
                       }
                     </p>
                   </div>
@@ -350,7 +477,7 @@ function PagoModal({
                     <p className="mt-1 font-bold text-gray-900">
                       Bs{' '}
                       {Number(
-                        ventaSeleccionada.total
+                        documentoSeleccionado.total
                       ).toFixed(
                         2
                       )}
@@ -365,7 +492,7 @@ function PagoModal({
                     <p className="mt-1 font-bold text-gray-900">
                       Bs{' '}
                       {Number(
-                        ventaSeleccionada.total_pagado
+                        documentoSeleccionado.total_pagado
                       ).toFixed(
                         2
                       )}
@@ -380,7 +507,7 @@ function PagoModal({
                     <p className="mt-1 font-bold text-pink-600">
                       Bs{' '}
                       {Number(
-                        ventaSeleccionada.saldo
+                        documentoSeleccionado.saldo
                       ).toFixed(
                         2
                       )}
@@ -400,7 +527,7 @@ function PagoModal({
                       Monto
                     </label>
 
-                    {ventaSeleccionada && (
+                    {documentoSeleccionado && (
                       <button
                         type="button"
                         onClick={
@@ -424,8 +551,8 @@ function PagoModal({
                       min="0.01"
                       step="0.01"
                       max={
-                        ventaSeleccionada
-                          ? ventaSeleccionada.saldo
+                        documentoSeleccionado
+                          ? documentoSeleccionado.saldo
                           : undefined
                       }
                       value={monto}
@@ -438,17 +565,17 @@ function PagoModal({
                       }
                       required
                       disabled={
-                        !ventaSeleccionada
+                        !documentoSeleccionado
                       }
                       className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 disabled:bg-gray-100"
                     />
                   </div>
 
-                  {ventaSeleccionada && (
+                  {documentoSeleccionado && (
                     <p className="mt-1 text-xs text-gray-500">
                       Máximo: Bs{' '}
                       {Number(
-                        ventaSeleccionada.saldo
+                        documentoSeleccionado.saldo
                       ).toFixed(
                         2
                       )}
@@ -587,7 +714,7 @@ function PagoModal({
               type="submit"
               disabled={
                 guardando ||
-                ventas.length === 0
+                (ventas.length === 0 && pedidos.length === 0)
               }
               className="rounded-lg bg-pink-600 px-5 py-2 text-sm font-semibold text-white hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-50"
             >

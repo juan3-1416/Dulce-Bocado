@@ -131,12 +131,6 @@ const SECCIONES_MENU = [
         ruta: '/caja',
         permiso: 'caja.gestionar_caja',
       },
-    ],
-  },
-  {
-    id: 'pedidos',
-    titulo: 'Pedidos',
-    opciones: [
       {
         nombre: 'Gestión de Pedidos',
         ruta: '/pedidos',
@@ -149,6 +143,7 @@ const SECCIONES_MENU = [
       },
     ],
   },
+
   {
     id: 'clientes',
     titulo: 'Clientes',
