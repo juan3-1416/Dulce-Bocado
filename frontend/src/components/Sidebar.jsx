@@ -67,12 +67,12 @@ const SECCIONES_MENU = [
       {
         nombre: 'Producción',
         ruta: '/produccion',
-        permiso: 'produccion.gestionar_produccion',
+        permiso: 'produccion.listar',
       },
       {
         nombre: 'Consumo y Desperdicio',
         ruta: '/produccion/consumo-desperdicio',
-        permiso: 'produccion.registrar_consumo',
+        permiso: 'produccion.gestionar',
       },
     ],
   },

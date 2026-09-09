@@ -20,6 +20,8 @@ import PagosPage from './pages/pagos/PagosPage'
 import PagosInternetPage from './pages/pagosInternet/PagosInternetPage'
 import RecibosPage from './pages/recibos/RecibosPage.jsx'
 import PedidosPage from './pages/pedidos/PedidosPage.jsx'
+import ProduccionList from './pages/produccion/ProduccionList'
+import ProduccionForm from './pages/produccion/ProduccionForm'
 
 function App() {
   return (
@@ -192,6 +194,28 @@ function App() {
             <Route
               path="pedidos"
               element={<PedidosPage />}
+            />
+          </Route>
+
+          <Route
+            element={
+              <ProtectedRoute permiso="produccion.listar" />
+            }
+          >
+            <Route
+              path="produccion"
+              element={<ProduccionList />}
+            />
+          </Route>
+
+          <Route
+            element={
+              <ProtectedRoute permiso="produccion.crear" />
+            }
+          >
+            <Route
+              path="produccion/crear"
+              element={<ProduccionForm />}
             />
           </Route>
         </Route>
