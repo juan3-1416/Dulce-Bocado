@@ -67,12 +67,12 @@ const SECCIONES_MENU = [
       {
         nombre: 'Producción',
         ruta: '/produccion',
-        permiso: 'produccion.gestionar_produccion',
+        permiso: 'produccion.listar',
       },
       {
         nombre: 'Consumo y Desperdicio',
         ruta: '/produccion/consumo-desperdicio',
-        permiso: 'produccion.registrar_consumo',
+        permiso: 'produccion.gestionar',
       },
     ],
   },
@@ -131,12 +131,6 @@ const SECCIONES_MENU = [
         ruta: '/caja',
         permiso: 'caja.gestionar_caja',
       },
-    ],
-  },
-  {
-    id: 'pedidos',
-    titulo: 'Pedidos',
-    opciones: [
       {
         nombre: 'Gestión de Pedidos',
         ruta: '/pedidos',
@@ -149,6 +143,7 @@ const SECCIONES_MENU = [
       },
     ],
   },
+
   {
     id: 'clientes',
     titulo: 'Clientes',

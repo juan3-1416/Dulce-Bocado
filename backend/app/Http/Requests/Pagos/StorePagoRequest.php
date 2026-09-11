@@ -15,9 +15,17 @@ class StorePagoRequest extends FormRequest
     {
         return [
             'id_venta' => [
-                'required',
+                'required_without:id_pedido',
+                'nullable',
                 'integer',
                 'exists:venta,id_venta',
+            ],
+
+            'id_pedido' => [
+                'required_without:id_venta',
+                'nullable',
+                'integer',
+                'exists:pedido,id_pedido',
             ],
 
             'monto' => [
@@ -53,11 +61,17 @@ class StorePagoRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'id_venta.required' =>
-                'Debe seleccionar una venta.',
+            'id_venta.required_without' =>
+                'Debe seleccionar una venta o un pedido.',
 
             'id_venta.exists' =>
                 'La venta seleccionada no existe.',
+
+            'id_pedido.required_without' =>
+                'Debe seleccionar una venta o un pedido.',
+
+            'id_pedido.exists' =>
+                'El pedido seleccionado no existe.',
 
             'monto.required' =>
                 'El monto del pago es obligatorio.',

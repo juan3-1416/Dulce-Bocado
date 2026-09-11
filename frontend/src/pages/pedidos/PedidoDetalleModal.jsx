@@ -408,25 +408,85 @@ function PedidoDetalleModal({
                             </p>
                         </section>
 
-                        {/* Total */}
+                        {/* Saldos */}
                         <section className="rounded-xl border border-pink-200 bg-pink-50 p-5">
-                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                                <div>
-                                    <p className="text-sm font-semibold text-pink-800">
+                            <h3 className="mb-4 font-semibold text-pink-900">
+                                Resumen de Saldos
+                            </h3>
+                            <div className="grid gap-4 sm:grid-cols-3">
+                                <div className="rounded-lg bg-white p-4 shadow-sm border border-pink-100">
+                                    <p className="text-xs font-semibold text-pink-800 uppercase">
                                         Total del pedido
                                     </p>
-
-                                    <p className="text-xs text-pink-700">
-                                        Total almacenado por el backend.
+                                    <p className="mt-1 text-2xl font-bold text-gray-900">
+                                        Bs {formatearMonto(pedido.total)}
                                     </p>
                                 </div>
 
-                                <p className="text-3xl font-bold text-pink-700">
-                                    Bs{' '}
-                                    {formatearMonto(
-                                        pedido.total
-                                    )}
-                                </p>
+                                <div className="rounded-lg bg-white p-4 shadow-sm border border-green-100">
+                                    <p className="text-xs font-semibold text-green-800 uppercase">
+                                        Total Pagado
+                                    </p>
+                                    <p className="mt-1 text-2xl font-bold text-green-700">
+                                        Bs {formatearMonto(pedido.total_pagado)}
+                                    </p>
+                                </div>
+
+                                <div className="rounded-lg bg-white p-4 shadow-sm border border-pink-200">
+                                    <p className="text-xs font-semibold text-pink-800 uppercase">
+                                        Saldo Pendiente
+                                    </p>
+                                    <p className="mt-1 text-2xl font-bold text-pink-700">
+                                        Bs {formatearMonto(pedido.saldo)}
+                                    </p>
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* Auditoría / Estado */}
+                        <section className="rounded-xl border border-gray-200 p-5">
+                            <h3 className="mb-4 font-semibold text-gray-900">
+                                Auditoría y Estado
+                            </h3>
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                {pedido.usuario_preparacion && (
+                                    <div className="rounded border bg-gray-50 p-3">
+                                        <p className="text-[10px] font-bold uppercase text-gray-500">
+                                            Preparado por
+                                        </p>
+                                        <p className="text-sm font-medium text-gray-900">
+                                            {pedido.usuario_preparacion.nombre ?? 'Usuario'}
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                            {formatearFecha(pedido.fecha_preparacion)} {formatearHora(pedido.fecha_preparacion?.split('T')[1])}
+                                        </p>
+                                    </div>
+                                )}
+
+                                {pedido.usuario_entrega && (
+                                    <div className="rounded border bg-green-50 p-3 border-green-200">
+                                        <p className="text-[10px] font-bold uppercase text-green-700">
+                                            Entregado por
+                                        </p>
+                                        <p className="text-sm font-medium text-gray-900">
+                                            {pedido.usuario_entrega.nombre ?? 'Usuario'}
+                                        </p>
+                                        <p className="text-xs text-gray-600">
+                                            {formatearFecha(pedido.fecha_entrega_efectiva)} {formatearHora(pedido.fecha_entrega_efectiva?.split('T')[1])}
+                                        </p>
+                                    </div>
+                                )}
+
+                                {pedido.estado === 'CANCELADO' && (
+                                    <div className="col-span-full rounded border bg-red-50 p-3 border-red-200">
+                                        <p className="text-[10px] font-bold uppercase text-red-700">
+                                            Motivo de Cancelación
+                                        </p>
+                                        <p className="mt-1 text-sm font-medium text-red-900">
+                                            {pedido.motivo_cancelacion ?? 'Sin especificar'}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         </section>
                     </div>

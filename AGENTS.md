@@ -119,20 +119,20 @@ tokens personales ni tocar su configuración sin autorización.
 | CU6 | Asignar Roles y Permisos | ✅ COMPLETADO |
 | CU7 | Gestionar Productos y Presentaciones | ✅ COMPLETADO |
 | CU8 | Gestionar Cliente | ✅ COMPLETADO |
-| CU9 | Gestionar Receta | ⏳ No iniciado |
-| CU10 | Gestionar Venta | ⏳ No iniciado |
-| CU11 | Gestionar Pago | ⏳ No iniciado |
-| CU12 | Gestionar Pago por Internet | ⏳ No iniciado |
-| CU13 | Gestionar Recibo | ⏳ No iniciado |
-| CU14 | Gestionar Pedido | ⏳ No iniciado |
-| CU15 | Gestionar Estado y Entrega de Pedido | ⏳ No iniciado |
+| CU9 | Gestionar Receta | ✅ COMPLETADO |
+| CU10 | Gestionar Venta | ✅ COMPLETADO |
+| CU11 | Gestionar Pago | ✅ COMPLETADO |
+| CU12 | Gestionar Pago por Internet | ✅ COMPLETADO |
+| CU13 | Gestionar Recibo | ✅ COMPLETADO |
+| CU14 | Gestionar Pedido | ✅ COMPLETADO |
+| CU15 | Gestionar Estado y Entrega de Pedido | ✅ COMPLETADO |
 | CU16 | Gestionar Producción | ⏳ No iniciado |
-| CU17 | Registrar Consumo, Costo y Desperdicio | ⏳ No iniciado |
+| CU17 | Registrar Consumo, Costo y Desperdicio | ❌ ELIMINADO |
 | CU18 | Gestionar Almacenes y Existencias | ⏳ No iniciado |
 | CU19 | Gestionar Ingreso de Inventario | ⏳ No iniciado |
 | CU20 | Gestionar Egreso de Inventario | ⏳ No iniciado |
-| CU21 | Gestionar Ajuste de Inventario | ⏳ No iniciado |
-| CU22 | Gestionar Proveedores y Compras | ⏳ No iniciado |
+| CU21 | Gestionar Ajuste de Inventario | ❌ ELIMINADO |
+| CU22 | Gestionar Proveedores y Compras | ❌ ELIMINADO |
 | CU23 | Gestionar Caja y Turnos | ⏳ No iniciado |
 | CU24 | Registrar Visitas | ⏳ No iniciado |
 | CU25 | Seleccionar Tema | ⏳ No iniciado |
@@ -143,7 +143,7 @@ tokens personales ni tocar su configuración sin autorización.
 implementación actual.
 
 **Eliminados oficialmente — no volver a agregar:** Gestionar Traspaso,
-Gestionar Stock Mínimo y Alertas, Buscar Información.
+Gestionar Stock Mínimo y Alertas, Buscar Información, Registrar Consumo, Costo y Desperdicio (CU17), Gestionar Ajuste de Inventario (CU21), Gestionar Proveedores y Compras (CU22).
 
 > ⚠️ Actualizar esta tabla cada vez que se cierre un CU (ver sección 15).
 
@@ -160,15 +160,15 @@ Laravel↔PostgreSQL, conexión React↔Laravel, proxy Vite, endpoint de salud.
   fusionar Producto+Presentación en una sola entidad.
 - **Recetas (CU9):** materias primas + cantidades por presentación; las
   usa producción.
-- **Inventario (CU18–21):** 3 almacenes fijos — Materias Primas,
+- **Inventario (CU18–20):** 3 almacenes fijos — Materias Primas,
   Producción, Mostrador. Ventas y entregas consultan Mostrador;
   producción consume materias primas; solo unidades buenas incrementan
   producto terminado; **stock nunca negativo**. Movimientos: ingreso,
-  egreso, ajuste +/-, con trazabilidad (usuario, fecha, motivo,
-  observación). **Prohibido:** FIFO, LIFO, promedio ponderado.
-- **Producción (CU16–17):** seleccionar presentación → consultar receta →
+  egreso, con trazabilidad (usuario, fecha, motivo,
+  observación). Las pérdidas (ajustes) se registran como egreso. **Prohibido:** FIFO, LIFO, promedio ponderado.
+- **Producción (CU16):** seleccionar presentación → consultar receta →
   calcular requerimientos → verificar disponibilidad → registrar
-  cantidad/consumo real/costo/desperdicio/unidades buenas, con
+  cantidad/unidades buenas, con
   trazabilidad. Operaciones críticas en transacciones DB.
 - **Ventas (CU10):** una o varias presentaciones; cliente registrado u
   ocasional; controla cantidades, precios, total, stock de Mostrador y

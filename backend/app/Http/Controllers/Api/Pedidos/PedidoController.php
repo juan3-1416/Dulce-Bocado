@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Pedidos;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Pedidos\CambiarEstadoPedidoRequest;
 use App\Http\Requests\Pedidos\StorePedidoRequest;
 use App\Http\Requests\Pedidos\UpdatePedidoRequest;
 use App\Models\Cliente;
@@ -26,6 +27,9 @@ class PedidoController extends Controller
             ->with([
                 'cliente',
                 'usuario',
+                'usuarioEntrega',
+                'usuarioCancelacion',
+                'pagos',
                 'detalles.productoPresentacion.producto',
                 'detalles.productoPresentacion.presentacion',
             ])
@@ -115,6 +119,9 @@ class PedidoController extends Controller
             ->with([
                 'cliente',
                 'usuario',
+                'usuarioEntrega',
+                'usuarioCancelacion',
+                'pagos',
                 'detalles.productoPresentacion.producto',
                 'detalles.productoPresentacion.presentacion',
             ])
@@ -392,6 +399,87 @@ class PedidoController extends Controller
 
             'pedido' =>
                 $pedido,
+        ]);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cambiar estado
+    |--------------------------------------------------------------------------
+    */
+    public function cambiarEstado(
+        CambiarEstadoPedidoRequest $request,
+        int $id
+    ): JsonResponse {
+        $pedido = DB::transaction(
+            function () use ($request, $id) {
+                $pedido = Pedido::query()
+                    ->lockForUpdate()
+                    ->findOrFail($id);
+
+                if (in_array($pedido->estado, ['ENTREGADO', 'CANCELADO'])) {
+                    abort(
+                        409,
+                        'El pedido ya se encuentra en un estado final y no puede ser modificado.'
+                    );
+                }
+
+                $nuevoEstado = $request->validated('estado');
+
+                // Validar transiciones permitidas
+                if ($pedido->estado === 'PROGRAMADO') {
+                    if (!in_array($nuevoEstado, ['EN_PROCESO', 'CANCELADO'])) {
+                        abort(422, 'Transición de estado no permitida desde PROGRAMADO.');
+                    }
+                } elseif ($pedido->estado === 'EN_PROCESO') {
+                    if (!in_array($nuevoEstado, ['ENTREGADO', 'CANCELADO'])) {
+                        abort(422, 'Transición de estado no permitida desde EN_PROCESO.');
+                    }
+                }
+
+                if ($nuevoEstado === 'ENTREGADO') {
+                    if ($pedido->saldo > 0) {
+                        abort(
+                            422,
+                            "El pedido tiene un saldo pendiente de Bs. " . number_format($pedido->saldo, 2) . " y no puede ser entregado hasta que el saldo sea 0."
+                        );
+                    }
+                    
+                    $pedido->update([
+                        'estado' => 'ENTREGADO',
+                        'id_usuario_entrega' => $request->user()->getKey(),
+                        'fecha_entrega_efectiva' => now(),
+                    ]);
+                } elseif ($nuevoEstado === 'CANCELADO') {
+                    $pedido->update([
+                        'estado' => 'CANCELADO',
+                        'id_usuario_cancelacion' => $request->user()->getKey(),
+                        'motivo_cancelacion' => trim($request->validated('motivo_cancelacion')),
+                        'fecha_cancelacion' => now(),
+                    ]);
+                } elseif ($nuevoEstado === 'EN_PROCESO') {
+                    $pedido->update([
+                        'estado' => 'EN_PROCESO',
+                    ]);
+                }
+
+                return $pedido;
+            }
+        );
+
+        $pedido->load([
+            'cliente',
+            'usuario',
+            'usuarioEntrega',
+            'usuarioCancelacion',
+            'pagos',
+            'detalles.productoPresentacion.producto',
+            'detalles.productoPresentacion.presentacion',
+        ]);
+
+        return response()->json([
+            'message' => 'Estado del pedido actualizado correctamente.',
+            'pedido' => $pedido,
         ]);
     }
 

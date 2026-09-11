@@ -220,3 +220,31 @@ export async function actualizarPedido(
 
     return procesarRespuesta(response);
 }
+
+/*
+|--------------------------------------------------------------------------
+| Cambiar estado pedido
+|--------------------------------------------------------------------------
+*/
+
+export async function cambiarEstadoPedido(id, datos) {
+    await prepararCsrf();
+
+    const token = obtenerTokenCsrf();
+
+    const response = await fetch(
+        `${API_URL}/${id}/estado`,
+        {
+            method: 'PATCH',
+            credentials: 'include',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-XSRF-TOKEN': token ?? '',
+            },
+            body: JSON.stringify(datos),
+        }
+    );
+
+    return procesarRespuesta(response);
+}

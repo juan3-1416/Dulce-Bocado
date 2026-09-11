@@ -19,6 +19,8 @@ class DatabaseSeeder extends Seeder
             PagosInternetInicialSeeder::class,
             RecibosInicialSeeder::class,
             PedidosInicialSeeder::class,
+            PedidosEstadoInicialSeeder::class,
+            ProduccionSeeder::class,
         ]);
     }
 }
