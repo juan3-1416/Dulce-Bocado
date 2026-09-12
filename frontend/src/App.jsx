@@ -1,25 +1,34 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import {
+  Route,
+  Routes,
+} from 'react-router-dom'
+
 import ProtectedRoute from './components/ProtectedRoute'
 import MainLayout from './layouts/MainLayout.jsx'
+
 import AccesoDenegadoPage from './pages/AccesoDenegadoPage'
 import InicioPage from './pages/InicioPage'
 import LoginPage from './pages/LoginPage'
 import NotFoundPage from './pages/NotFoundPage'
-import SeguridadPage from './pages/SeguridadPage'
-import UsuariosPage from './pages/seguridad/UsuariosPage';
-import RolesPage from './pages/seguridad/RolesPage';
-import PermisosPage from './pages/seguridad/PermisosPage';
-import RolPermisoPage from './pages/seguridad/RolPermisoPage';
-import AsignacionesPage from './pages/seguridad/AsignacionesPage';
-import ProductosPage from './pages/productos/ProductosPage';
-import ClientesPage from './pages/clientes/ClientesPage';
-import RecetasPage from './pages/recetas/RecetasPage';
+
+import UsuariosPage from './pages/seguridad/UsuariosPage'
+import RolesPage from './pages/seguridad/RolesPage'
+import PermisosPage from './pages/seguridad/PermisosPage'
+import RolPermisoPage from './pages/seguridad/RolPermisoPage'
+import AsignacionesPage from './pages/seguridad/AsignacionesPage'
+
+import ProductosPage from './pages/productos/ProductosPage'
+import ClientesPage from './pages/clientes/ClientesPage'
+
+import RecetasPage from './pages/recetas/RecetasPage'
 import MateriasPrimasPage from './pages/recetas/MateriasPrimasPage'
+
 import VentasPage from './pages/ventas/VentasPage'
 import PagosPage from './pages/pagos/PagosPage'
 import PagosInternetPage from './pages/pagosInternet/PagosInternetPage'
 import RecibosPage from './pages/recibos/RecibosPage.jsx'
 import PedidosPage from './pages/pedidos/PedidosPage.jsx'
+
 import ProduccionList from './pages/produccion/ProduccionList'
 import ProduccionForm from './pages/produccion/ProduccionForm'
 
@@ -43,9 +52,13 @@ function App() {
             element={<InicioPage />}
           />
 
+          {/* SEGURIDAD */}
+
           <Route
             element={
-              <ProtectedRoute permiso="seguridad.gestionar_usuario" />
+              <ProtectedRoute
+                permiso="seguridad.gestionar_usuario"
+              />
             }
           >
             <Route
@@ -56,7 +69,9 @@ function App() {
 
           <Route
             element={
-              <ProtectedRoute permiso="seguridad.gestionar_rol" />
+              <ProtectedRoute
+                permiso="seguridad.gestionar_rol"
+              />
             }
           >
             <Route
@@ -67,7 +82,9 @@ function App() {
 
           <Route
             element={
-              <ProtectedRoute permiso="seguridad.gestionar_permiso" />
+              <ProtectedRoute
+                permiso="seguridad.gestionar_permiso"
+              />
             }
           >
             <Route
@@ -78,7 +95,9 @@ function App() {
 
           <Route
             element={
-              <ProtectedRoute permiso="seguridad.gestionar_rol_permiso" />
+              <ProtectedRoute
+                permiso="seguridad.gestionar_rol_permiso"
+              />
             }
           >
             <Route
@@ -89,7 +108,9 @@ function App() {
 
           <Route
             element={
-              <ProtectedRoute permiso="seguridad.asignar_roles_permisos" />
+              <ProtectedRoute
+                permiso="seguridad.asignar_roles_permisos"
+              />
             }
           >
             <Route
@@ -98,9 +119,13 @@ function App() {
             />
           </Route>
 
+          {/* PRODUCTOS */}
+
           <Route
             element={
-              <ProtectedRoute permiso="productos.gestionar_producto" />
+              <ProtectedRoute
+                permiso="productos.gestionar_producto"
+              />
             }
           >
             <Route
@@ -109,9 +134,13 @@ function App() {
             />
           </Route>
 
+          {/* CLIENTES */}
+
           <Route
             element={
-              <ProtectedRoute permiso="clientes.gestionar_cliente" />
+              <ProtectedRoute
+                permiso="clientes.gestionar_cliente"
+              />
             }
           >
             <Route
@@ -120,31 +149,33 @@ function App() {
             />
           </Route>
 
+          {/* RECETAS */}
+
           <Route
             element={
-              <ProtectedRoute permiso="recetas.gestionar_receta" />
+              <ProtectedRoute
+                permiso="recetas.gestionar_receta"
+              />
             }
           >
             <Route
               path="recetas"
               element={<RecetasPage />}
             />
-          </Route>
 
-          <Route
-            element={
-              <ProtectedRoute permiso="recetas.gestionar_receta" />
-            }
-          >
             <Route
               path="recetas/materias-primas"
               element={<MateriasPrimasPage />}
             />
           </Route>
 
+          {/* VENTAS */}
+
           <Route
             element={
-              <ProtectedRoute permiso="ventas.gestionar_venta" />
+              <ProtectedRoute
+                permiso="ventas.gestionar_venta"
+              />
             }
           >
             <Route
@@ -153,9 +184,13 @@ function App() {
             />
           </Route>
 
+          {/* PAGOS */}
+
           <Route
             element={
-              <ProtectedRoute permiso="pagos.gestionar_pago" />
+              <ProtectedRoute
+                permiso="pagos.gestionar_pago"
+              />
             }
           >
             <Route
@@ -166,7 +201,9 @@ function App() {
 
           <Route
             element={
-              <ProtectedRoute permiso="pagos.gestionar_pago_internet" />
+              <ProtectedRoute
+                permiso="pagos.gestionar_pago_internet"
+              />
             }
           >
             <Route
@@ -175,9 +212,13 @@ function App() {
             />
           </Route>
 
+          {/* RECIBOS */}
+
           <Route
             element={
-              <ProtectedRoute permiso="recibos.gestionar_recibo" />
+              <ProtectedRoute
+                permiso="recibos.gestionar_recibo"
+              />
             }
           >
             <Route
@@ -186,9 +227,13 @@ function App() {
             />
           </Route>
 
+          {/* PEDIDOS */}
+
           <Route
             element={
-              <ProtectedRoute permiso="pedidos.gestionar_pedido" />
+              <ProtectedRoute
+                permiso="pedidos.gestionar_pedido"
+              />
             }
           >
             <Route
@@ -197,9 +242,13 @@ function App() {
             />
           </Route>
 
+          {/* CU16 - PRODUCCIÓN */}
+
           <Route
             element={
-              <ProtectedRoute permiso="produccion.listar" />
+              <ProtectedRoute
+                permiso="produccion.listar"
+              />
             }
           >
             <Route
@@ -210,12 +259,29 @@ function App() {
 
           <Route
             element={
-              <ProtectedRoute permiso="produccion.crear" />
+              <ProtectedRoute
+                permiso="produccion.crear"
+              />
             }
           >
             <Route
               path="produccion/crear"
               element={<ProduccionForm />}
+            />
+          </Route>
+
+          {/* CU17 - CONSUMO, COSTO Y DESPERDICIO */}
+
+          <Route
+            element={
+              <ProtectedRoute
+                permiso="produccion.registrar_consumo"
+              />
+            }
+          >
+            <Route
+              path="produccion/consumo-desperdicio"
+              element={<ProduccionList />}
             />
           </Route>
         </Route>

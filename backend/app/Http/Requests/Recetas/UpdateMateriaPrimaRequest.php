@@ -50,6 +50,12 @@ class UpdateMateriaPrimaRequest extends FormRequest
                 'sometimes',
                 'boolean',
             ],
+            'costo_unitario' => [
+    'required',
+    'numeric',
+    'gt:0',
+    'max:99999999.9999',
+],
         ];
     }
 
@@ -67,6 +73,17 @@ class UpdateMateriaPrimaRequest extends FormRequest
 
             'unidad_medida.in' =>
                 'La unidad de medida debe ser g, ml o unidad.',
+                'costo_unitario.required' =>
+    'El costo unitario es obligatorio.',
+
+'costo_unitario.numeric' =>
+    'El costo unitario debe ser un valor numérico.',
+
+'costo_unitario.gt' =>
+    'El costo unitario debe ser mayor a cero.',
+
+'costo_unitario.max' =>
+    'El costo unitario supera el valor permitido.',
         ];
     }
 }

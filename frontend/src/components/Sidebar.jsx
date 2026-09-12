@@ -60,22 +60,22 @@ const SECCIONES_MENU = [
       },
     ],
   },
-  {
-    id: 'produccion',
-    titulo: 'Producción',
-    opciones: [
-      {
-        nombre: 'Producción',
-        ruta: '/produccion',
-        permiso: 'produccion.listar',
-      },
-      {
-        nombre: 'Consumo y Desperdicio',
-        ruta: '/produccion/consumo-desperdicio',
-        permiso: 'produccion.gestionar',
-      },
-    ],
-  },
+{
+  id: 'produccion',
+  titulo: 'Producción',
+  opciones: [
+    {
+      nombre: 'Producción',
+      ruta: '/produccion',
+      permiso: 'produccion.listar',
+    },
+    {
+      nombre: 'Consumo, Costo y Desperdicio',
+      ruta: '/produccion/consumo-desperdicio',
+      permiso: 'produccion.registrar_consumo',
+    },
+  ],
+},
   {
     id: 'inventario',
     titulo: 'Inventario',

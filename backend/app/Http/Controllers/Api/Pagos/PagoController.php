@@ -418,104 +418,141 @@ class PagoController extends Controller
     | se registra uno nuevo.
     |--------------------------------------------------------------------------
     */
-    public function anular(
-        AnularPagoRequest $request,
-        int $id
-    ): JsonResponse {
-        $datos = $request->validated();
+   public function anular(
+    AnularPagoRequest $request,
+    int $id
+): JsonResponse {
+    $datos = $request->validated();
 
-        $pago = DB::transaction(
-            function () use (
-                $request,
-                $datos,
-                $id
-            ) {
-                $pago = Pago::query()
+    $pago = DB::transaction(
+        function () use ($request, $datos, $id) {
+            $pago = Pago::query()
+                ->lockForUpdate()
+                ->find($id);
+
+            if (!$pago) {
+                abort(
+                    404,
+                    'Pago no encontrado.'
+                );
+            }
+
+            if ($pago->estado === 'ANULADO') {
+                abort(
+                    409,
+                    'El pago ya se encuentra anulado.'
+                );
+            }
+
+            /*
+             * Bloquear y validar la operación comercial
+             * asociada al pago.
+             */
+            if ($pago->id_venta !== null) {
+                Venta::query()
                     ->lockForUpdate()
-                    ->find($id);
+                    ->find($pago->id_venta);
+            } elseif ($pago->id_pedido !== null) {
+                $pedido = Pedido::query()
+                    ->lockForUpdate()
+                    ->find($pago->id_pedido);
 
-                if (!$pago) {
+                if (!$pedido) {
                     abort(
                         404,
-                        'Pago no encontrado.'
+                        'El pedido asociado al pago no existe.'
                     );
                 }
 
                 /*
-                 * También bloqueamos la venta para
-                 * serializar la anulación respecto
-                 * de otros pagos concurrentes.
+                 * Un pedido entregado debe conservar
+                 * saldo cero.
+                 *
+                 * No se permite anular posteriormente
+                 * uno de sus pagos.
                  */
-                Venta::query()
-                    ->lockForUpdate()
-                    ->find($pago->id_venta);
-
-                if (
-                    $pago->estado ===
-                    'ANULADO'
-                ) {
+                if ($pedido->estado === 'ENTREGADO') {
                     abort(
                         409,
-                        'El pago ya se encuentra anulado.'
+                        'No se puede anular un pago de un pedido ya entregado.'
                     );
                 }
-                if (
-    $pago->recibos()
-        ->where(
-            'estado',
-            'EMITIDO'
+            }
+
+            /*
+             * Si existe un recibo EMITIDO,
+             * primero debe anularse el recibo.
+             */
+            if (
+                $pago->recibos()
+                    ->where(
+                        'estado',
+                        'EMITIDO'
+                    )
+                    ->exists()
+            ) {
+                abort(
+                    409,
+                    'No se puede anular un pago que tiene un recibo emitido. Anule primero el recibo asociado.'
+                );
+            }
+
+            $pago->update([
+                'estado' =>
+                    'ANULADO',
+
+                'id_usuario_anulacion' =>
+                    $request->user()->getKey(),
+
+                'motivo_anulacion' =>
+                    trim(
+                        $datos['motivo_anulacion']
+                    ),
+
+                'fecha_anulacion' =>
+                    now(),
+            ]);
+
+            return $pago;
+        }
+    );
+
+    $pago->load([
+        'venta.cliente',
+        'pedido.cliente',
+        'usuario',
+        'usuarioAnulacion',
+    ]);
+
+    if ($pago->id_venta !== null) {
+        $resumen = [
+            'resumen_venta' =>
+                $this->obtenerResumenVenta(
+                    $pago->id_venta
+                ),
+        ];
+    } else {
+        $resumen = [
+            'resumen_pedido' =>
+                $this->obtenerResumenPedido(
+                    $pago->id_pedido
+                ),
+        ];
+    }
+
+    return response()->json(
+        array_merge(
+            [
+                'message' =>
+                    'Pago anulado correctamente.',
+
+                'pago' =>
+                    $pago,
+            ],
+            $resumen
         )
-        ->exists()
-) {
-    abort(
-        409,
-        'No se puede anular un pago que tiene un recibo emitido. Anule primero el recibo asociado.'
     );
 }
-
-                $pago->update([
-                    'estado' =>
-                        'ANULADO',
-
-                    'id_usuario_anulacion' =>
-                        $request->user()->getKey(),
-
-                    'motivo_anulacion' =>
-                        trim(
-                            $datos[
-                                'motivo_anulacion'
-                            ]
-                        ),
-
-                    'fecha_anulacion' =>
-                        now(),
-                ]);
-
-                return $pago;
-            }
-        );
-
-        $pago->load([
-            'venta.cliente',
-            'usuario',
-            'usuarioAnulacion',
-        ]);
-
-        $resumen = $this->obtenerResumenVenta(
-            $pago->id_venta
-        );
-
-        return response()->json([
-            'message' =>
-                'Pago anulado correctamente.',
-
-            'pago' =>
-                $pago,
-
-            'resumen_venta' =>
-                $resumen,
-        ]);
-    }
 
     /*
     |--------------------------------------------------------------------------

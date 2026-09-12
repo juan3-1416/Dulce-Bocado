@@ -38,6 +38,11 @@ function MateriasPrimasPage() {
   ] = useState('g')
 
   const [
+    costoUnitario,
+    setCostoUnitario,
+  ] = useState('')
+
+  const [
     descripcion,
     setDescripcion,
   ] = useState('')
@@ -67,8 +72,7 @@ function MateriasPrimasPage() {
           })
 
         setMateriasPrimas(
-          respuesta.materias_primas ??
-            []
+          respuesta.materias_primas ?? []
         )
       } catch (errorPeticion) {
         setError(
@@ -94,6 +98,7 @@ function MateriasPrimasPage() {
     setMateriaPrimaSeleccionada(null)
     setNombre('')
     setUnidadMedida('g')
+    setCostoUnitario('')
     setDescripcion('')
     setError('')
     setMensaje('')
@@ -113,6 +118,10 @@ function MateriasPrimasPage() {
 
     setUnidadMedida(
       materiaPrima.unidad_medida ?? 'g'
+    )
+
+    setCostoUnitario(
+      materiaPrima.costo_unitario ?? ''
     )
 
     setDescripcion(
@@ -161,10 +170,16 @@ function MateriasPrimasPage() {
 
       const datos = {
         nombre,
+
         unidad_medida:
           unidadMedida,
+
+        costo_unitario:
+          Number(costoUnitario),
+
         descripcion:
           descripcion || null,
+
         estado:
           materiaPrimaSeleccionada
             ?.estado ?? true,
@@ -244,7 +259,8 @@ function MateriasPrimasPage() {
           </h1>
 
           <p className="mt-1 text-sm text-gray-600">
-            Administra los ingredientes utilizados en las recetas.
+            Administra los ingredientes utilizados
+            en las recetas y sus costos unitarios.
           </p>
         </div>
 
@@ -348,6 +364,10 @@ function MateriasPrimasPage() {
                   </th>
 
                   <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                    Costo unitario
+                  </th>
+
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-600">
                     Descripción
                   </th>
 
@@ -366,7 +386,8 @@ function MateriasPrimasPage() {
                   (materiaPrima) => (
                     <tr
                       key={
-                        materiaPrima.id_materia_prima
+                        materiaPrima
+                          .id_materia_prima
                       }
                       className="hover:bg-gray-50"
                     >
@@ -378,13 +399,29 @@ function MateriasPrimasPage() {
 
                       <td className="px-6 py-4 text-sm text-gray-700">
                         {
-                          materiaPrima.unidad_medida
+                          materiaPrima
+                            .unidad_medida
+                        }
+                      </td>
+
+                      <td className="px-6 py-4 text-sm text-gray-700">
+                        Bs{' '}
+                        {Number(
+                          materiaPrima
+                            .costo_unitario ??
+                            0
+                        ).toFixed(4)}
+                        {' / '}
+                        {
+                          materiaPrima
+                            .unidad_medida
                         }
                       </td>
 
                       <td className="px-6 py-4 text-sm text-gray-700">
                         {
-                          materiaPrima.descripcion ||
+                          materiaPrima
+                            .descripcion ||
                           '—'
                         }
                       </td>
@@ -506,6 +543,32 @@ function MateriasPrimasPage() {
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Costo unitario (Bs)
+                </label>
+
+                <input
+                  type="number"
+                  value={costoUnitario}
+                  onChange={(event) =>
+                    setCostoUnitario(
+                      event.target.value
+                    )
+                  }
+                  min="0.0001"
+                  step="0.0001"
+                  required
+                  placeholder="Ej. 0.0085"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                />
+
+                <p className="mt-1 text-xs text-gray-500">
+                  Costo correspondiente a una
+                  unidad de medida ({unidadMedida}).
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
                   Descripción
                 </label>
 
@@ -526,7 +589,7 @@ function MateriasPrimasPage() {
                   type="button"
                   onClick={cerrarModal}
                   disabled={guardando}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700"
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 disabled:opacity-50"
                 >
                   Cancelar
                 </button>

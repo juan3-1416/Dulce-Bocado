@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\Recibos\ReciboController;
 use App\Http\Controllers\Api\PagosInternet\PagoInternetController;
 use App\Http\Controllers\Api\Pedidos\PedidoController;
 use App\Http\Controllers\Api\Produccion\ProduccionController;
+use App\Http\Controllers\Api\Produccion\ConsumoProduccionController;
 Route::get('/health', function () {
     try {
         $database = DB::selectOne(
@@ -569,4 +570,23 @@ Route::prefix('produccion')
                 [ProduccionController::class, 'updateEstado']
             )->whereNumber('id');
         });
+        Route::get(
+    '/{id}/consumo',
+    [
+        ConsumoProduccionController::class,
+        'show',
+    ]
+)->middleware(
+    'permiso:produccion.registrar_consumo'
+);
+
+Route::post(
+    '/{id}/consumo',
+    [
+        ConsumoProduccionController::class,
+        'store',
+    ]
+)->middleware(
+    'permiso:produccion.registrar_consumo'
+);
     });

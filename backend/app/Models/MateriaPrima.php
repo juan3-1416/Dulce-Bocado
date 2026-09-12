@@ -21,11 +21,13 @@ class MateriaPrima extends Model
     protected $fillable = [
         'nombre',
         'unidad_medida',
+        'costo_unitario',
         'descripcion',
         'estado',
     ];
 
     protected $casts = [
+        'costo_unitario' => 'decimal:4',
         'estado' => 'boolean',
         'fecha_creacion' => 'datetime',
         'fecha_actualizacion' => 'datetime',
@@ -35,6 +37,15 @@ class MateriaPrima extends Model
     {
         return $this->hasMany(
             DetalleReceta::class,
+            'id_materia_prima',
+            'id_materia_prima'
+        );
+    }
+
+    public function consumosProduccion(): HasMany
+    {
+        return $this->hasMany(
+            ConsumoProduccion::class,
             'id_materia_prima',
             'id_materia_prima'
         );

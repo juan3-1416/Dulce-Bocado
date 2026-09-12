@@ -80,19 +80,22 @@ class MateriaPrimaController extends Controller
     ): JsonResponse {
         $datos = $request->validated();
 
-        $materiaPrima = MateriaPrima::create([
-            'nombre' =>
-                $datos['nombre'],
+$materiaPrima = MateriaPrima::create([
+    'nombre' =>
+        $datos['nombre'],
 
-            'unidad_medida' =>
-                $datos['unidad_medida'],
+    'unidad_medida' =>
+        $datos['unidad_medida'],
 
-            'descripcion' =>
-                $datos['descripcion'] ?? null,
+    'costo_unitario' =>
+        $datos['costo_unitario'],
 
-            'estado' =>
-                $datos['estado'] ?? true,
-        ]);
+    'descripcion' =>
+        $datos['descripcion'] ?? null,
+
+    'estado' =>
+        $datos['estado'] ?? true,
+]);
 
         return response()->json([
             'message' =>
@@ -118,21 +121,23 @@ class MateriaPrimaController extends Controller
 
         $datos = $request->validated();
 
-        $materiaPrima->update([
-            'nombre' =>
-                $datos['nombre'],
+$materiaPrima->update([
+    'nombre' =>
+        $datos['nombre'],
 
-            'unidad_medida' =>
-                $datos['unidad_medida'],
+    'unidad_medida' =>
+        $datos['unidad_medida'],
 
-            'descripcion' =>
-                $datos['descripcion'] ?? null,
+    'costo_unitario' =>
+        $datos['costo_unitario'],
 
-            'estado' =>
-                $datos['estado']
-                ?? $materiaPrima->estado,
-        ]);
+    'descripcion' =>
+        $datos['descripcion'] ?? null,
 
+    'estado' =>
+        $datos['estado']
+        ?? $materiaPrima->estado,
+]);
         return response()->json([
             'message' =>
                 'Materia prima actualizada correctamente.',

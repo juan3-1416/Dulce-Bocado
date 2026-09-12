@@ -24,6 +24,7 @@ class ReciboController extends Controller
         $recibos = Recibo::query()
             ->with([
                 'pago.venta.cliente',
+                'pago.pedido.cliente',
                 'usuarioEmision',
                 'usuarioAnulacion',
                 'usuarioUltimaImpresion',
@@ -108,6 +109,11 @@ class ReciboController extends Controller
                 'pago.venta.cliente',
                 'pago.venta.detalles.productoPresentacion.producto',
                 'pago.venta.detalles.productoPresentacion.presentacion',
+
+                'pago.pedido.cliente',
+                'pago.pedido.detalles.productoPresentacion.producto',
+                'pago.pedido.detalles.productoPresentacion.presentacion',
+
                 'usuarioEmision',
                 'usuarioAnulacion',
                 'usuarioUltimaImpresion',
@@ -131,10 +137,12 @@ class ReciboController extends Controller
     | Catálogo de pagos disponibles
     |--------------------------------------------------------------------------
     |
-    | Solo aparecen pagos:
-    | - REGISTRADOS
-    | - pertenecientes a ventas REGISTRADAS
-    | - sin otro recibo EMITIDO
+    | Pueden generar recibo:
+    |
+    | - Pagos REGISTRADOS.
+    | - De una venta REGISTRADA.
+    | - O de un pedido PROGRAMADO, EN_PROCESO o ENTREGADO.
+    | - Sin otro recibo EMITIDO para ese mismo pago.
     |--------------------------------------------------------------------------
     */
     public function catalogos(): JsonResponse
@@ -142,19 +150,37 @@ class ReciboController extends Controller
         $pagos = Pago::query()
             ->with([
                 'venta.cliente',
+                'pedido.cliente',
                 'pagoInternet',
             ])
             ->where(
                 'estado',
                 'REGISTRADO'
             )
-            ->whereHas(
-                'venta',
-                fn ($query) =>
-                    $query->where(
-                        'estado',
-                        'REGISTRADA'
-                    )
+            ->where(
+                function ($query) {
+                    $query
+                        ->whereHas(
+                            'venta',
+                            fn ($ventaQuery) =>
+                                $ventaQuery->where(
+                                    'estado',
+                                    'REGISTRADA'
+                                )
+                        )
+                        ->orWhereHas(
+                            'pedido',
+                            fn ($pedidoQuery) =>
+                                $pedidoQuery->whereIn(
+                                    'estado',
+                                    [
+                                        'PROGRAMADO',
+                                        'EN_PROCESO',
+                                        'ENTREGADO',
+                                    ]
+                                )
+                        );
+                }
             )
             ->whereDoesntHave(
                 'recibos',
@@ -168,19 +194,39 @@ class ReciboController extends Controller
             ->orderByDesc('id_pago')
             ->get()
             ->map(function ($pago) {
-                $venta = $pago->venta;
+                $operacion =
+                    $this->obtenerOperacionPago(
+                        $pago
+                    );
 
                 $nombreCliente =
                     $this->obtenerNombreCliente(
-                        $venta
+                        $operacion
                     );
+
+                $ciNit =
+                    $operacion &&
+                    $operacion->cliente
+                        ? $operacion->cliente->ci_nit
+                        : null;
+
+                $tipoOrigen =
+                    $pago->id_venta !== null
+                        ? 'VENTA'
+                        : 'PEDIDO';
 
                 return [
                     'id_pago' =>
                         $pago->id_pago,
 
+                    'tipo_origen' =>
+                        $tipoOrigen,
+
                     'id_venta' =>
                         $pago->id_venta,
+
+                    'id_pedido' =>
+                        $pago->id_pedido,
 
                     'monto' =>
                         $pago->monto,
@@ -198,12 +244,13 @@ class ReciboController extends Controller
                         $nombreCliente,
 
                     'ci_nit_cliente' =>
-                        $venta->cliente
-                            ? $venta->cliente->ci_nit
-                            : null,
+                        $ciNit,
 
                     'venta' =>
-                        $venta,
+                        $pago->venta,
+
+                    'pedido' =>
+                        $pago->pedido,
                 ];
             })
             ->values();
@@ -226,12 +273,13 @@ class ReciboController extends Controller
         $recibo = DB::transaction(
             function () use ($datos, $request) {
                 /*
-                 * El bloqueo del pago serializa generación
-                 * de recibos y futuras anulaciones.
+                 * Bloquear el pago para evitar generación
+                 * simultánea de recibos o anulaciones.
                  */
                 $pago = Pago::query()
                     ->with([
                         'venta.cliente',
+                        'pedido.cliente',
                     ])
                     ->lockForUpdate()
                     ->find(
@@ -245,31 +293,46 @@ class ReciboController extends Controller
                     ]);
                 }
 
-                if (
-                    $pago->estado !==
-                    'REGISTRADO'
-                ) {
+                if ($pago->estado !== 'REGISTRADO') {
                     throw ValidationException::withMessages([
                         'id_pago' =>
                             'No se puede generar un recibo para un pago anulado.',
                     ]);
                 }
 
-                if (!$pago->venta) {
+                /*
+                 * Determinar si el pago pertenece a una
+                 * venta o a un pedido.
+                 */
+                $operacion =
+                    $this->obtenerOperacionPago(
+                        $pago
+                    );
+
+                if (!$operacion) {
                     throw ValidationException::withMessages([
                         'id_pago' =>
-                            'El pago no tiene una venta válida asociada.',
+                            'El pago no tiene una operación comercial válida asociada.',
                     ]);
                 }
 
-                if (
-                    $pago->venta->estado !==
-                    'REGISTRADA'
-                ) {
-                    throw ValidationException::withMessages([
-                        'id_pago' =>
-                            'No se puede generar un recibo porque la venta se encuentra anulada.',
-                    ]);
+                /*
+                 * Validar el estado de la operación.
+                 */
+                if ($pago->id_venta !== null) {
+                    if ($operacion->estado !== 'REGISTRADA') {
+                        throw ValidationException::withMessages([
+                            'id_pago' =>
+                                'No se puede generar un recibo porque la venta se encuentra anulada.',
+                        ]);
+                    }
+                } else {
+                    if ($operacion->estado === 'CANCELADO') {
+                        throw ValidationException::withMessages([
+                            'id_pago' =>
+                                'No se puede generar un recibo porque el pedido se encuentra cancelado.',
+                        ]);
+                    }
                 }
 
                 /*
@@ -292,20 +355,22 @@ class ReciboController extends Controller
                     );
                 }
 
-                $venta = $pago->venta;
-
                 $nombreCliente =
                     $this->obtenerNombreCliente(
-                        $venta
+                        $operacion
                     );
 
                 $ciNit =
-                    $venta->cliente
-                        ? $venta->cliente->ci_nit
+                    $operacion->cliente
+                        ? $operacion->cliente->ci_nit
                         : null;
 
                 /*
-                 * Snapshot del pago y cliente.
+                 * Snapshot del pago y del cliente.
+                 *
+                 * El recibo conserva los datos históricos
+                 * aunque posteriormente cambie el cliente
+                 * o la operación comercial.
                  */
                 return Recibo::create([
                     'id_pago' =>
@@ -354,6 +419,11 @@ class ReciboController extends Controller
             'pago.venta.cliente',
             'pago.venta.detalles.productoPresentacion.producto',
             'pago.venta.detalles.productoPresentacion.presentacion',
+
+            'pago.pedido.cliente',
+            'pago.pedido.detalles.productoPresentacion.producto',
+            'pago.pedido.detalles.productoPresentacion.presentacion',
+
             'usuarioEmision',
         ]);
 
@@ -395,7 +465,7 @@ class ReciboController extends Controller
                 }
 
                 /*
-                 * Bloqueamos también el pago asociado.
+                 * Bloquear también el pago asociado.
                  */
                 Pago::query()
                     ->lockForUpdate()
@@ -403,10 +473,7 @@ class ReciboController extends Controller
                         $recibo->id_pago
                     );
 
-                if (
-                    $recibo->estado ===
-                    'ANULADO'
-                ) {
+                if ($recibo->estado === 'ANULADO') {
                     abort(
                         409,
                         'El recibo ya se encuentra anulado.'
@@ -414,8 +481,9 @@ class ReciboController extends Controller
                 }
 
                 /*
-                 * Todos los campos se actualizan juntos para
-                 * cumplir la restricción de auditoría.
+                 * Todos los campos se actualizan juntos
+                 * para satisfacer la restricción de
+                 * auditoría del recibo.
                  */
                 $recibo->update([
                     'estado' =>
@@ -441,6 +509,7 @@ class ReciboController extends Controller
 
         $recibo->load([
             'pago.venta.cliente',
+            'pago.pedido.cliente',
             'usuarioEmision',
             'usuarioAnulacion',
             'usuarioUltimaImpresion',
@@ -458,10 +527,6 @@ class ReciboController extends Controller
     /*
     |--------------------------------------------------------------------------
     | Registrar impresión / reimpresión
-    |--------------------------------------------------------------------------
-    |
-    | Cada vez que el usuario ordena imprimir desde el frontend,
-    | este endpoint registra la operación.
     |--------------------------------------------------------------------------
     */
     public function imprimir(
@@ -482,18 +547,15 @@ class ReciboController extends Controller
                 }
 
                 /*
-                 * Permitimos imprimir también un recibo ANULADO
-                 * para fines históricos.
-                 *
-                 * El frontend deberá mostrar claramente
-                 * la marca "ANULADO".
+                 * También permitimos imprimir un recibo
+                 * ANULADO para conservar el historial.
                  */
                 $nuevaCantidad =
                     $recibo->cantidad_impresiones + 1;
 
                 /*
-                 * Se actualizan los 3 campos juntos para
-                 * satisfacer chk_recibo_impresion.
+                 * Estos tres campos deben actualizarse
+                 * juntos para cumplir chk_recibo_impresion.
                  */
                 $recibo->update([
                     'cantidad_impresiones' =>
@@ -514,6 +576,11 @@ class ReciboController extends Controller
             'pago.venta.cliente',
             'pago.venta.detalles.productoPresentacion.producto',
             'pago.venta.detalles.productoPresentacion.presentacion',
+
+            'pago.pedido.cliente',
+            'pago.pedido.detalles.productoPresentacion.producto',
+            'pago.pedido.detalles.productoPresentacion.presentacion',
+
             'usuarioEmision',
             'usuarioAnulacion',
             'usuarioUltimaImpresion',
@@ -532,17 +599,51 @@ class ReciboController extends Controller
 
     /*
     |--------------------------------------------------------------------------
+    | Obtener operación asociada al pago
+    |--------------------------------------------------------------------------
+    |
+    | Un pago pertenece exclusivamente a una Venta
+    | o a un Pedido.
+    |--------------------------------------------------------------------------
+    */
+    private function obtenerOperacionPago(
+        Pago $pago
+    ) {
+        if ($pago->id_venta !== null) {
+            return $pago->venta;
+        }
+
+        if ($pago->id_pedido !== null) {
+            return $pago->pedido;
+        }
+
+        return null;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
     | Obtener nombre del cliente
+    |--------------------------------------------------------------------------
+    |
+    | Funciona tanto para Venta como para Pedido,
+    | ya que ambas operaciones manejan:
+    |
+    | - cliente registrado
+    | - nombre_cliente_ocasional
     |--------------------------------------------------------------------------
     */
     private function obtenerNombreCliente(
-        $venta
+        $operacion
     ): string {
-        if ($venta->cliente) {
+        if (!$operacion) {
+            return 'Cliente no identificado';
+        }
+
+        if ($operacion->cliente) {
             $nombre = trim(
-                ($venta->cliente->nombre ?? '') .
+                ($operacion->cliente->nombre ?? '') .
                 ' ' .
-                ($venta->cliente->apellido ?? '')
+                ($operacion->cliente->apellido ?? '')
             );
 
             if ($nombre !== '') {
@@ -552,7 +653,8 @@ class ReciboController extends Controller
 
         $ocasional = trim(
             (string) (
-                $venta->nombre_cliente_ocasional ??
+                $operacion
+                    ->nombre_cliente_ocasional ??
                 ''
             )
         );
