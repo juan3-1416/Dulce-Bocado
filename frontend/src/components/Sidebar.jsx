@@ -82,8 +82,8 @@ const SECCIONES_MENU = [
     opciones: [
       {
         nombre: 'Almacenes y Stock',
-        ruta: '/inventario/almacenes',
-        permiso: 'inventario.gestionar_almacenes',
+        ruta: '/almacenes',
+        permiso: 'inventario.listar_almacenes',
       },
       {
         nombre: 'Ingresos',

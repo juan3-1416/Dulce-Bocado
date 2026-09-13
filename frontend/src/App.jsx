@@ -32,6 +32,9 @@ import PedidosPage from './pages/pedidos/PedidosPage.jsx'
 import ProduccionList from './pages/produccion/ProduccionList'
 import ProduccionForm from './pages/produccion/ProduccionForm'
 
+import AlmacenList from './pages/inventario/AlmacenList'
+import ExistenciaList from './pages/inventario/ExistenciaList'
+
 function App() {
   return (
     <Routes>
@@ -282,6 +285,25 @@ function App() {
             <Route
               path="produccion/consumo-desperdicio"
               element={<ProduccionList />}
+            />
+          </Route>
+
+          {/* CU18 - ALMACENES Y EXISTENCIAS */}
+
+          <Route
+            element={
+              <ProtectedRoute
+                permiso="inventario.listar_almacenes"
+              />
+            }
+          >
+            <Route
+              path="almacenes"
+              element={<AlmacenList />}
+            />
+            <Route
+              path="almacenes/:id/existencias"
+              element={<ExistenciaList />}
             />
           </Route>
         </Route>

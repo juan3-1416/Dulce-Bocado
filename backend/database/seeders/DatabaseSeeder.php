@@ -21,6 +21,8 @@ class DatabaseSeeder extends Seeder
             PedidosInicialSeeder::class,
             PedidosEstadoInicialSeeder::class,
             ProduccionSeeder::class,
+            AlmacenSeeder::class,
+            InventarioPermissionSeeder::class,
         ]);
     }
 }

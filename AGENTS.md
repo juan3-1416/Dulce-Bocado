@@ -126,8 +126,8 @@ tokens personales ni tocar su configuración sin autorización.
 | CU13 | Gestionar Recibo | ✅ COMPLETADO |
 | CU14 | Gestionar Pedido | ✅ COMPLETADO |
 | CU15 | Gestionar Estado y Entrega de Pedido | ✅ COMPLETADO |
-| CU16 | Gestionar Producción | ⏳ No iniciado |
-| CU17 | Registrar Consumo, Costo y Desperdicio | ❌ ELIMINADO |
+| CU16 | Gestionar Producción | ✅ COMPLETADO |
+| CU17 | Registrar Consumo, Costo y Desperdicio | ✅ COMPLETADO |
 | CU18 | Gestionar Almacenes y Existencias | ⏳ No iniciado |
 | CU19 | Gestionar Ingreso de Inventario | ⏳ No iniciado |
 | CU20 | Gestionar Egreso de Inventario | ⏳ No iniciado |

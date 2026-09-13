@@ -21,6 +21,8 @@ use App\Http\Controllers\Api\PagosInternet\PagoInternetController;
 use App\Http\Controllers\Api\Pedidos\PedidoController;
 use App\Http\Controllers\Api\Produccion\ProduccionController;
 use App\Http\Controllers\Api\Produccion\ConsumoProduccionController;
+use App\Http\Controllers\Api\Inventario\AlmacenController;
+
 Route::get('/health', function () {
     try {
         $database = DB::selectOne(
@@ -589,4 +591,24 @@ Route::post(
 )->middleware(
     'permiso:produccion.registrar_consumo'
 );
+    });
+
+/*
+|--------------------------------------------------------------------------
+| CU18 - Gestionar Almacenes y Existencias
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('almacenes')
+    ->middleware([
+        'auth:sanctum',
+        'permiso:inventario.listar_almacenes',
+    ])
+    ->group(function () {
+        Route::get('/', [AlmacenController::class, 'index']);
+        Route::get('/{id}', [AlmacenController::class, 'show'])->whereNumber('id');
+        
+        Route::get('/{id}/existencias', [AlmacenController::class, 'existencias'])
+            ->middleware('permiso:inventario.ver_existencias')
+            ->whereNumber('id');
     });
