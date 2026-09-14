@@ -95,11 +95,6 @@ const SECCIONES_MENU = [
         ruta: '/inventario/egresos',
         permiso: 'inventario.gestionar_egreso',
       },
-      {
-        nombre: 'Ajustes',
-        ruta: '/inventario/ajustes',
-        permiso: 'inventario.gestionar_ajuste',
-      },
     ],
   },
   {

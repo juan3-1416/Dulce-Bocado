@@ -131,7 +131,7 @@ tokens personales ni tocar su configuración sin autorización.
 | CU18 | Gestionar Almacenes y Existencias | ✅ COMPLETADO |
 | CU19 | Gestionar Ingreso de Inventario | ✅ COMPLETADO |
 | CU20 | Gestionar Egreso de Inventario | ✅ COMPLETADO |
-| CU21 | Gestionar Ajuste de Inventario | ❌ ELIMINADO |
+| CU21 | Gestionar Ajuste de Inventario | Cubierto (CU19/CU20) |
 | CU22 | Registrar Visitas | ⏳ No iniciado |
 | CU23 | Seleccionar Tema | ⏳ No iniciado |
 | CU24 | Consultar Dashboard | ⏳ No iniciado |
