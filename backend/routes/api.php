@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\Pedidos\PedidoController;
 use App\Http\Controllers\Api\Produccion\ProduccionController;
 use App\Http\Controllers\Api\Produccion\ConsumoProduccionController;
 use App\Http\Controllers\Api\Inventario\AlmacenController;
+use App\Http\Controllers\Api\Inventario\IngresoController;
 
 Route::get('/health', function () {
     try {
@@ -612,3 +613,15 @@ Route::prefix('almacenes')
             ->middleware('permiso:inventario.ver_existencias')
             ->whereNumber('id');
     });
+
+    // CU19 - INGRESOS
+    Route::prefix('ingresos')
+        ->middleware([
+            'auth:sanctum',
+            'permiso:inventario.gestionar_ingreso',
+        ])
+        ->group(function () {
+            Route::get('/', [IngresoController::class, 'index']);
+            Route::post('/', [IngresoController::class, 'store']);
+            Route::get('/{id}', [IngresoController::class, 'show'])->whereNumber('id');
+        });

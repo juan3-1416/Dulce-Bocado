@@ -128,11 +128,11 @@ tokens personales ni tocar su configuración sin autorización.
 | CU15 | Gestionar Estado y Entrega de Pedido | ✅ COMPLETADO |
 | CU16 | Gestionar Producción | ✅ COMPLETADO |
 | CU17 | Registrar Consumo, Costo y Desperdicio | ✅ COMPLETADO |
-| CU18 | Gestionar Almacenes y Existencias | ⏳ No iniciado |
-| CU19 | Gestionar Ingreso de Inventario | ⏳ No iniciado |
+| CU18 | Gestionar Almacenes y Existencias | ✅ COMPLETADO |
+| CU19 | Gestionar Ingreso de Inventario | ✅ COMPLETADO |
 | CU20 | Gestionar Egreso de Inventario | ⏳ No iniciado |
 | CU21 | Gestionar Ajuste de Inventario | ❌ ELIMINADO |
-| CU22 | Gestionar Proveedores y Compras | ❌ ELIMINADO |
+| CU22 | Gestionar Proveedores y Compras | ❌ ELIMINADO | 
 | CU23 | Gestionar Caja y Turnos | ⏳ No iniciado |
 | CU24 | Registrar Visitas | ⏳ No iniciado |
 | CU25 | Seleccionar Tema | ⏳ No iniciado |

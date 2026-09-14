@@ -34,6 +34,9 @@ import ProduccionForm from './pages/produccion/ProduccionForm'
 
 import AlmacenList from './pages/inventario/AlmacenList'
 import ExistenciaList from './pages/inventario/ExistenciaList'
+import IngresoList from './pages/inventario/IngresoList'
+import IngresoForm from './pages/inventario/IngresoForm'
+import IngresoDetail from './pages/inventario/IngresoDetail'
 
 function App() {
   return (
@@ -304,6 +307,28 @@ function App() {
             <Route
               path="almacenes/:id/existencias"
               element={<ExistenciaList />}
+            />
+          </Route>
+
+          {/* CU19 - INGRESOS DE INVENTARIO */}
+          <Route
+            element={
+              <ProtectedRoute
+                permiso="inventario.gestionar_ingreso"
+              />
+            }
+          >
+            <Route
+              path="inventario/ingresos"
+              element={<IngresoList />}
+            />
+            <Route
+              path="inventario/ingresos/crear"
+              element={<IngresoForm />}
+            />
+            <Route
+              path="inventario/ingresos/:id"
+              element={<IngresoDetail />}
             />
           </Route>
         </Route>

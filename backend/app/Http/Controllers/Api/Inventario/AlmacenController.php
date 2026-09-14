@@ -21,7 +21,7 @@ class AlmacenController extends Controller
     /**
      * Obtener el detalle de un almacén
      */
-    public function show($id): JsonResponse
+    public function show(int $id): JsonResponse
     {
         $almacen = Almacen::find($id);
 
@@ -35,7 +35,7 @@ class AlmacenController extends Controller
     /**
      * Listar las existencias de un almacén específico
      */
-    public function existencias($id): JsonResponse
+    public function existencias(int $id): JsonResponse
     {
         $almacen = Almacen::find($id);
 

@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             ProduccionSeeder::class,
             AlmacenSeeder::class,
             InventarioPermissionSeeder::class,
+            IngresoPermissionSeeder::class,
         ]);
     }
 }
