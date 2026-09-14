@@ -130,14 +130,12 @@ tokens personales ni tocar su configuración sin autorización.
 | CU17 | Registrar Consumo, Costo y Desperdicio | ✅ COMPLETADO |
 | CU18 | Gestionar Almacenes y Existencias | ✅ COMPLETADO |
 | CU19 | Gestionar Ingreso de Inventario | ✅ COMPLETADO |
-| CU20 | Gestionar Egreso de Inventario | ⏳ No iniciado |
+| CU20 | Gestionar Egreso de Inventario | ✅ COMPLETADO |
 | CU21 | Gestionar Ajuste de Inventario | ❌ ELIMINADO |
-| CU22 | Gestionar Proveedores y Compras | ❌ ELIMINADO | 
-| CU23 | Gestionar Caja y Turnos | ⏳ No iniciado |
-| CU24 | Registrar Visitas | ⏳ No iniciado |
-| CU25 | Seleccionar Tema | ⏳ No iniciado |
-| CU26 | Consultar Dashboard | ⏳ No iniciado |
-| CU27 | Generar y Enviar Reportes | ⏳ No iniciado |
+| CU22 | Registrar Visitas | ⏳ No iniciado |
+| CU23 | Seleccionar Tema | ⏳ No iniciado |
+| CU24 | Consultar Dashboard | ⏳ No iniciado |
+| CU25 | Generar y Enviar Reportes | ⏳ No iniciado |
 
 **No rehacer CU1–CU5** (cerrados). Antes de tocar CU6, revisar su
 implementación actual.

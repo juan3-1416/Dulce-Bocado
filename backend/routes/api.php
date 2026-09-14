@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\Produccion\ProduccionController;
 use App\Http\Controllers\Api\Produccion\ConsumoProduccionController;
 use App\Http\Controllers\Api\Inventario\AlmacenController;
 use App\Http\Controllers\Api\Inventario\IngresoController;
+use App\Http\Controllers\Api\Inventario\EgresoController;
 
 Route::get('/health', function () {
     try {
@@ -624,4 +625,16 @@ Route::prefix('almacenes')
             Route::get('/', [IngresoController::class, 'index']);
             Route::post('/', [IngresoController::class, 'store']);
             Route::get('/{id}', [IngresoController::class, 'show'])->whereNumber('id');
+        });
+
+    // CU20 - EGRESOS
+    Route::prefix('egresos')
+        ->middleware([
+            'auth:sanctum',
+            'permiso:inventario.gestionar_egreso',
+        ])
+        ->group(function () {
+            Route::get('/', [EgresoController::class, 'index']);
+            Route::post('/', [EgresoController::class, 'store']);
+            Route::get('/{id}', [EgresoController::class, 'show'])->whereNumber('id');
         });

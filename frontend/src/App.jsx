@@ -37,6 +37,9 @@ import ExistenciaList from './pages/inventario/ExistenciaList'
 import IngresoList from './pages/inventario/IngresoList'
 import IngresoForm from './pages/inventario/IngresoForm'
 import IngresoDetail from './pages/inventario/IngresoDetail'
+import EgresoList from './pages/inventario/EgresoList'
+import EgresoForm from './pages/inventario/EgresoForm'
+import EgresoDetail from './pages/inventario/EgresoDetail'
 
 function App() {
   return (
@@ -329,6 +332,28 @@ function App() {
             <Route
               path="inventario/ingresos/:id"
               element={<IngresoDetail />}
+            />
+          </Route>
+
+          {/* CU20 - EGRESOS DE INVENTARIO */}
+          <Route
+            element={
+              <ProtectedRoute
+                permiso="inventario.gestionar_egreso"
+              />
+            }
+          >
+            <Route
+              path="inventario/egresos"
+              element={<EgresoList />}
+            />
+            <Route
+              path="inventario/egresos/crear"
+              element={<EgresoForm />}
+            />
+            <Route
+              path="inventario/egresos/:id"
+              element={<EgresoDetail />}
             />
           </Route>
         </Route>

@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             AlmacenSeeder::class,
             InventarioPermissionSeeder::class,
             IngresoPermissionSeeder::class,
+            EgresoPermissionSeeder::class,
         ]);
     }
 }

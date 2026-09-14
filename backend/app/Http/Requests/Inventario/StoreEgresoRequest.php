@@ -3,15 +3,16 @@
 namespace App\Http\Requests\Inventario;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
-class StoreIngresoRequest extends FormRequest
+class StoreEgresoRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
      */
     public function authorize(): bool
     {
-        return true; // La autorización se maneja por middlewares y guards
+        return true;
     }
 
     /**
@@ -27,18 +28,18 @@ class StoreIngresoRequest extends FormRequest
             'detalles.*.id_almacen' => ['required', 'integer', 'exists:almacen,id_almacen'],
             'detalles.*.id_materia_prima' => ['nullable', 'integer', 'exists:materia_prima,id_materia_prima'],
             'detalles.*.id_producto_presentacion' => ['nullable', 'integer', 'exists:producto_presentacion,id_producto_presentacion'],
-            'detalles.*.cantidad' => ['required', 'numeric', 'min:0.01'],
+            'detalles.*.cantidad' => ['required', 'numeric', 'min:0.001'],
         ];
     }
-    
-    public function withValidator(\Illuminate\Validation\Validator $validator)
+
+    public function withValidator(Validator $validator): void
     {
-        $validator->after(function (\Illuminate\Validation\Validator $validator) {
+        $validator->after(function (Validator $validator) {
             $detalles = $this->input('detalles', []);
             foreach ($detalles as $index => $detalle) {
                 $tieneMateriaPrima = !empty($detalle['id_materia_prima']);
                 $tieneProducto = !empty($detalle['id_producto_presentacion']);
-                
+
                 if (!$tieneMateriaPrima && !$tieneProducto) {
                     $validator->errors()->add("detalles.{$index}", 'Cada detalle debe tener al menos una Materia Prima o Producto Presentación.');
                 }
@@ -52,10 +53,10 @@ class StoreIngresoRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'glosa.required' => 'La glosa o motivo es obligatoria.',
-            'detalles.required' => 'Debe agregar al menos un ítem al ingreso.',
-            'detalles.min' => 'El ingreso debe tener al menos un detalle.',
-            'detalles.*.id_almacen.required' => 'El almacén de destino es obligatorio para cada ítem.',
+            'glosa.required' => 'La glosa o motivo del egreso es obligatoria.',
+            'detalles.required' => 'Debe agregar al menos un ítem al egreso.',
+            'detalles.min' => 'El egreso debe tener al menos un detalle.',
+            'detalles.*.id_almacen.required' => 'El almacén de origen es obligatorio para cada ítem.',
             'detalles.*.id_almacen.exists' => 'El almacén seleccionado no es válido.',
             'detalles.*.cantidad.required' => 'La cantidad es obligatoria.',
             'detalles.*.cantidad.min' => 'La cantidad debe ser mayor a 0.',
