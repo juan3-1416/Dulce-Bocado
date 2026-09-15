@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Sidebar from '../components/Sidebar'
+import Footer from '../components/Footer'
 
 function MainLayout() {
   const { usuario, logout } = useAuth()
@@ -26,7 +27,7 @@ function MainLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen flex flex-col bg-slate-100">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div>
@@ -73,13 +74,15 @@ function MainLayout() {
         </div>
       )}
 
-      <div className="mx-auto grid max-w-7xl gap-6 p-6 lg:grid-cols-[240px_1fr]">
+      <div className="mx-auto flex-1 w-full grid max-w-7xl gap-6 p-6 lg:grid-cols-[240px_1fr]">
         <Sidebar />
 
         <section>
           <Outlet />
         </section>
       </div>
+
+      <Footer />
     </div>
   )
 }

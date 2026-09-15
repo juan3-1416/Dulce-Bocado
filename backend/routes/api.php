@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\Produccion\ConsumoProduccionController;
 use App\Http\Controllers\Api\Inventario\AlmacenController;
 use App\Http\Controllers\Api\Inventario\IngresoController;
 use App\Http\Controllers\Api\Inventario\EgresoController;
+use App\Http\Controllers\Api\Visitas\VisitaController;
 
 Route::get('/health', function () {
     try {
@@ -638,3 +639,14 @@ Route::prefix('almacenes')
             Route::post('/', [EgresoController::class, 'store']);
             Route::get('/{id}', [EgresoController::class, 'show'])->whereNumber('id');
         });
+
+/*
+|--------------------------------------------------------------------------
+| CU22 - Registrar Visitas
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('visitas')->group(function () {
+    Route::get('/', [VisitaController::class, 'index']);
+    Route::post('/registrar', [VisitaController::class, 'registrar']);
+});
