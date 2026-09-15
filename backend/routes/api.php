@@ -26,6 +26,8 @@ use App\Http\Controllers\Api\Inventario\IngresoController;
 use App\Http\Controllers\Api\Inventario\EgresoController;
 use App\Http\Controllers\Api\Visitas\VisitaController;
 use App\Http\Controllers\Api\Dashboard\DashboardController;
+use App\Http\Controllers\Api\Reportes\ReporteController;
+
 
 Route::get('/health', function () {
     try {
@@ -665,4 +667,26 @@ Route::prefix('dashboard')
     ])
     ->group(function () {
         Route::get('/resumen', [DashboardController::class, 'index']);
+    });
+    /*
+|--------------------------------------------------------------------------
+| CU25 - Generar y Enviar Reportes
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('reportes')
+    ->middleware([
+        'auth:sanctum',
+        'permiso:reportes.generar',
+    ])
+    ->group(function () {
+        Route::get('/ventas', [ReporteController::class, 'ventas']);
+        Route::get('/pedidos', [ReporteController::class, 'pedidos']);
+        Route::get('/inventario', [ReporteController::class, 'inventario']);
+
+        Route::get('/{tipo}/pdf', [ReporteController::class, 'pdf'])
+            ->where('tipo', 'ventas|pedidos|inventario');
+
+        Route::post('/{tipo}/enviar', [ReporteController::class, 'enviar'])
+            ->where('tipo', 'ventas|pedidos|inventario');
     });

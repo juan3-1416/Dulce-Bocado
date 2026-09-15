@@ -8,16 +8,21 @@ use App\Models\RolPermiso;
 use App\Models\UsuarioRolPermiso;
 use Illuminate\Database\Seeder;
 
-class EgresoPermissionSeeder extends Seeder
+class ReportePermissionSeeder extends Seeder
 {
     public function run(): void
     {
         $permiso = Permiso::firstOrCreate(
-            ['nombre' => 'inventario.gestionar_egreso'],
+            ['nombre' => 'reportes.generar'],
             [
-                'descripcion' => 'Permite listar, ver y registrar nuevos egresos del inventario',
+                'descripcion' => 'Permite consultar, generar, descargar y enviar reportes del sistema',
+                'activo' => true,
             ]
         );
+
+        if (!$permiso->activo) {
+            $permiso->update(['activo' => true]);
+        }
 
         $rolAdmin = Rol::where('nombre', 'Administrador')
             ->where('activo', true)
@@ -32,10 +37,6 @@ class EgresoPermissionSeeder extends Seeder
             'permiso_id' => $permiso->id_permiso,
         ]);
 
-        /*
-         * Solo usuarios que YA tengan alguna asignación perteneciente
-         * al rol Administrador reciben este nuevo permiso.
-         */
         $usuariosAdministradores = UsuarioRolPermiso::query()
             ->whereHas('rolPermiso', function ($query) use ($rolAdmin) {
                 $query->where('rol_id', $rolAdmin->id_rol);

@@ -41,6 +41,7 @@ import EgresoList from './pages/inventario/EgresoList'
 import EgresoForm from './pages/inventario/EgresoForm'
 import EgresoDetail from './pages/inventario/EgresoDetail'
 import DashboardPage from './pages/dashboard/DashboardPage'
+import ReportesPage from './pages/reportes/ReportesPage'
 
 function App() {
   return (
@@ -371,6 +372,20 @@ function App() {
               element={<DashboardPage />}
             />
           </Route>
+          {/* CU25 - GENERAR Y ENVIAR REPORTES */}
+
+<Route
+  element={
+    <ProtectedRoute
+      permiso="reportes.generar"
+    />
+  }
+>
+  <Route
+    path="reportes"
+    element={<ReportesPage />}
+  />
+</Route>
         </Route>
       </Route>
 
