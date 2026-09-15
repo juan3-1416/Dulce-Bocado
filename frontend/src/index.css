@@ -1,13 +1,309 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   SISTEMA DE DISEÑO UNIFICADO - CU23: SELECCIONAR TEMA (COLORES SÓLIDOS)
+   3 Temas: Niños (🧸), Jóvenes (⚡), Adultos (☕)
+   Modos: Día (☀️) y Noche (🌙)
+   ========================================================================== */
+
+:root {
+  /* Radios de bordes estándar */
+  --radius-theme: 1rem;
+  --radius-theme-sm: 0.5rem;
+  --radius-theme-lg: 1.5rem;
+
+  /* Tema por defecto: JÓVENES - DÍA (Colores Sólidos) */
+  --bg-app: #f8fafc;        /* Fondo principal de la app */
+  --bg-surface: #ffffff;    /* Fondo de tarjetas, modales y cabeceras */
+  --bg-subtle: #f1f5f9;     /* Fondo sutil para inputs/filas alternas */
+  --bg-hover: #e2e8f0;      /* Hover en elementos neutros */
+  --border-color: #cbd5e1;  /* Bordes de tablas, inputs y tarjetas */
+  --border-subtle: #e2e8f0; /* Bordes suaves */
+
+  /* Tipografías y Textos */
+  --text-main: #0f172a;     /* Títulos y texto de alto contraste */
+  --text-heading: #1e293b;  /* Encabezados */
+  --text-body: #334155;     /* Texto general */
+  --text-muted: #64748b;    /* Texto secundario y etiquetas */
+  --text-subtle: #94a3b8;   /* Placeholders e iconos secundarios */
+
+  /* Acento de Marca Sólido - Jóvenes: Rosa Frambuesa Sólido */
+  --brand-50: #fff1f2;
+  --brand-100: #ffe4e6;
+  --brand-200: #fecdd3;
+  --brand-300: #fda4af;
+  --brand-400: #fb7185;
+  --brand-500: #e11d48;     /* Color primario sólido */
+  --brand-600: #be123c;     /* Hover primario sólido */
+  --brand-700: #9f1239;     /* Active primario sólido */
+  --brand-text: #ffffff;
+}
+
+/* ==========================================================================
+   TEMA 1: NIÑOS (KIDS / INFANTIL LÚDICO)
+   Colores cálidos, amigables, dulces y bordes redondeados amplios
+   ========================================================================== */
+
+/* Niños - Radios amplios */
+html[data-theme="ninos"] {
+  --radius-theme: 1.25rem;
+  --radius-theme-sm: 0.75rem;
+  --radius-theme-lg: 2rem;
+}
+
+/* Niños - Modo Día */
+html[data-theme="ninos"][data-mode="dia"],
+html[data-theme="ninos"]:not([data-mode="noche"]) {
+  --bg-app: #f0f9ff;        /* Celeste cielo suave sólido */
+  --bg-surface: #ffffff;    /* Blanco puro sólido */
+  --bg-subtle: #e0f2fe;     /* Celeste tenue sólido */
+  --bg-hover: #bae6fd;      /* Hover celeste sólido */
+  --border-color: #7dd3fc;  /* Bordes celeste lúdico sólido */
+  --border-subtle: #bae6fd;
+
+  --text-main: #0c4a6e;     /* Texto azul profundo sólido */
+  --text-heading: #075985;
+  --text-body: #0369a1;
+  --text-muted: #0284c7;
+  --text-subtle: #38bdf8;
+
+  /* Acento Sólido: Celeste Caramelo Lúdico */
+  --brand-50: #f0f9ff;
+  --brand-100: #e0f2fe;
+  --brand-200: #bae6fd;
+  --brand-300: #7dd3fc;
+  --brand-400: #38bdf8;
+  --brand-500: #0284c7;     /* Celeste brillante sólido */
+  --brand-600: #0369a1;     /* Azul vivo sólido */
+  --brand-700: #075985;
+  --brand-text: #ffffff;
+}
+
+/* Niños - Modo Noche */
+html[data-theme="ninos"][data-mode="noche"] {
+  --bg-app: #1e1b2e;        /* Violeta noche infantil profundo sólido */
+  --bg-surface: #28243d;    /* Superficie nocturna sólida */
+  --bg-subtle: #332e4d;     /* Contenedor sutil sólido */
+  --bg-hover: #3f395e;      /* Hover noche sólido */
+  --border-color: #4c4470;  /* Borde lila oscuro sólido */
+  --border-subtle: #3a3455;
+
+  --text-main: #fdf4ff;
+  --text-heading: #fae8ff;
+  --text-body: #f5d0fe;
+  --text-muted: #d8b4fe;
+  --text-subtle: #c084fc;
+
+  /* Acento Sólido Noche: Amarillo Estrella Brillante */
+  --brand-50: #332e4d;
+  --brand-100: #3f395e;
+  --brand-200: #581c87;
+  --brand-300: #7e22ce;
+  --brand-400: #eab308;
+  --brand-500: #facc15;     /* Amarillo estrella sólido */
+  --brand-600: #eab308;     /* Hover sólido */
+  --brand-700: #ca8a04;
+  --brand-text: #1e1b2e;
+}
+
+/* ==========================================================================
+   TEMA 2: JÓVENES (TEENS / DULCE BOCADO POP MODERNO)
+   Colores modernos, limpios y dinámicos
+   ========================================================================== */
+
+/* Jóvenes - Radios estándar */
+html[data-theme="jovenes"] {
+  --radius-theme: 1rem;
+  --radius-theme-sm: 0.5rem;
+  --radius-theme-lg: 1.5rem;
+}
+
+/* Jóvenes - Modo Día */
+html[data-theme="jovenes"][data-mode="dia"],
+html[data-theme="jovenes"]:not([data-mode="noche"]) {
+  --bg-app: #f8fafc;        /* Slate claro sólido */
+  --bg-surface: #ffffff;    /* Blanco sólido */
+  --bg-subtle: #f1f5f9;     /* Slate tenue sólido */
+  --bg-hover: #e2e8f0;      /* Hover sólido */
+  --border-color: #cbd5e1;  /* Borde sólido */
+  --border-subtle: #e2e8f0;
+
+  --text-main: #0f172a;
+  --text-heading: #1e293b;
+  --text-body: #334155;
+  --text-muted: #64748b;
+  --text-subtle: #94a3b8;
+
+  /* Acento Sólido: Rosa Frambuesa Moderno */
+  --brand-50: #fff1f2;
+  --brand-100: #ffe4e6;
+  --brand-200: #fecdd3;
+  --brand-300: #fda4af;
+  --brand-400: #fb7185;
+  --brand-500: #e11d48;     /* Rosa frambuesa sólido */
+  --brand-600: #be123c;     /* Hover frambuesa sólido */
+  --brand-700: #9f1239;
+  --brand-text: #ffffff;
+}
+
+/* Jóvenes - Modo Noche */
+html[data-theme="jovenes"][data-mode="noche"] {
+  --bg-app: #0f172a;        /* Slate 900 sólido */
+  --bg-surface: #1e293b;    /* Slate 800 sólido */
+  --bg-subtle: #334155;     /* Slate 700 sólido */
+  --bg-hover: #475569;      /* Hover slate sólido */
+  --border-color: #334155;  /* Borde slate 700 sólido */
+  --border-subtle: #1e293b;
+
+  --text-main: #f8fafc;
+  --text-heading: #f1f5f9;
+  --text-body: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-subtle: #64748b;
+
+  /* Acento Sólido Noche: Rosa Fucsia Luminoso */
+  --brand-50: #1e293b;
+  --brand-100: #334155;
+  --brand-200: #4c0519;
+  --brand-300: #831843;
+  --brand-400: #be123c;
+  --brand-500: #f43f5e;     /* Rosa fucsia sólido */
+  --brand-600: #e11d48;     /* Hover fucsia sólido */
+  --brand-700: #be123c;
+  --brand-text: #ffffff;
+}
+
+/* ==========================================================================
+   TEMA 3: ADULTOS (ADULTS / GOURMET & ELEGANTE)
+   Paleta sobria de repostería fina: Chocolate Moka, Champagne Dorado y Carbón
+   ========================================================================== */
+
+/* Adultos - Radios refinados */
+html[data-theme="adultos"] {
+  --radius-theme: 0.75rem;
+  --radius-theme-sm: 0.375rem;
+  --radius-theme-lg: 1rem;
+}
+
+/* Adultos - Modo Día */
+html[data-theme="adultos"][data-mode="dia"],
+html[data-theme="adultos"]:not([data-mode="noche"]) {
+  --bg-app: #f7f5f2;        /* Arena/Lino suave sólido */
+  --bg-surface: #ffffff;    /* Marfil/Blanco sólido */
+  --bg-subtle: #eee9e0;     /* Arena tenue sólido */
+  --bg-hover: #e3dcd1;      /* Hover arena sólido */
+  --border-color: #d6ccbe;  /* Borde café suave sólido */
+  --border-subtle: #eee9e0;
+
+  --text-main: #231e1a;     /* Café carbón sólido */
+  --text-heading: #362e28;
+  --text-body: #50443b;
+  --text-muted: #79685b;
+  --text-subtle: #a39385;
+
+  /* Acento Sólido: Chocolate Moka Gourmet */
+  --brand-50: #fbf8f5;
+  --brand-100: #f4ece2;
+  --brand-200: #e6d7c3;
+  --brand-300: #cbb296;
+  --brand-400: #a38261;
+  --brand-500: #7c4d2d;     /* Chocolate moka sólido */
+  --brand-600: #623a1f;     /* Chocolate oscuro sólido */
+  --brand-700: #492812;
+  --brand-text: #ffffff;
+}
+
+/* Adultos - Modo Noche */
+html[data-theme="adultos"][data-mode="noche"] {
+  --bg-app: #181513;        /* Dark Roast / Café tostado oscuro sólido */
+  --bg-surface: #24201c;    /* Chocolate oscuro sólido */
+  --bg-subtle: #302b26;     /* Panel sutil oscuro sólido */
+  --bg-hover: #3d3731;      /* Hover café oscuro sólido */
+  --border-color: #3e3730;  /* Borde chocolate noche sólido */
+  --border-subtle: #2d2722;
+
+  --text-main: #f7f3ee;
+  --text-heading: #eee7df;
+  --text-body: #ded5cb;
+  --text-muted: #aba094;
+  --text-subtle: #7a7065;
+
+  /* Acento Sólido Noche: Champagne Dorado / Caramelo Fino */
+  --brand-50: #24201c;
+  --brand-100: #302b26;
+  --brand-200: #4a3422;
+  --brand-300: #6b4c2e;
+  --brand-400: #9e7347;
+  --brand-500: #c28d58;     /* Champagne dorado sólido */
+  --brand-600: #a8723d;     /* Dorado tostado sólido */
+  --brand-700: #8c5a2b;
+  --brand-text: #181513;
+}
+
+/* ==========================================================================
+   MAPEO SEMÁNTICO TAILWIND CSS v4
+   Reasigna tokens de color estándar a las variables dinámicas del tema activo
+   ========================================================================== */
+
+@theme {
+  --color-pink-50: var(--brand-50);
+  --color-pink-100: var(--brand-100);
+  --color-pink-200: var(--brand-200);
+  --color-pink-300: var(--brand-300);
+  --color-pink-400: var(--brand-400);
+  --color-pink-500: var(--brand-500);
+  --color-pink-600: var(--brand-500);
+  --color-pink-700: var(--brand-600);
+  --color-pink-800: var(--brand-700);
+
+  --color-slate-50: var(--bg-subtle);
+  --color-slate-100: var(--bg-app);
+  --color-slate-200: var(--border-subtle);
+  --color-slate-300: var(--border-color);
+  --color-slate-400: var(--text-subtle);
+  --color-slate-500: var(--text-muted);
+  --color-slate-600: var(--text-muted);
+  --color-slate-700: var(--text-body);
+  --color-slate-800: var(--text-heading);
+  --color-slate-900: var(--text-main);
+
+  --color-white: var(--bg-surface);
+}
+
+/* ==========================================================================
+   ESTILOS GLOBALES Y TRANSICIONES
+   ========================================================================== */
+
 html,
 body,
 #root {
   min-height: 100%;
+  background-color: var(--bg-app);
+  color: var(--text-body);
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Transición suave para cambios de tema en componentes */
+header,
+aside,
+footer,
+main,
+section,
+div,
+input,
+select,
+textarea,
+button,
+table,
+tr,
+th,
+td {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }

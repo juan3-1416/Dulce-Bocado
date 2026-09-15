@@ -3,6 +3,7 @@ import { Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Sidebar from '../components/Sidebar'
 import Footer from '../components/Footer'
+import ThemeSelector from '../components/ThemeSelector'
 
 function MainLayout() {
   const { usuario, logout } = useAuth()
@@ -30,17 +31,22 @@ function MainLayout() {
     <div className="min-h-screen flex flex-col bg-slate-100">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div>
-            <p className="text-lg font-bold text-pink-600">
-              Dulce Bocado
-            </p>
-            <p className="text-xs text-slate-500">
-              Sistema de Gestión
-            </p>
+          <div className="flex items-center gap-3">
+            <div>
+              <p className="text-lg font-bold text-pink-600">
+                Dulce Bocado
+              </p>
+              <p className="text-xs text-slate-500">
+                Sistema de Gestión
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="hidden text-right sm:block">
+          <div className="flex items-center gap-3 sm:gap-4">
+            {/* Selector de Tema y Modo (CU23) */}
+            <ThemeSelector />
+
+            <div className="hidden text-right sm:block pl-2 border-l border-slate-200">
               <p className="text-sm font-semibold text-slate-800">
                 {usuario?.nombre ?? 'Usuario'}
               </p>
@@ -56,7 +62,7 @@ function MainLayout() {
               type="button"
               onClick={manejarLogout}
               disabled={cerrandoSesion}
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              className="rounded-lg border border-slate-300 px-3 py-2 text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60 transition"
             >
               {cerrandoSesion
                 ? 'Cerrando...'
@@ -74,10 +80,10 @@ function MainLayout() {
         </div>
       )}
 
-      <div className="mx-auto flex-1 w-full grid max-w-7xl gap-6 p-6 lg:grid-cols-[240px_1fr]">
+      <div className="mx-auto flex-1 w-full grid max-w-7xl gap-6 p-6 lg:grid-cols-[260px_1fr]">
         <Sidebar />
 
-        <section>
+        <section className="min-w-0">
           <Outlet />
         </section>
       </div>

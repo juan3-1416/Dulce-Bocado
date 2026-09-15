@@ -133,7 +133,7 @@ tokens personales ni tocar su configuración sin autorización.
 | CU20 | Gestionar Egreso de Inventario | ✅ COMPLETADO |
 | CU21 | Gestionar Ajuste de Inventario | Cubierto (CU19/CU20) |
 | CU22 | Registrar Visitas | ✅ COMPLETADO |
-| CU23 | Seleccionar Tema | ⏳ No iniciado |
+| CU23 | Seleccionar Tema | ✅ COMPLETADO |
 | CU24 | Consultar Dashboard | ⏳ No iniciado |
 | CU25 | Generar y Enviar Reportes | ⏳ No iniciado |
 

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Footer from '../components/Footer'
+import ThemeSelector from '../components/ThemeSelector'
 
 function LoginPage() {
   const {
@@ -84,6 +85,15 @@ function LoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-100">
+      {/* Barra superior con selector de tema */}
+      <header className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white">
+        <div>
+          <p className="text-base font-bold text-pink-600">Dulce Bocado</p>
+          <p className="text-xs text-slate-500">Sistema de Gestión</p>
+        </div>
+        <ThemeSelector />
+      </header>
+
       <main className="flex flex-1 items-center justify-center p-6">
         <section className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
           <div className="text-center">
@@ -124,7 +134,7 @@ function LoginPage() {
                 maxLength={80}
                 required
                 disabled={cargando}
-                className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100 transition"
               />
             </div>
 
@@ -146,7 +156,7 @@ function LoginPage() {
                 autoComplete="current-password"
                 required
                 disabled={cargando}
-                className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-100 transition"
               />
             </div>
 
@@ -159,7 +169,7 @@ function LoginPage() {
             <button
               type="submit"
               disabled={cargando}
-              className="w-full rounded-xl bg-pink-600 px-4 py-3 font-semibold text-white hover:bg-pink-700 disabled:opacity-60"
+              className="w-full rounded-xl bg-pink-600 px-4 py-3 font-semibold text-white hover:bg-pink-700 disabled:opacity-60 transition"
             >
               {cargando
                 ? 'Ingresando...'
