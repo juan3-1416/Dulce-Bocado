@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\Inventario\AlmacenController;
 use App\Http\Controllers\Api\Inventario\IngresoController;
 use App\Http\Controllers\Api\Inventario\EgresoController;
 use App\Http\Controllers\Api\Visitas\VisitaController;
+use App\Http\Controllers\Api\Dashboard\DashboardController;
 
 Route::get('/health', function () {
     try {
@@ -650,3 +651,18 @@ Route::prefix('visitas')->group(function () {
     Route::get('/', [VisitaController::class, 'index']);
     Route::post('/registrar', [VisitaController::class, 'registrar']);
 });
+
+/*
+|--------------------------------------------------------------------------
+| CU24 - Consultar Dashboard
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('dashboard')
+    ->middleware([
+        'auth:sanctum',
+        'permiso:dashboard.consultar',
+    ])
+    ->group(function () {
+        Route::get('/resumen', [DashboardController::class, 'index']);
+    });

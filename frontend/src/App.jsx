@@ -40,6 +40,7 @@ import IngresoDetail from './pages/inventario/IngresoDetail'
 import EgresoList from './pages/inventario/EgresoList'
 import EgresoForm from './pages/inventario/EgresoForm'
 import EgresoDetail from './pages/inventario/EgresoDetail'
+import DashboardPage from './pages/dashboard/DashboardPage'
 
 function App() {
   return (
@@ -354,6 +355,20 @@ function App() {
             <Route
               path="inventario/egresos/:id"
               element={<EgresoDetail />}
+            />
+          </Route>
+
+          {/* CU24 - CONSULTAR DASHBOARD */}
+          <Route
+            element={
+              <ProtectedRoute
+                permiso="dashboard.consultar"
+              />
+            }
+          >
+            <Route
+              path="dashboard"
+              element={<DashboardPage />}
             />
           </Route>
         </Route>

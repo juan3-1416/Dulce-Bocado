@@ -134,7 +134,7 @@ tokens personales ni tocar su configuración sin autorización.
 | CU21 | Gestionar Ajuste de Inventario | Cubierto (CU19/CU20) |
 | CU22 | Registrar Visitas | ✅ COMPLETADO |
 | CU23 | Seleccionar Tema | ✅ COMPLETADO |
-| CU24 | Consultar Dashboard | ⏳ No iniciado |
+| CU24 | Consultar Dashboard | ✅ COMPLETADO |
 | CU25 | Generar y Enviar Reportes | ⏳ No iniciado |
 
 **No rehacer CU1–CU5** (cerrados). Antes de tocar CU6, revisar su
