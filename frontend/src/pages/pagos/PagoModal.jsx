@@ -15,6 +15,7 @@ function PagoModal({
   ventas = [],
   pedidos = [],
   metodosPago,
+  pedidoSeleccionadoInicial = null,
 }) {
   const [tipoCobro, setTipoCobro] = useState('venta') // 'venta' o 'pedido'
 
@@ -52,9 +53,6 @@ function PagoModal({
       return
     }
 
-    setIdVenta('')
-    setIdPedido('')
-    setMonto('')
     setMetodoPago(
       metodosPago?.[0] ||
         'EFECTIVO'
@@ -62,15 +60,23 @@ function PagoModal({
     setReferencia('')
     setObservaciones('')
     setError('')
-    
-    // Auto-select type based on what is available
-    if (pedidos.length > 0 && ventas.length === 0) {
+
+    if (pedidoSeleccionadoInicial) {
       setTipoCobro('pedido')
-    } else if (ventas.length > 0 && pedidos.length === 0) {
-      setTipoCobro('venta')
+      setIdPedido(String(pedidoSeleccionadoInicial.id_pedido))
+      setMonto(String(pedidoSeleccionadoInicial.saldo))
+    } else {
+      setIdVenta('')
+      setIdPedido('')
+      setMonto('')
+      if (pedidos.length > 0 && ventas.length === 0) {
+        setTipoCobro('pedido')
+      } else if (ventas.length > 0 && pedidos.length === 0) {
+        setTipoCobro('venta')
+      }
     }
 
-  }, [abierto, metodosPago])
+  }, [abierto, metodosPago, pedidoSeleccionadoInicial])
 
   const ventaSeleccionada =
     useMemo(

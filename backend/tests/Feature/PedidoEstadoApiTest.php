@@ -119,6 +119,29 @@ class PedidoEstadoApiTest extends TestCase
         ]);
     }
 
+    public function test_entrega_directa_desde_programado_saldado(): void
+    {
+        $pedido = $this->crearPedido(80.00); // estado PROGRAMADO por defecto
+
+        Pago::create([
+            'id_pedido' => $pedido->id_pedido,
+            'id_usuario' => $this->admin->id_usuario,
+            'monto' => 80.00,
+            'metodo_pago' => 'EFECTIVO',
+            'estado' => 'REGISTRADO',
+            'fecha_pago' => now()
+        ]);
+
+        $this->assertEquals(0, $pedido->fresh()->saldo);
+
+        $response = $this->actingAs($this->admin, 'sanctum')->patchJson("/api/pedidos/{$pedido->id_pedido}/estado", [
+            'estado' => 'ENTREGADO'
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('pedido.estado', 'ENTREGADO');
+    }
+
     public function test_cancelacion_con_motivo(): void
     {
         $pedido = $this->crearPedido();

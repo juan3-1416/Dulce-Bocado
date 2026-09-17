@@ -110,6 +110,11 @@ function PedidosPage() {
         setCargandoPago
     ] = useState(false);
 
+    const [
+        pedidoParaPago,
+        setPedidoParaPago
+    ] = useState(null);
+
     /*
     |--------------------------------------------------------------------------
     | Cargar pedidos
@@ -405,7 +410,15 @@ function PedidosPage() {
     |--------------------------------------------------------------------------
     */
 
-    const manejarCambioEstado = async (id_pedido, nuevoEstado) => {
+    const manejarCambioEstado = async (pedido, nuevoEstado) => {
+        const id_pedido = typeof pedido === 'object' ? pedido.id_pedido : pedido;
+        const pedidoObj = typeof pedido === 'object' ? pedido : pedidos.find(p => p.id_pedido === id_pedido);
+
+        if (nuevoEstado === 'ENTREGADO' && pedidoObj && Number(pedidoObj.saldo) > 0) {
+            setError(`El pedido #${id_pedido} tiene un saldo pendiente de Bs. ${Number(pedidoObj.saldo).toFixed(2)}. Registre el pago completo antes de entregarlo.`);
+            return;
+        }
+
         try {
             setError('');
             setCargando(true);
@@ -436,12 +449,13 @@ function PedidosPage() {
     |--------------------------------------------------------------------------
     */
 
-    const abrirModalPago = async () => {
+    const abrirModalPago = async (pedido = null) => {
         try {
             setCargandoPago(true);
             setError('');
             const respuesta = await obtenerCatalogosPago();
             setMetodosPago(respuesta.metodos_pago ?? ['EFECTIVO', 'QR']);
+            setPedidoParaPago(pedido);
             setModalPagoAbierto(true);
         } catch (err) {
             setError(err.message || 'No se pudieron cargar los métodos de pago.');
@@ -840,36 +854,14 @@ function PedidosPage() {
                                                             <>
                                                                 <button
                                                                     type="button"
-                                                                    onClick={() => manejarCambioEstado(pedido.id_pedido, 'EN_PROCESO')}
+                                                                    onClick={() => manejarCambioEstado(pedido, 'EN_PROCESO')}
                                                                     className="rounded bg-yellow-50 border border-yellow-200 px-2 py-1 text-[10px] font-bold text-yellow-700 hover:bg-yellow-100 uppercase tracking-wider"
                                                                 >
                                                                     Iniciar Preparación
                                                                 </button>
                                                                 <button
                                                                     type="button"
-                                                                    onClick={() => abrirCancelarPedido(pedido)}
-                                                                    className="rounded border border-red-200 px-2 py-1 text-[10px] font-bold text-red-600 hover:bg-red-50 uppercase tracking-wider"
-                                                                >
-                                                                    Cancelar
-                                                                </button>
-                                                                {pedido.saldo > 0 && (
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={abrirModalPago}
-                                                                        disabled={cargandoPago}
-                                                                        className="rounded bg-pink-50 border border-pink-200 px-2 py-1 text-[10px] font-bold text-pink-700 hover:bg-pink-100 uppercase tracking-wider"
-                                                                    >
-                                                                        Registrar Pago
-                                                                    </button>
-                                                                )}
-                                                            </>
-                                                        )}
-
-                                                        {pedido.estado === 'EN_PROCESO' && (
-                                                            <>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => manejarCambioEstado(pedido.id_pedido, 'ENTREGADO')}
+                                                                    onClick={() => manejarCambioEstado(pedido, 'ENTREGADO')}
                                                                     className="rounded bg-green-50 border border-green-200 px-2 py-1 text-[10px] font-bold text-green-700 hover:bg-green-100 uppercase tracking-wider"
                                                                 >
                                                                     Entregar Pedido
@@ -884,7 +876,36 @@ function PedidosPage() {
                                                                 {pedido.saldo > 0 && (
                                                                     <button
                                                                         type="button"
-                                                                        onClick={abrirModalPago}
+                                                                        onClick={() => abrirModalPago(pedido)}
+                                                                        disabled={cargandoPago}
+                                                                        className="rounded bg-pink-50 border border-pink-200 px-2 py-1 text-[10px] font-bold text-pink-700 hover:bg-pink-100 uppercase tracking-wider"
+                                                                    >
+                                                                        Registrar Pago
+                                                                    </button>
+                                                                )}
+                                                            </>
+                                                        )}
+
+                                                        {pedido.estado === 'EN_PROCESO' && (
+                                                            <>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => manejarCambioEstado(pedido, 'ENTREGADO')}
+                                                                    className="rounded bg-green-50 border border-green-200 px-2 py-1 text-[10px] font-bold text-green-700 hover:bg-green-100 uppercase tracking-wider"
+                                                                >
+                                                                    Entregar Pedido
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => abrirCancelarPedido(pedido)}
+                                                                    className="rounded border border-red-200 px-2 py-1 text-[10px] font-bold text-red-600 hover:bg-red-50 uppercase tracking-wider"
+                                                                >
+                                                                    Cancelar
+                                                                </button>
+                                                                {pedido.saldo > 0 && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => abrirModalPago(pedido)}
                                                                         disabled={cargandoPago}
                                                                         className="rounded bg-pink-50 border border-pink-200 px-2 py-1 text-[10px] font-bold text-pink-700 hover:bg-pink-100 uppercase tracking-wider"
                                                                     >
@@ -974,13 +995,17 @@ function PedidosPage() {
 
             <PagoModal
                 abierto={modalPagoAbierto}
-                onCerrar={() => setModalPagoAbierto(false)}
+                onCerrar={() => {
+                    setModalPagoAbierto(false);
+                    setPedidoParaPago(null);
+                }}
                 onGuardado={async (msg) => {
                     await cargarPedidos();
                 }}
                 ventas={[]}
                 pedidos={pedidos.filter((p) => p.saldo > 0)}
                 metodosPago={metodosPago}
+                pedidoSeleccionadoInicial={pedidoParaPago}
             />
         </section>
     );

@@ -428,7 +428,7 @@ class PedidoController extends Controller
 
                 // Validar transiciones permitidas
                 if ($pedido->estado === 'PROGRAMADO') {
-                    if (!in_array($nuevoEstado, ['EN_PROCESO', 'CANCELADO'])) {
+                    if (!in_array($nuevoEstado, ['EN_PROCESO', 'ENTREGADO', 'CANCELADO'])) {
                         abort(422, 'Transición de estado no permitida desde PROGRAMADO.');
                     }
                 } elseif ($pedido->estado === 'EN_PROCESO') {
