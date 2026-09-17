@@ -15,6 +15,7 @@ function PagoModal({
   ventas = [],
   pedidos = [],
   metodosPago,
+  ventaInicialId = null,
 }) {
   const [tipoCobro, setTipoCobro] = useState('venta') // 'venta' o 'pedido'
 
@@ -47,30 +48,66 @@ function PagoModal({
   const [error, setError] =
     useState('')
 
-  useEffect(() => {
-    if (!abierto) {
-      return
-    }
+useEffect(() => {
+  if (!abierto) {
+    return
+  }
 
-    setIdVenta('')
-    setIdPedido('')
-    setMonto('')
-    setMetodoPago(
-      metodosPago?.[0] ||
-        'EFECTIVO'
+  setIdVenta('')
+  setIdPedido('')
+  setMonto('')
+  setMetodoPago(
+    metodosPago?.[0] ||
+      'EFECTIVO'
+  )
+  setReferencia('')
+  setObservaciones('')
+  setError('')
+
+  if (ventaInicialId) {
+    const ventaInicial =
+      ventas.find(
+        (venta) =>
+          Number(
+            venta.id_venta
+          ) ===
+          Number(
+            ventaInicialId
+          )
+      )
+
+    setTipoCobro('venta')
+
+    setIdVenta(
+      String(ventaInicialId)
     )
-    setReferencia('')
-    setObservaciones('')
-    setError('')
-    
-    // Auto-select type based on what is available
-    if (pedidos.length > 0 && ventas.length === 0) {
-      setTipoCobro('pedido')
-    } else if (ventas.length > 0 && pedidos.length === 0) {
-      setTipoCobro('venta')
+
+    if (ventaInicial) {
+      setMonto(
+        String(
+          ventaInicial.saldo
+        )
+      )
     }
 
-  }, [abierto, metodosPago])
+    return
+  }
+
+  if (
+    pedidos.length > 0 &&
+    ventas.length === 0
+  ) {
+    setTipoCobro('pedido')
+  } else {
+    setTipoCobro('venta')
+  }
+}, [
+  abierto,
+  metodosPago,
+  ventaInicialId,
+  ventas,
+  pedidos,
+])
 
   const ventaSeleccionada =
     useMemo(
@@ -254,11 +291,15 @@ function PagoModal({
         payload.id_pedido = Number(idPedido)
       }
 
-      await crearPago(payload)
+const respuesta =
+  await crearPago(payload)
 
-      await onGuardado(
-        'Pago registrado correctamente.'
-      )
+await onGuardado(
+  respuesta?.message ||
+    'Pago registrado correctamente.',
+  respuesta?.pago ?? null,
+  respuesta
+)
 
       onCerrar()
     } catch (errorPeticion) {

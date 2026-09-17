@@ -424,22 +424,30 @@ function VentaModal({
         ),
       }
 
-      if (esEdicion) {
-        await actualizarVenta(
-          venta.id_venta,
-          datos
-        )
+if (esEdicion) {
+  const respuesta =
+    await actualizarVenta(
+      venta.id_venta,
+      datos
+    )
 
-        await onGuardado(
-          'Venta actualizada correctamente.'
-        )
-      } else {
-        await crearVenta(datos)
+  await onGuardado(
+    respuesta?.message ||
+      'Venta actualizada correctamente.',
+    respuesta?.venta ?? null,
+    'editar'
+  )
+} else {
+  const respuesta =
+    await crearVenta(datos)
 
-        await onGuardado(
-          'Venta registrada correctamente.'
-        )
-      }
+  await onGuardado(
+    respuesta?.message ||
+      'Venta registrada correctamente.',
+    respuesta?.venta ?? null,
+    'crear'
+  )
+}
 
       onCerrar()
     } catch (errorPeticion) {
