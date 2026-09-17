@@ -1,12 +1,8 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from 'react'
-
-import {
-  crearPago,
-} from '../../services/pagoService'
+import { useEffect, useMemo, useState } from 'react'
+import { crearPago } from '../../services/pagoService'
+import PagoDocumentoSelector from './components/PagoDocumentoSelector'
+import PagoResumenDocumento from './components/PagoResumenDocumento'
+import PagoFormularioCampos from './components/PagoFormularioCampos'
 
 function PagoModal({
   abierto,
@@ -14,273 +10,131 @@ function PagoModal({
   onGuardado,
   ventas = [],
   pedidos = [],
-  metodosPago,
+  metodosPago = [],
   ventaInicialId = null,
   pedidoSeleccionadoInicial = null,
 }) {
   const [tipoCobro, setTipoCobro] = useState('venta') // 'venta' o 'pedido'
+  const [idVenta, setIdVenta] = useState('')
+  const [idPedido, setIdPedido] = useState('')
+  const [monto, setMonto] = useState('')
+  const [metodoPago, setMetodoPago] = useState('EFECTIVO')
+  const [referencia, setReferencia] = useState('')
+  const [observaciones, setObservaciones] = useState('')
+  const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState('')
 
-  const [idVenta, setIdVenta] =
-    useState('')
-  const [idPedido, setIdPedido] =
-    useState('')
+  useEffect(() => {
+    if (!abierto) return
 
-  const [monto, setMonto] =
-    useState('')
+    setIdVenta('')
+    setIdPedido('')
+    setMonto('')
+    setMetodoPago(metodosPago?.[0] || 'EFECTIVO')
+    setReferencia('')
+    setObservaciones('')
+    setError('')
 
-  const [
-    metodoPago,
-    setMetodoPago,
-  ] = useState('EFECTIVO')
+    if (pedidoSeleccionadoInicial) {
+      setTipoCobro('pedido')
+      setIdPedido(String(pedidoSeleccionadoInicial.id_pedido))
+      setMonto(String(pedidoSeleccionadoInicial.saldo))
+      return
+    }
 
-  const [
-    referencia,
-    setReferencia,
-  ] = useState('')
+    if (ventaInicialId) {
+      const ventaInicial = ventas.find(
+        (v) => Number(v.id_venta) === Number(ventaInicialId)
+      )
+      setTipoCobro('venta')
+      setIdVenta(String(ventaInicialId))
+      if (ventaInicial) {
+        setMonto(String(ventaInicial.saldo))
+      }
+      return
+    }
 
-  const [
-    observaciones,
-    setObservaciones,
-  ] = useState('')
+    if (pedidos.length > 0 && ventas.length === 0) {
+      setTipoCobro('pedido')
+    } else {
+      setTipoCobro('venta')
+    }
+  }, [abierto, metodosPago, ventaInicialId, pedidoSeleccionadoInicial, ventas, pedidos])
 
-  const [guardando, setGuardando] =
-    useState(false)
-
-  const [error, setError] =
-    useState('')
-
-useEffect(() => {
-  if (!abierto) {
-    return
-  }
-
-  setIdVenta('')
-  setIdPedido('')
-  setMonto('')
-  setMetodoPago(
-    metodosPago?.[0] ||
-      'EFECTIVO'
+  const ventaSeleccionada = useMemo(
+    () => ventas.find((v) => Number(v.id_venta) === Number(idVenta)) ?? null,
+    [ventas, idVenta]
   )
-  setReferencia('')
-  setObservaciones('')
-  setError('')
 
-  if (pedidoSeleccionadoInicial) {
-    setTipoCobro('pedido')
-    setIdPedido(String(pedidoSeleccionadoInicial.id_pedido))
-    setMonto(String(pedidoSeleccionadoInicial.saldo))
-    return
-  }
+  const pedidoSeleccionado = useMemo(
+    () => pedidos.find((p) => Number(p.id_pedido) === Number(idPedido)) ?? null,
+    [pedidos, idPedido]
+  )
 
-  if (ventaInicialId) {
-    const ventaInicial =
-      ventas.find(
-        (venta) =>
-          Number(
-            venta.id_venta
-          ) ===
-          Number(
-            ventaInicialId
-          )
-      )
+  const documentoSeleccionado = tipoCobro === 'venta' ? ventaSeleccionada : pedidoSeleccionado
 
-    setTipoCobro('venta')
-
-    setIdVenta(
-      String(ventaInicialId)
-    )
-
-    if (ventaInicial) {
-      setMonto(
-        String(
-          ventaInicial.saldo
-        )
-      )
-    }
-
-    return
-  }
-
-  if (
-    pedidos.length > 0 &&
-    ventas.length === 0
-  ) {
-    setTipoCobro('pedido')
-  } else {
-    setTipoCobro('venta')
-  }
-}, [
-  abierto,
-  metodosPago,
-  ventaInicialId,
-  pedidoSeleccionadoInicial,
-  ventas,
-  pedidos,
-])
->>>>>>> origin/dev-jp
-
-  const ventaSeleccionada =
-    useMemo(
-      () =>
-        ventas.find(
-          (venta) =>
-            Number(
-              venta.id_venta
-            ) === Number(idVenta)
-        ) ?? null,
-      [ventas, idVenta]
-    )
-
-  const pedidoSeleccionado =
-    useMemo(
-      () =>
-        pedidos.find(
-          (pedido) =>
-            Number(
-              pedido.id_pedido
-            ) === Number(idPedido)
-        ) ?? null,
-      [pedidos, idPedido]
-    )
-
-  const documentoSeleccionado = tipoCobro === 'venta' ? ventaSeleccionada : pedidoSeleccionado;
-
-  const obtenerNombreCliente = (
-    doc
-  ) => {
-    if (!doc) {
-      return ''
-    }
-
+  const obtenerNombreCliente = (doc) => {
+    if (!doc) return ''
     if (doc.cliente) {
-      return [
-        doc.cliente.nombre,
-        doc.cliente.apellido,
-      ]
-        .filter(Boolean)
-        .join(' ')
+      return [doc.cliente.nombre, doc.cliente.apellido].filter(Boolean).join(' ')
     }
-
-    return (
-      doc.nombre_cliente_ocasional ||
-      'Cliente ocasional'
-    )
+    return doc.nombre_cliente_ocasional || 'Cliente ocasional'
   }
 
-  const manejarCambioVenta = (
-    event
-  ) => {
-    const valor =
-      event.target.value
-
-    setIdVenta(valor)
+  const manejarCambioVenta = (e) => {
+    setIdVenta(e.target.value)
     setMonto('')
     setError('')
   }
 
-  const manejarCambioPedido = (
-    event
-  ) => {
-    const valor =
-      event.target.value
-
-    setIdPedido(valor)
+  const manejarCambioPedido = (e) => {
+    setIdPedido(e.target.value)
     setMonto('')
     setError('')
   }
 
   const usarSaldoCompleto = () => {
-    if (!documentoSeleccionado) {
-      return
+    if (documentoSeleccionado) {
+      setMonto(String(documentoSeleccionado.saldo))
     }
-
-    setMonto(
-      String(
-        documentoSeleccionado.saldo
-      )
-    )
   }
 
-  const obtenerMensajeError = (
-    errorPeticion
-  ) => {
-    const errores =
-      errorPeticion.data?.errors
-
+  const obtenerMensajeError = (errorPeticion) => {
+    const errores = errorPeticion.data?.errors
     if (errores) {
-      const primerError =
-        Object.values(errores)[0]
-
-      if (
-        Array.isArray(primerError)
-      ) {
-        return primerError[0]
-      }
+      const primerError = Object.values(errores)[0]
+      if (Array.isArray(primerError)) return primerError[0]
     }
-
-    return (
-      errorPeticion.message ||
-      'No se pudo registrar el pago.'
-    )
+    return errorPeticion.message || 'No se pudo registrar el pago.'
   }
 
-  const manejarSubmit = async (
-    event
-  ) => {
-    event.preventDefault()
+  const manejarSubmit = async (e) => {
+    e.preventDefault()
 
     if (tipoCobro === 'venta' && !idVenta) {
-      setError(
-        'Debe seleccionar una venta.'
-      )
+      setError('Debe seleccionar una venta.')
       return
     }
 
     if (tipoCobro === 'pedido' && !idPedido) {
-      setError(
-        'Debe seleccionar un pedido.'
-      )
+      setError('Debe seleccionar un pedido.')
       return
     }
 
-    const montoNumero =
-      Number(monto)
-
-    if (
-      !Number.isFinite(
-        montoNumero
-      ) ||
-      montoNumero <= 0
-    ) {
-      setError(
-        'El monto debe ser mayor a cero.'
-      )
+    const montoNumero = Number(monto)
+    if (!Number.isFinite(montoNumero) || montoNumero <= 0) {
+      setError('El monto debe ser mayor a cero.')
       return
     }
 
-    const saldo =
-      Number(
-        documentoSeleccionado?.saldo ??
-          0
-      )
-
+    const saldo = Number(documentoSeleccionado?.saldo ?? 0)
     if (montoNumero > saldo) {
-      setError(
-        `El monto no puede superar el saldo pendiente de Bs ${saldo.toFixed(
-          2
-        )}.`
-      )
+      setError(`El monto no puede superar el saldo pendiente de Bs ${saldo.toFixed(2)}.`)
       return
     }
 
-    if (
-      !['EFECTIVO', 'QR'].includes(
-        metodoPago
-      )
-    ) {
-      setError(
-        'Seleccione un método de pago válido.'
-      )
+    if (!['EFECTIVO', 'QR'].includes(metodoPago)) {
+      setError('Seleccione un método de pago válido.')
       return
     }
 
@@ -301,47 +155,35 @@ useEffect(() => {
         payload.id_pedido = Number(idPedido)
       }
 
-const respuesta =
-  await crearPago(payload)
+      const respuesta = await crearPago(payload)
 
-await onGuardado(
-  respuesta?.message ||
-    'Pago registrado correctamente.',
-  respuesta?.pago ?? null,
-  respuesta
-)
+      await onGuardado(
+        respuesta?.message || 'Pago registrado correctamente.',
+        respuesta?.pago ?? null,
+        respuesta
+      )
 
       onCerrar()
     } catch (errorPeticion) {
-      setError(
-        obtenerMensajeError(
-          errorPeticion
-        )
-      )
+      setError(obtenerMensajeError(errorPeticion))
     } finally {
       setGuardando(false)
     }
   }
 
-  if (!abierto) {
-    return null
-  }
+  if (!abierto) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-3xl rounded-2xl bg-white shadow-xl">
-
+        {/* Cabecera */}
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">
-              Registrar Pago
-            </h2>
-
+            <h2 className="text-xl font-bold text-gray-900">Registrar Pago</h2>
             <p className="mt-1 text-sm text-gray-500">
-              Registra un pago parcial o total de una venta.
+              Registra un pago parcial o total de una venta o pedido.
             </p>
           </div>
-
           <button
             type="button"
             onClick={onCerrar}
@@ -352,10 +194,8 @@ await onGuardado(
           </button>
         </div>
 
-        <form
-          onSubmit={manejarSubmit}
-          className="space-y-6 p-6"
-        >
+        {/* Formulario */}
+        <form onSubmit={manejarSubmit} className="space-y-6 p-6">
           {error && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               {error}
@@ -368,410 +208,57 @@ await onGuardado(
             </div>
           ) : (
             <>
-              {ventas.length > 0 && pedidos.length > 0 && (
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700">
-                    Aplicar cobro a:
-                  </label>
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="radio"
-                        value="venta"
-                        checked={tipoCobro === 'venta'}
-                        onChange={(e) => setTipoCobro(e.target.value)}
-                        className="text-pink-600 focus:ring-pink-500"
-                      />
-                      <span className="text-sm">Venta</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="radio"
-                        value="pedido"
-                        checked={tipoCobro === 'pedido'}
-                        onChange={(e) => setTipoCobro(e.target.value)}
-                        className="text-pink-600 focus:ring-pink-500"
-                      />
-                      <span className="text-sm">Pedido</span>
-                    </label>
-                  </div>
-                </div>
-              )}
+              <PagoDocumentoSelector
+                tipoCobro={tipoCobro}
+                setTipoCobro={setTipoCobro}
+                idVenta={idVenta}
+                idPedido={idPedido}
+                ventas={ventas}
+                pedidos={pedidos}
+                manejarCambioVenta={manejarCambioVenta}
+                manejarCambioPedido={manejarCambioPedido}
+                obtenerNombreCliente={obtenerNombreCliente}
+              />
 
-              {tipoCobro === 'venta' && (
-              <div>
-                <label
-                  htmlFor="venta_pago"
-                  className="mb-1 block text-sm font-medium text-gray-700"
-                >
-                  Venta
-                </label>
+              <PagoResumenDocumento
+                tipoCobro={tipoCobro}
+                documentoSeleccionado={documentoSeleccionado}
+              />
 
-                <select
-                  id="venta_pago"
-                  value={idVenta}
-                  onChange={
-                    manejarCambioVenta
-                  }
-                  required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2"
-                >
-                  <option value="">
-                    Seleccionar venta
-                  </option>
-
-                  {ventas.map(
-                    (venta) => (
-                      <option
-                        key={
-                          venta.id_venta
-                        }
-                        value={
-                          venta.id_venta
-                        }
-                      >
-                        Venta #
-                        {
-                          venta.id_venta
-                        }
-                        {' — '}
-                        {
-                          obtenerNombreCliente(
-                            venta
-                          )
-                        }
-                        {' — Saldo Bs '}
-                        {Number(
-                          venta.saldo
-                        ).toFixed(2)}
-                      </option>
-                    )
-                  )}
-                </select>
-              </div>
-              )}
-
-              {tipoCobro === 'pedido' && (
-              <div>
-                <label
-                  htmlFor="pedido_pago"
-                  className="mb-1 block text-sm font-medium text-gray-700"
-                >
-                  Pedido
-                </label>
-
-                <select
-                  id="pedido_pago"
-                  value={idPedido}
-                  onChange={
-                    manejarCambioPedido
-                  }
-                  required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2"
-                >
-                  <option value="">
-                    Seleccionar pedido
-                  </option>
-
-                  {pedidos.map(
-                    (pedido) => (
-                      <option
-                        key={
-                          pedido.id_pedido
-                        }
-                        value={
-                          pedido.id_pedido
-                        }
-                      >
-                        Pedido #
-                        {
-                          pedido.id_pedido
-                        }
-                        {' — '}
-                        {
-                          obtenerNombreCliente(
-                            pedido
-                          )
-                        }
-                        {' — Saldo Bs '}
-                        {Number(
-                          pedido.saldo
-                        ).toFixed(2)}
-                      </option>
-                    )
-                  )}
-                </select>
-              </div>
-              )}
-
-              {documentoSeleccionado && (
-                <div className="grid gap-4 rounded-xl border border-gray-200 bg-gray-50 p-4 sm:grid-cols-4">
-
-                  <div>
-                    <p className="text-xs font-medium uppercase text-gray-500">
-                      {tipoCobro === 'venta' ? 'Venta' : 'Pedido'}
-                    </p>
-
-                    <p className="mt-1 font-bold text-gray-900">
-                      #
-                      {
-                        tipoCobro === 'venta' ? documentoSeleccionado.id_venta : documentoSeleccionado.id_pedido
-                      }
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-medium uppercase text-gray-500">
-                      Total
-                    </p>
-
-                    <p className="mt-1 font-bold text-gray-900">
-                      Bs{' '}
-                      {Number(
-                        documentoSeleccionado.total
-                      ).toFixed(
-                        2
-                      )}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-medium uppercase text-gray-500">
-                      Pagado
-                    </p>
-
-                    <p className="mt-1 font-bold text-gray-900">
-                      Bs{' '}
-                      {Number(
-                        documentoSeleccionado.total_pagado
-                      ).toFixed(
-                        2
-                      )}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-medium uppercase text-gray-500">
-                      Saldo
-                    </p>
-
-                    <p className="mt-1 font-bold text-pink-600">
-                      Bs{' '}
-                      {Number(
-                        documentoSeleccionado.saldo
-                      ).toFixed(
-                        2
-                      )}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              <div className="grid gap-4 md:grid-cols-2">
-
-                <div>
-                  <div className="mb-1 flex items-center justify-between">
-                    <label
-                      htmlFor="monto_pago"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      Monto
-                    </label>
-
-                    {documentoSeleccionado && (
-                      <button
-                        type="button"
-                        onClick={
-                          usarSaldoCompleto
-                        }
-                        className="text-xs font-semibold text-pink-600 hover:text-pink-700"
-                      >
-                        Usar saldo completo
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="relative">
-                    <span className="absolute left-3 top-2.5 text-sm text-gray-500">
-                      Bs
-                    </span>
-
-                    <input
-                      id="monto_pago"
-                      type="number"
-                      min="0.01"
-                      step="0.01"
-                      max={
-                        documentoSeleccionado
-                          ? documentoSeleccionado.saldo
-                          : undefined
-                      }
-                      value={monto}
-                      onChange={(
-                        event
-                      ) =>
-                        setMonto(
-                          event.target.value
-                        )
-                      }
-                      required
-                      disabled={
-                        !documentoSeleccionado
-                      }
-                      className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 disabled:bg-gray-100"
-                    />
-                  </div>
-
-                  {documentoSeleccionado && (
-                    <p className="mt-1 text-xs text-gray-500">
-                      Máximo: Bs{' '}
-                      {Number(
-                        documentoSeleccionado.saldo
-                      ).toFixed(
-                        2
-                      )}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="metodo_pago"
-                    className="mb-1 block text-sm font-medium text-gray-700"
-                  >
-                    Método de pago
-                  </label>
-
-                  <select
-                    id="metodo_pago"
-                    value={
-                      metodoPago
-                    }
-                    onChange={(
-                      event
-                    ) => {
-                      setMetodoPago(
-                        event.target.value
-                      )
-
-                      if (
-                        event.target
-                          .value ===
-                        'EFECTIVO'
-                      ) {
-                        setReferencia(
-                          ''
-                        )
-                      }
-                    }}
-                    required
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
-                  >
-                    {metodosPago.map(
-                      (metodo) => (
-                        <option
-                          key={metodo}
-                          value={metodo}
-                        >
-                          {metodo ===
-                          'EFECTIVO'
-                            ? 'Efectivo'
-                            : metodo ===
-                                'QR'
-                              ? 'QR'
-                              : metodo}
-                        </option>
-                      )
-                    )}
-                  </select>
-                </div>
-              </div>
-
-              {metodoPago ===
-                'QR' && (
-                <div>
-                  <label
-                    htmlFor="referencia_pago"
-                    className="mb-1 block text-sm font-medium text-gray-700"
-                  >
-                    Referencia QR
-                  </label>
-
-                  <input
-                    id="referencia_pago"
-                    type="text"
-                    value={
-                      referencia
-                    }
-                    onChange={(
-                      event
-                    ) =>
-                      setReferencia(
-                        event.target.value
-                      )
-                    }
-                    maxLength={150}
-                    placeholder="Ej. QR-001245"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
-                  />
-
-                  <p className="mt-1 text-xs text-gray-500">
-                    Campo opcional para registrar una referencia del pago.
-                  </p>
-                </div>
-              )}
-
-              <div>
-                <label
-                  htmlFor="observaciones_pago"
-                  className="mb-1 block text-sm font-medium text-gray-700"
-                >
-                  Observaciones
-                </label>
-
-                <textarea
-                  id="observaciones_pago"
-                  value={
-                    observaciones
-                  }
-                  onChange={(
-                    event
-                  ) =>
-                    setObservaciones(
-                      event.target.value
-                    )
-                  }
-                  rows={3}
-                  maxLength={2000}
-                  placeholder="Observaciones adicionales..."
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2"
-                />
-              </div>
+              <PagoFormularioCampos
+                monto={monto}
+                setMonto={setMonto}
+                metodoPago={metodoPago}
+                setMetodoPago={setMetodoPago}
+                referencia={referencia}
+                setReferencia={setReferencia}
+                observaciones={observaciones}
+                setObservaciones={setObservaciones}
+                metodosPago={metodosPago}
+                documentoSeleccionado={documentoSeleccionado}
+                usarSaldoCompleto={usarSaldoCompleto}
+              />
             </>
           )}
 
+          {/* Footer de Acciones */}
           <div className="flex justify-end gap-3 border-t border-gray-200 pt-5">
-
             <button
               type="button"
               onClick={onCerrar}
               disabled={guardando}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700"
+              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
             >
               Cancelar
             </button>
-
             <button
               type="submit"
               disabled={
-                guardando ||
-                (ventas.length === 0 && pedidos.length === 0)
+                guardando || (ventas.length === 0 && pedidos.length === 0)
               }
               className="rounded-lg bg-pink-600 px-5 py-2 text-sm font-semibold text-white hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {guardando
-                ? 'Registrando...'
-                : 'Registrar Pago'}
+              {guardando ? 'Registrando...' : 'Registrar Pago'}
             </button>
           </div>
         </form>
