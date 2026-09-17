@@ -10,7 +10,17 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             SeguridadInicialSeeder::class,
+
+            // Permisos adicionales
+            InventarioPermissionSeeder::class,
+            IngresoPermissionSeeder::class,
+            EgresoPermissionSeeder::class,
+            DashboardPermissionSeeder::class,
+            ReportePermissionSeeder::class,
+
+            // Se ejecuta después para recibir todos los permisos del Administrador
             AdministradorInicialSeeder::class,
+
             ProductosInicialSeeder::class,
             ClientesInicialSeeder::class,
             RecetasInicialSeeder::class,
@@ -22,10 +32,7 @@ class DatabaseSeeder extends Seeder
             PedidosEstadoInicialSeeder::class,
             ProduccionSeeder::class,
             AlmacenSeeder::class,
-            InventarioPermissionSeeder::class,
-            IngresoPermissionSeeder::class,
-            EgresoPermissionSeeder::class,
-            DashboardPermissionSeeder::class,
+            
         ]);
     }
 }

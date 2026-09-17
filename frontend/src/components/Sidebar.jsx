@@ -82,39 +82,29 @@ function IconoReportes({ className = 'h-4 w-4' }) {
  * Estructurado según los 27 Casos de Uso (CU) oficiales del sistema.
  */
 const SECCIONES_MENU = [
-  {
-    id: 'seguridad',
-    titulo: 'Seguridad',
-    iconoComponente: IconoSeguridad,
-    iconoNinos: '🛡️',
-    opciones: [
-      {
-        nombre: 'Usuarios',
-        ruta: '/seguridad/usuarios',
-        permiso: 'seguridad.gestionar_usuario',
-      },
-      {
-        nombre: 'Roles',
-        ruta: '/seguridad/roles',
-        permiso: 'seguridad.gestionar_rol',
-      },
-      {
-        nombre: 'Permisos',
-        ruta: '/seguridad/permisos',
-        permiso: 'seguridad.gestionar_permiso',
-      },
-      {
-        nombre: 'Rol - Permiso',
-        ruta: '/seguridad/rol-permiso',
-        permiso: 'seguridad.gestionar_rol_permiso',
-      },
-      {
-        nombre: 'Asignaciones',
-        ruta: '/seguridad/asignaciones',
-        permiso: 'seguridad.asignar_roles_permisos',
-      },
-    ],
-  },
+{
+  id: 'seguridad',
+  titulo: 'Seguridad',
+  iconoComponente: IconoSeguridad,
+  iconoNinos: '🛡️',
+  opciones: [
+    {
+      nombre: 'Usuarios',
+      ruta: '/seguridad/usuarios',
+      permiso: 'seguridad.gestionar_usuario',
+    },
+    {
+      nombre: 'Asignaciones',
+      ruta: '/seguridad/asignaciones',
+      permiso: 'seguridad.asignar_roles_permisos',
+    },
+    {
+      nombre: 'Rol - Permiso',
+      ruta: '/seguridad/rol-permiso',
+      permiso: 'seguridad.gestionar_rol_permiso',
+    },
+  ],
+},
   {
     id: 'catalogo',
     titulo: 'Catálogo y Recetas',
@@ -149,11 +139,7 @@ const SECCIONES_MENU = [
         ruta: '/produccion',
         permiso: 'produccion.listar',
       },
-      {
-        nombre: 'Consumo, Costo y Desperdicio',
-        ruta: '/produccion/consumo-desperdicio',
-        permiso: 'produccion.registrar_consumo',
-      },
+
     ],
   },
   {
@@ -190,35 +176,17 @@ const SECCIONES_MENU = [
         ruta: '/ventas',
         permiso: 'ventas.gestionar_venta',
       },
-      {
-        nombre: 'Pagos',
-        ruta: '/pagos',
-        permiso: 'pagos.gestionar_pago',
-      },
+
       {
         nombre: 'Pagos por Internet',
         ruta: '/pagos-internet',
         permiso: 'pagos.gestionar_pago_internet',
       },
-      {
-        nombre: 'Recibos',
-        ruta: '/recibos',
-        permiso: 'recibos.gestionar_recibo',
-      },
-      {
-        nombre: 'Caja y Turnos',
-        ruta: '/caja',
-        permiso: 'caja.gestionar_caja',
-      },
+
       {
         nombre: 'Gestión de Pedidos',
         ruta: '/pedidos',
         permiso: 'pedidos.gestionar_pedido',
-      },
-      {
-        nombre: 'Estado y Entrega',
-        ruta: '/pedidos/entregas',
-        permiso: 'pedidos.gestionar_entrega',
       },
     ],
   },

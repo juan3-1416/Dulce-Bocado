@@ -5,12 +5,22 @@ import {
 } from 'react'
 
 import VentaModal from './VentaModal'
+import PagoModal from '../pagos/PagoModal'
+import ReciboDetalleModal from '../recibos/ReciboDetalleModal'
 
 import {
   anularVenta,
   listarVentas,
   obtenerCatalogosVenta,
 } from '../../services/ventaService'
+
+import {
+  obtenerCatalogosPago,
+} from '../../services/pagoService'
+
+import {
+  crearRecibo,
+} from '../../services/reciboService'
 
 function VentasPage() {
   const [ventas, setVentas] =
@@ -32,6 +42,34 @@ function VentasPage() {
 
   const [modalAbierto, setModalAbierto] =
     useState(false)
+
+  const [
+    modalPagoAbierto,
+    setModalPagoAbierto,
+  ] = useState(false)
+
+  const [
+    ventasParaPago,
+    setVentasParaPago,
+  ] = useState([])
+
+  const [
+    metodosPago,
+    setMetodosPago,
+  ] = useState([
+    'EFECTIVO',
+    'QR',
+  ])
+
+  const [
+    ventaPagoInicialId,
+    setVentaPagoInicialId,
+  ] = useState(null)
+
+  const [
+    reciboSeleccionado,
+    setReciboSeleccionado,
+  ] = useState(null)
 
   const [
     ventaSeleccionada,
@@ -159,6 +197,7 @@ function VentasPage() {
       setError(
         'No se puede editar una venta anulada.'
       )
+
       return
     }
 
@@ -190,13 +229,131 @@ function VentasPage() {
   }
 
   const manejarGuardado = async (
-    mensajeRespuesta
+    mensajeRespuesta,
+    ventaGuardada = null,
+    accion = 'editar'
   ) => {
     setMensaje(
       mensajeRespuesta
     )
 
     await cargarVentas()
+
+    if (
+      accion !== 'crear' ||
+      !ventaGuardada?.id_venta
+    ) {
+      return
+    }
+
+    try {
+      setError('')
+
+      const respuestaPago =
+        await obtenerCatalogosPago()
+
+      const ventasCobrables =
+        respuestaPago.ventas ?? []
+
+      const ventaNueva =
+        ventasCobrables.find(
+          (venta) =>
+            Number(
+              venta.id_venta
+            ) ===
+            Number(
+              ventaGuardada.id_venta
+            )
+        )
+
+      if (!ventaNueva) {
+        setError(
+          'La venta fue registrada correctamente, pero no se encontró disponible para procesar el pago.'
+        )
+
+        return
+      }
+
+      setVentasParaPago([
+        ventaNueva,
+      ])
+
+      setMetodosPago(
+        respuestaPago.metodos_pago ??
+          [
+            'EFECTIVO',
+            'QR',
+          ]
+      )
+
+      setVentaPagoInicialId(
+        ventaNueva.id_venta
+      )
+
+      setModalPagoAbierto(true)
+    } catch (errorPeticion) {
+      setError(
+        errorPeticion.message ||
+          'La venta fue registrada correctamente, pero no se pudo abrir el proceso de pago.'
+      )
+    }
+  }
+
+  const cerrarModalPago = () => {
+    setModalPagoAbierto(false)
+    setVentasParaPago([])
+    setVentaPagoInicialId(null)
+  }
+
+  const manejarPagoGuardado = async (
+    mensajeRespuesta,
+    pagoGuardado
+  ) => {
+    if (!pagoGuardado?.id_pago) {
+      setMensaje(
+        mensajeRespuesta
+      )
+
+      return
+    }
+
+    try {
+      setError('')
+
+      const respuestaRecibo =
+        await crearRecibo({
+          id_pago:
+            Number(
+              pagoGuardado.id_pago
+            ),
+        })
+
+      setMensaje(
+        'Venta y pago registrados correctamente. El recibo fue generado automáticamente.'
+      )
+
+      if (
+        respuestaRecibo
+          ?.recibo
+          ?.id_recibo
+      ) {
+        setReciboSeleccionado(
+          respuestaRecibo
+            .recibo
+            .id_recibo
+        )
+      }
+    } catch (errorPeticion) {
+      setMensaje(
+        'El pago fue registrado correctamente.'
+      )
+
+      setError(
+        errorPeticion.message
+          ? `El pago fue registrado, pero no se pudo generar el recibo automáticamente: ${errorPeticion.message}`
+          : 'El pago fue registrado, pero no se pudo generar el recibo automáticamente.'
+      )
+    }
   }
 
   const abrirModalAnular = (
@@ -230,6 +387,7 @@ function VentasPage() {
         setError(
           'El motivo de anulación debe tener al menos 5 caracteres.'
         )
+
         return
       }
 
@@ -605,6 +763,42 @@ function VentasPage() {
         }
         venta={
           ventaSeleccionada
+        }
+      />
+
+      <PagoModal
+        abierto={
+          modalPagoAbierto
+        }
+        onCerrar={
+          cerrarModalPago
+        }
+        onGuardado={
+          manejarPagoGuardado
+        }
+        ventas={
+          ventasParaPago
+        }
+        pedidos={[]}
+        metodosPago={
+          metodosPago
+        }
+        ventaInicialId={
+          ventaPagoInicialId
+        }
+      />
+
+      <ReciboDetalleModal
+        abierto={Boolean(
+          reciboSeleccionado
+        )}
+        reciboId={
+          reciboSeleccionado
+        }
+        onCerrar={() =>
+          setReciboSeleccionado(
+            null
+          )
         }
       />
 
