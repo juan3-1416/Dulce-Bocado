@@ -15,6 +15,19 @@ return Application::configure(basePath: dirname(__DIR__))
 ->withMiddleware(function (Middleware $middleware): void {
     $middleware->statefulApi();
 
+    /*
+     * La confirmación del QR es pública.
+     *
+     * El cliente que escanea el código no necesita
+     * iniciar sesión ni disponer de token CSRF.
+     *
+     * La operación se protege mediante el token QR
+     * temporal, único e idempotente.
+     */
+    $middleware->validateCsrfTokens(except: [
+        'api/pago-qr/*/confirmar',
+    ]);
+
     $middleware->alias([
         'permiso' => \App\Http\Middleware\VerificarPermiso::class,
     ]);

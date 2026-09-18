@@ -7,19 +7,24 @@ use Illuminate\Support\Str;
 class PasarelaPagoSimulada
 {
     public const PROVEEDOR =
-        'PASARELA_SIMULADA';
+        'QR_SIMULADO';
+
+    public const MINUTOS_VIGENCIA_QR =
+        5;
 
     /*
     |--------------------------------------------------------------------------
-    | Iniciar transacción
+    | Iniciar transacción QR
     |--------------------------------------------------------------------------
     |
-    | En una integración real este método enviaría una solicitud
-    | HTTPS al proveedor de pagos.
+    | Simula la creación de una transacción en un proveedor
+    | externo de pagos mediante QR.
     |
-    | Por ahora genera una referencia única y devuelve una
-    | respuesta simulada.
-    |--------------------------------------------------------------------------
+    | Se genera:
+    | - referencia visible de la transacción
+    | - token privado para el QR
+    | - fecha de vencimiento
+    |
     */
 
     public function iniciar(
@@ -27,11 +32,25 @@ class PasarelaPagoSimulada
         float $monto
     ): array {
         $referencia =
-            'SIM-' .
+            'QR-' .
             now()->format('YmdHis') .
             '-' .
             strtoupper(
                 Str::random(8)
+            );
+
+        /*
+         * Token utilizado únicamente por el QR.
+         *
+         * No usamos la referencia de transacción como
+         * autorización pública.
+         */
+        $tokenQr =
+            Str::random(64);
+
+        $fechaVencimiento =
+            now()->addMinutes(
+                self::MINUTOS_VIGENCIA_QR
             );
 
         return [
@@ -41,15 +60,21 @@ class PasarelaPagoSimulada
             'referencia_transaccion' =>
                 $referencia,
 
+            'token_qr' =>
+                $tokenQr,
+
+            'fecha_vencimiento' =>
+                $fechaVencimiento,
+
             'estado' =>
                 'PENDIENTE',
 
             'respuesta_proveedor' => [
                 'codigo' =>
-                    'SOLICITUD_RECIBIDA',
+                    'QR_GENERADO',
 
                 'mensaje' =>
-                    'Transacción creada correctamente en la pasarela simulada.',
+                    'Código QR generado correctamente. Esperando confirmación del pago.',
 
                 'id_venta' =>
                     $idVenta,
@@ -61,6 +86,9 @@ class PasarelaPagoSimulada
                         '.',
                         ''
                     ),
+
+                'vigencia_minutos' =>
+                    self::MINUTOS_VIGENCIA_QR,
             ],
         ];
     }
@@ -70,9 +98,12 @@ class PasarelaPagoSimulada
     | Confirmar transacción
     |--------------------------------------------------------------------------
     |
-    | Este método representa la respuesta que en producción
-    | llegaría desde el proveedor mediante API o webhook.
-    |--------------------------------------------------------------------------
+    | Se mantiene temporalmente porque la pantalla actual
+    | todavía utiliza la confirmación manual.
+    |
+    | Más adelante el escaneo del QR sustituirá el camino
+    | manual para las transacciones QR.
+    |
     */
 
     public function confirmar(

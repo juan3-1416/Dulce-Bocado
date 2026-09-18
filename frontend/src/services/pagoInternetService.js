@@ -1,10 +1,13 @@
 const API_URL = '/api/pagos-internet'
+const API_QR_URL = '/api/pago-qr'
 
 function obtenerCookie(nombre) {
   const cookies = document.cookie.split(';')
 
   for (const cookie of cookies) {
-    const [clave, ...valor] = cookie.trim().split('=')
+    const [clave, ...valor] = cookie
+      .trim()
+      .split('=')
 
     if (clave === nombre) {
       return valor.join('=')
@@ -15,7 +18,8 @@ function obtenerCookie(nombre) {
 }
 
 function obtenerTokenCsrf() {
-  const token = obtenerCookie('XSRF-TOKEN')
+  const token =
+    obtenerCookie('XSRF-TOKEN')
 
   return token
     ? decodeURIComponent(token)
@@ -41,7 +45,9 @@ async function prepararCsrf() {
   }
 }
 
-async function procesarRespuesta(response) {
+async function procesarRespuesta(
+  response
+) {
   let data = {}
 
   try {
@@ -65,10 +71,17 @@ async function procesarRespuesta(response) {
   return data
 }
 
+/*
+|--------------------------------------------------------------------------
+| Listar pagos por internet
+|--------------------------------------------------------------------------
+*/
+
 export async function listarPagosInternet(
   parametros = {}
 ) {
-  const query = new URLSearchParams()
+  const query =
+    new URLSearchParams()
 
   if (parametros.buscar) {
     query.set(
@@ -88,18 +101,31 @@ export async function listarPagosInternet(
     ? `${API_URL}?${query.toString()}`
     : API_URL
 
-  const response = await fetch(url, {
-    method: 'GET',
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-    },
-  })
+  const response = await fetch(
+    url,
+    {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json',
+      },
+    }
+  )
 
-  return procesarRespuesta(response)
+  return procesarRespuesta(
+    response
+  )
 }
 
-export async function obtenerPagoInternet(id) {
+/*
+|--------------------------------------------------------------------------
+| Consultar pago por internet
+|--------------------------------------------------------------------------
+*/
+
+export async function obtenerPagoInternet(
+  id
+) {
   const response = await fetch(
     `${API_URL}/${id}`,
     {
@@ -111,8 +137,16 @@ export async function obtenerPagoInternet(id) {
     }
   )
 
-  return procesarRespuesta(response)
+  return procesarRespuesta(
+    response
+  )
 }
+
+/*
+|--------------------------------------------------------------------------
+| Obtener catálogos
+|--------------------------------------------------------------------------
+*/
 
 export async function obtenerCatalogosPagoInternet() {
   const response = await fetch(
@@ -126,13 +160,24 @@ export async function obtenerCatalogosPagoInternet() {
     }
   )
 
-  return procesarRespuesta(response)
+  return procesarRespuesta(
+    response
+  )
 }
 
-export async function crearPagoInternet(datos) {
+/*
+|--------------------------------------------------------------------------
+| Crear transacción de pago QR
+|--------------------------------------------------------------------------
+*/
+
+export async function crearPagoInternet(
+  datos
+) {
   await prepararCsrf()
 
-  const token = obtenerTokenCsrf()
+  const token =
+    obtenerTokenCsrf()
 
   const response = await fetch(
     API_URL,
@@ -143,14 +188,31 @@ export async function crearPagoInternet(datos) {
         Accept: 'application/json',
         'Content-Type':
           'application/json; charset=utf-8',
-        'X-XSRF-TOKEN': token ?? '',
+        'X-XSRF-TOKEN':
+          token ?? '',
       },
-      body: JSON.stringify(datos),
+      body: JSON.stringify(
+        datos
+      ),
     }
   )
 
-  return procesarRespuesta(response)
+  return procesarRespuesta(
+    response
+  )
 }
+
+/*
+|--------------------------------------------------------------------------
+| Confirmación manual antigua
+|--------------------------------------------------------------------------
+|
+| Se mantiene temporalmente por compatibilidad.
+| Después podremos retirarla del frontend
+| cuando el flujo QR quede completamente validado.
+|
+|--------------------------------------------------------------------------
+*/
 
 export async function confirmarPagoInternet(
   id,
@@ -158,7 +220,8 @@ export async function confirmarPagoInternet(
 ) {
   await prepararCsrf()
 
-  const token = obtenerTokenCsrf()
+  const token =
+    obtenerTokenCsrf()
 
   const response = await fetch(
     `${API_URL}/${id}/confirmar`,
@@ -169,11 +232,79 @@ export async function confirmarPagoInternet(
         Accept: 'application/json',
         'Content-Type':
           'application/json; charset=utf-8',
-        'X-XSRF-TOKEN': token ?? '',
+        'X-XSRF-TOKEN':
+          token ?? '',
       },
-      body: JSON.stringify(datos),
+      body: JSON.stringify(
+        datos
+      ),
     }
   )
 
-  return procesarRespuesta(response)
+  return procesarRespuesta(
+    response
+  )
+}
+
+/*
+|--------------------------------------------------------------------------
+| Consultar QR público
+|--------------------------------------------------------------------------
+|
+| No requiere autenticación.
+| Se utiliza tanto desde la pantalla pública
+| del cliente como desde el polling del vendedor.
+|
+|--------------------------------------------------------------------------
+*/
+
+export async function consultarPagoQr(
+  tokenQr
+) {
+  const response = await fetch(
+    `${API_QR_URL}/${tokenQr}`,
+    {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+      },
+    }
+  )
+
+  return procesarRespuesta(
+    response
+  )
+}
+
+/*
+|--------------------------------------------------------------------------
+| Confirmar QR público
+|--------------------------------------------------------------------------
+|
+| En la simulación académica,
+| abrir y procesar el QR representa
+| la confirmación que normalmente
+| enviaría una pasarela o banco.
+|
+|--------------------------------------------------------------------------
+*/
+
+export async function confirmarPagoQr(
+  tokenQr
+) {
+  const response = await fetch(
+    `${API_QR_URL}/${tokenQr}/confirmar`,
+    {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type':
+          'application/json; charset=utf-8',
+      },
+    }
+  )
+
+  return procesarRespuesta(
+    response
+  )
 }

@@ -20,8 +20,8 @@ import {
 
 import {
   crearRecibo,
+  listarRecibos,
 } from '../../services/reciboService'
-
 function VentasPage() {
   const [ventas, setVentas] =
     useState([])
@@ -305,57 +305,138 @@ function VentasPage() {
     setVentaPagoInicialId(null)
   }
 
-  const manejarPagoGuardado = async (
-    mensajeRespuesta,
-    pagoGuardado
-  ) => {
-    if (!pagoGuardado?.id_pago) {
+const manejarPagoGuardado = async (
+  mensajeRespuesta,
+  pagoGuardado,
+  contexto = {}
+) => {
+  if (!pagoGuardado?.id_pago) {
+    setMensaje(
+      mensajeRespuesta
+    )
+
+    return
+  }
+
+  try {
+    setError('')
+
+    await cargarVentas()
+
+    /*
+     * Pago QR:
+     * el backend ya creó tanto
+     * el pago como el recibo.
+     *
+     * NO debemos crear otro recibo.
+     */
+    if (
+      contexto
+        ?.recibo_generado
+    ) {
       setMensaje(
-        mensajeRespuesta
+        'Venta y pago QR confirmados correctamente. El recibo fue generado automáticamente.'
+      )
+
+      const respuestaRecibos =
+        await listarRecibos({
+          buscar:
+            String(
+              pagoGuardado.id_pago
+            ),
+
+          estado:
+            'EMITIDO',
+        })
+
+      const recibo =
+        (
+          respuestaRecibos
+            .recibos ?? []
+        ).find(
+          (item) =>
+            Number(
+              item.id_pago
+            ) ===
+              Number(
+                pagoGuardado.id_pago
+              ) &&
+            item.estado ===
+              'EMITIDO'
+        )
+
+      if (
+        recibo
+          ?.id_recibo
+      ) {
+        setReciboSeleccionado(
+          recibo.id_recibo
+        )
+      }
+
+      return
+    }
+
+    /*
+     * Pago normal:
+     * generamos el recibo desde
+     * el frontend como ya hacía
+     * el sistema.
+     */
+    const respuestaRecibo =
+      await crearRecibo({
+        id_pago:
+          Number(
+            pagoGuardado.id_pago
+          ),
+      })
+
+    setMensaje(
+      'Venta y pago registrados correctamente. El recibo fue generado automáticamente.'
+    )
+
+    if (
+      respuestaRecibo
+        ?.recibo
+        ?.id_recibo
+    ) {
+      setReciboSeleccionado(
+        respuestaRecibo
+          .recibo
+          .id_recibo
+      )
+    }
+  } catch (
+    errorPeticion
+  ) {
+    if (
+      contexto
+        ?.recibo_generado
+    ) {
+      setMensaje(
+        'El pago QR fue confirmado y el recibo fue generado automáticamente.'
+      )
+
+      setError(
+        errorPeticion.message
+          ? `El pago fue procesado correctamente, pero no se pudo abrir automáticamente el recibo: ${errorPeticion.message}`
+          : 'El pago fue procesado correctamente, pero no se pudo abrir automáticamente el recibo.'
       )
 
       return
     }
 
-    try {
-      setError('')
+    setMensaje(
+      'El pago fue registrado correctamente.'
+    )
 
-      const respuestaRecibo =
-        await crearRecibo({
-          id_pago:
-            Number(
-              pagoGuardado.id_pago
-            ),
-        })
-
-      setMensaje(
-        'Venta y pago registrados correctamente. El recibo fue generado automáticamente.'
-      )
-
-      if (
-        respuestaRecibo
-          ?.recibo
-          ?.id_recibo
-      ) {
-        setReciboSeleccionado(
-          respuestaRecibo
-            .recibo
-            .id_recibo
-        )
-      }
-    } catch (errorPeticion) {
-      setMensaje(
-        'El pago fue registrado correctamente.'
-      )
-
-      setError(
-        errorPeticion.message
-          ? `El pago fue registrado, pero no se pudo generar el recibo automáticamente: ${errorPeticion.message}`
-          : 'El pago fue registrado, pero no se pudo generar el recibo automáticamente.'
-      )
-    }
+    setError(
+      errorPeticion.message
+        ? `El pago fue registrado, pero no se pudo generar el recibo automáticamente: ${errorPeticion.message}`
+        : 'El pago fue registrado, pero no se pudo generar el recibo automáticamente.'
+    )
   }
-
+}
   const abrirModalAnular = (
     venta
   ) => {

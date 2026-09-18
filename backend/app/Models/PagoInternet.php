@@ -30,6 +30,11 @@ class PagoInternet extends Model
         'respuesta_proveedor',
         'fecha_solicitud',
         'fecha_confirmacion',
+
+        // QR
+        'token_qr',
+        'fecha_vencimiento',
+        'fecha_escaneo',
     ];
 
     protected $casts = [
@@ -42,6 +47,12 @@ class PagoInternet extends Model
             'datetime',
 
         'fecha_confirmacion' =>
+            'datetime',
+
+        'fecha_vencimiento' =>
+            'datetime',
+
+        'fecha_escaneo' =>
             'datetime',
 
         'fecha_creacion' =>
@@ -76,5 +87,24 @@ class PagoInternet extends Model
             'id_usuario',
             'id_usuario'
         );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Helpers QR
+    |--------------------------------------------------------------------------
+    */
+
+    public function estaPendiente(): bool
+    {
+        return $this->estado === 'PENDIENTE';
+    }
+
+    public function estaVencida(): bool
+    {
+        return $this->fecha_vencimiento !== null
+            && now()->greaterThan(
+                $this->fecha_vencimiento
+            );
     }
 }

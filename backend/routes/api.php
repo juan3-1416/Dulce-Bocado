@@ -405,6 +405,35 @@ Route::prefix('pagos')
     });
     /*
 |--------------------------------------------------------------------------
+| Pago QR público - Simulación académica
+|--------------------------------------------------------------------------
+|
+| Estas rutas no requieren autenticación.
+| El token QR funciona como identificador temporal de la operación.
+|
+| No exponen las rutas administrativas del CU12.
+|
+*/
+
+Route::prefix('pago-qr')->group(function () {
+    Route::get(
+        '/{token}',
+        [PagoInternetController::class, 'consultarQr']
+    )->where(
+        'token',
+        '[A-Za-z0-9]{64}'
+    );
+
+    Route::post(
+        '/{token}/confirmar',
+        [PagoInternetController::class, 'confirmarQr']
+    )->where(
+        'token',
+        '[A-Za-z0-9]{64}'
+    );
+});
+    /*
+|--------------------------------------------------------------------------
 | CU12 - Gestionar Pago por Internet
 |--------------------------------------------------------------------------
 */

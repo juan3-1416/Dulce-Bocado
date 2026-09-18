@@ -28,6 +28,7 @@ import PagosPage from './pages/pagos/PagosPage'
 import PagosInternetPage from './pages/pagosInternet/PagosInternetPage'
 import RecibosPage from './pages/recibos/RecibosPage.jsx'
 import PedidosPage from './pages/pedidos/PedidosPage.jsx'
+import PagoQrPublicPage from './pages/pagosInternet/PagoQrPublicPage'
 
 import ProduccionList from './pages/produccion/ProduccionList'
 import ProduccionForm from './pages/produccion/ProduccionForm'
@@ -55,6 +56,10 @@ function App() {
         path="/acceso-denegado"
         element={<AccesoDenegadoPage />}
       />
+      <Route
+  path="/pago-qr/:token"
+  element={<PagoQrPublicPage />}
+/>
 
       <Route element={<ProtectedRoute />}>
         <Route element={<MainLayout />}>

@@ -187,3 +187,32 @@ export async function anularPago(
 
   return procesarRespuesta(response)
 }
+const API_QR_URL = '/api/pago-qr'
+
+export async function consultarPagoQr(tokenQr) {
+  const response = await fetch(
+    `${API_QR_URL}/${tokenQr}`,
+    {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+      },
+    }
+  )
+
+  return procesarRespuesta(response)
+}
+
+export async function confirmarPagoQr(tokenQr) {
+  const response = await fetch(
+    `${API_QR_URL}/${tokenQr}/confirmar`,
+    {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+      },
+    }
+  )
+
+  return procesarRespuesta(response)
+}

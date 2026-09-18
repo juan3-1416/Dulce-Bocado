@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Models\Recibo;
 
 class PagoInternetController extends Controller
 {
@@ -366,42 +367,55 @@ class PagoInternetController extends Controller
                         $monto
                     );
 
-                return PagoInternet::create([
-                    'id_venta' =>
-                        $venta->id_venta,
+return PagoInternet::create([
+    'id_venta' =>
+        $venta->id_venta,
 
-                    'id_pago' =>
-                        null,
+    'id_pago' =>
+        null,
 
-                    'id_usuario' =>
-                        $request->user()->getKey(),
+    'id_usuario' =>
+        $request->user()->getKey(),
 
-                    'monto' =>
-                        $monto,
+    'monto' =>
+        $monto,
 
-                    'proveedor' =>
-                        $respuesta['proveedor'],
+    'proveedor' =>
+        $respuesta['proveedor'],
 
-                    'referencia_transaccion' =>
-                        $respuesta[
-                            'referencia_transaccion'
-                        ],
+    'referencia_transaccion' =>
+        $respuesta[
+            'referencia_transaccion'
+        ],
 
-                    'estado' =>
-                        'PENDIENTE',
+    'token_qr' =>
+        $respuesta[
+            'token_qr'
+        ],
 
-                    'motivo_rechazo' =>
-                        null,
+    'estado' =>
+        'PENDIENTE',
 
-                    'respuesta_proveedor' =>
-                        $respuesta[
-                            'respuesta_proveedor'
-                        ],
+    'motivo_rechazo' =>
+        null,
 
-                    'fecha_solicitud' =>
-                        now(),
+    'respuesta_proveedor' =>
+        $respuesta[
+            'respuesta_proveedor'
+        ],
 
-                    'fecha_confirmacion' =>
+    'fecha_solicitud' =>
+        now(),
+
+    'fecha_confirmacion' =>
+        null,
+
+    'fecha_vencimiento' =>
+        $respuesta[
+            'fecha_vencimiento'
+        ],
+
+                    'fecha_escaneo' =>
                         null,
                 ]);
             }
@@ -420,7 +434,490 @@ class PagoInternetController extends Controller
                 $transaccion,
         ], 201);
     }
+public function consultarQr(
+    string $token
+): JsonResponse {
+    $transaccion = PagoInternet::query()
+        ->where('token_qr', $token)
+        ->first();
 
+    if (!$transaccion) {
+        return response()->json([
+            'message' =>
+                'El código QR no existe o no es válido.',
+        ], 404);
+    }
+
+    /*
+     * Si estaba pendiente pero ya venció,
+     * actualizamos su estado.
+     */
+    if (
+        $transaccion->estado === 'PENDIENTE'
+        && $transaccion->fecha_vencimiento !== null
+        && now()->greaterThanOrEqualTo(
+            $transaccion->fecha_vencimiento
+        )
+    ) {
+        $transaccion->update([
+            'estado' => 'VENCIDO',
+        ]);
+
+        $transaccion->refresh();
+    }
+
+    return response()->json([
+        'transaccion' => [
+            'referencia' =>
+                $transaccion->referencia_transaccion,
+
+            'monto' =>
+                $transaccion->monto,
+
+            'estado' =>
+                $transaccion->estado,
+
+            'fecha_vencimiento' =>
+                $transaccion->fecha_vencimiento,
+
+            'fecha_escaneo' =>
+                $transaccion->fecha_escaneo,
+        ],
+    ]);
+}
+public function confirmarQr(
+    string $token
+): JsonResponse {
+    $resultado = DB::transaction(
+        function () use ($token) {
+            /*
+             * Bloqueamos la transacción para impedir
+             * dos confirmaciones simultáneas.
+             */
+            $transaccion = PagoInternet::query()
+                ->lockForUpdate()
+                ->where(
+                    'token_qr',
+                    $token
+                )
+                ->first();
+
+            if (!$transaccion) {
+                return [
+                    'tipo' => 'NO_ENCONTRADA',
+                ];
+            }
+
+            /*
+             * Idempotencia:
+             * si ya fue aprobada, no creamos
+             * otro Pago ni otro Recibo.
+             */
+            if (
+                $transaccion->estado ===
+                'APROBADO'
+            ) {
+                $pago = $transaccion
+                    ->pago()
+                    ->first();
+
+                $recibo = $pago
+                    ? $pago
+                        ->recibos()
+                        ->where(
+                            'estado',
+                            'EMITIDO'
+                        )
+                        ->orderByDesc(
+                            'id_recibo'
+                        )
+                        ->first()
+                    : null;
+
+                return [
+                    'tipo' =>
+                        'YA_APROBADA',
+
+                    'transaccion' =>
+                        $transaccion,
+
+                    'pago' =>
+                        $pago,
+
+                    'recibo' =>
+                        $recibo,
+                ];
+            }
+
+            /*
+             * Estados que ya no pueden pagarse.
+             */
+            if (
+                $transaccion->estado ===
+                'VENCIDO'
+            ) {
+                return [
+                    'tipo' => 'VENCIDA',
+                    'transaccion' =>
+                        $transaccion,
+                ];
+            }
+
+            if (
+                $transaccion->estado ===
+                'RECHAZADO'
+            ) {
+                return [
+                    'tipo' => 'RECHAZADA',
+                    'transaccion' =>
+                        $transaccion,
+                ];
+            }
+
+            /*
+             * Verificar vencimiento justo
+             * en el momento del escaneo.
+             */
+            if (
+                $transaccion
+                    ->fecha_vencimiento !== null
+                && now()->greaterThanOrEqualTo(
+                    $transaccion
+                        ->fecha_vencimiento
+                )
+            ) {
+                $transaccion->update([
+                    'estado' =>
+                        'VENCIDO',
+                ]);
+
+                return [
+                    'tipo' => 'VENCIDA',
+                    'transaccion' =>
+                        $transaccion,
+                ];
+            }
+
+            /*
+             * Bloquear venta asociada.
+             */
+            $venta = Venta::query()
+                ->with('cliente')
+                ->lockForUpdate()
+                ->find(
+                    $transaccion->id_venta
+                );
+
+            if (!$venta) {
+                return [
+                    'tipo' =>
+                        'VENTA_NO_ENCONTRADA',
+                ];
+            }
+
+            if (
+                $venta->estado !==
+                'REGISTRADA'
+            ) {
+                return [
+                    'tipo' =>
+                        'VENTA_INVALIDA',
+                ];
+            }
+
+            /*
+             * Recalcular saldo en el momento
+             * exacto de la confirmación.
+             */
+            $totalPagado = round(
+                (float) $venta
+                    ->pagos()
+                    ->where(
+                        'estado',
+                        'REGISTRADO'
+                    )
+                    ->sum('monto'),
+                2
+            );
+
+            $totalVenta = round(
+                (float) $venta->total,
+                2
+            );
+
+            $saldo = round(
+                $totalVenta -
+                $totalPagado,
+                2
+            );
+
+            $monto = round(
+                (float)
+                    $transaccion->monto,
+                2
+            );
+
+            if (
+                $saldo <= 0
+                || $monto > $saldo
+            ) {
+                return [
+                    'tipo' =>
+                        'SALDO_INVALIDO',
+
+                    'saldo' =>
+                        $saldo,
+                ];
+            }
+
+            /*
+             * Crear Pago real.
+             *
+             * Usamos el usuario que inició
+             * la transacción QR, porque el
+             * cliente que escanea no está
+             * autenticado.
+             */
+            $pago = Pago::create([
+                'id_venta' =>
+                    $venta->id_venta,
+
+                'id_usuario' =>
+                    $transaccion
+                        ->id_usuario,
+
+                'monto' =>
+                    $monto,
+
+                'metodo_pago' =>
+                    'ONLINE',
+
+                'referencia' =>
+                    $transaccion
+                        ->referencia_transaccion,
+
+                'estado' =>
+                    'REGISTRADO',
+
+                'observaciones' =>
+                    'Pago QR confirmado automáticamente mediante escaneo.',
+
+                'fecha_pago' =>
+                    now(),
+            ]);
+
+            /*
+             * Obtener datos del cliente
+             * igual que CU13.
+             */
+            if ($venta->cliente) {
+                $nombreCliente = trim(
+                    ($venta->cliente
+                        ->nombre ?? '') .
+                    ' ' .
+                    ($venta->cliente
+                        ->apellido ?? '')
+                );
+
+                if (
+                    $nombreCliente === ''
+                ) {
+                    $nombreCliente =
+                        'Cliente ocasional';
+                }
+
+                $ciNit =
+                    $venta->cliente->ci_nit;
+            } else {
+                $nombreCliente = trim(
+                    (string) (
+                        $venta
+                            ->nombre_cliente_ocasional
+                        ?? ''
+                    )
+                );
+
+                if (
+                    $nombreCliente === ''
+                ) {
+                    $nombreCliente =
+                        'Cliente ocasional';
+                }
+
+                $ciNit = null;
+            }
+
+            /*
+             * Crear Recibo automáticamente.
+             */
+            $recibo = Recibo::create([
+                'id_pago' =>
+                    $pago->id_pago,
+
+                'id_usuario_emision' =>
+                    $transaccion
+                        ->id_usuario,
+
+                'nombre_cliente' =>
+                    $nombreCliente,
+
+                'ci_nit_cliente' =>
+                    $ciNit,
+
+                'monto' =>
+                    $pago->monto,
+
+                'metodo_pago' =>
+                    $pago->metodo_pago,
+
+                'referencia_pago' =>
+                    $pago->referencia,
+
+                'fecha_pago' =>
+                    $pago->fecha_pago,
+
+                'estado' =>
+                    'EMITIDO',
+
+                'fecha_emision' =>
+                    now(),
+
+                'cantidad_impresiones' =>
+                    0,
+
+                'id_usuario_ultima_impresion' =>
+                    null,
+
+                'fecha_ultima_impresion' =>
+                    null,
+            ]);
+
+            /*
+             * Solo después de crear correctamente
+             * Pago y Recibo marcamos el QR
+             * como APROBADO.
+             */
+            $transaccion->update([
+                'estado' =>
+                    'APROBADO',
+
+                'id_pago' =>
+                    $pago->id_pago,
+
+                'motivo_rechazo' =>
+                    null,
+
+                'fecha_escaneo' =>
+                    now(),
+
+                'fecha_confirmacion' =>
+                    now(),
+
+                'respuesta_proveedor' => [
+                    'codigo' =>
+                        'QR_ESCANEADO',
+
+                    'mensaje' =>
+                        'Pago confirmado mediante el escaneo del código QR.',
+                ],
+            ]);
+
+            return [
+                'tipo' =>
+                    'APROBADA',
+
+                'transaccion' =>
+                    $transaccion,
+
+                'pago' =>
+                    $pago,
+
+                'recibo' =>
+                    $recibo,
+            ];
+        }
+    );
+
+    switch ($resultado['tipo']) {
+        case 'NO_ENCONTRADA':
+            return response()->json([
+                'message' =>
+                    'El código QR no existe o no es válido.',
+            ], 404);
+
+        case 'VENCIDA':
+            return response()->json([
+                'message' =>
+                    'El código QR ha vencido.',
+                'estado' =>
+                    'VENCIDO',
+            ], 410);
+
+        case 'RECHAZADA':
+            return response()->json([
+                'message' =>
+                    'La transacción fue rechazada anteriormente.',
+            ], 409);
+
+        case 'VENTA_NO_ENCONTRADA':
+            return response()->json([
+                'message' =>
+                    'La venta asociada no existe.',
+            ], 404);
+
+        case 'VENTA_INVALIDA':
+            return response()->json([
+                'message' =>
+                    'La venta ya no se encuentra disponible para recibir pagos.',
+            ], 409);
+
+        case 'SALDO_INVALIDO':
+            return response()->json([
+                'message' =>
+                    'El saldo de la venta cambió y el QR ya no puede procesarse.',
+                'saldo' =>
+                    number_format(
+                        max(
+                            0,
+                            $resultado['saldo']
+                        ),
+                        2,
+                        '.',
+                        ''
+                    ),
+            ], 409);
+
+        case 'YA_APROBADA':
+            return response()->json([
+                'message' =>
+                    'Este pago QR ya había sido procesado.',
+
+                'estado' =>
+                    'APROBADO',
+
+                'pago' =>
+                    $resultado['pago'],
+
+                'recibo' =>
+                    $resultado['recibo'],
+            ]);
+
+        default:
+            return response()->json([
+                'message' =>
+                    'Pago QR confirmado correctamente.',
+
+                'estado' =>
+                    'APROBADO',
+
+                'pago' =>
+                    $resultado['pago'],
+
+                'recibo' =>
+                    $resultado['recibo'],
+            ]);
+    }
+}
     /*
     |--------------------------------------------------------------------------
     | Confirmar resultado del proveedor
