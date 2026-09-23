@@ -5,14 +5,12 @@ import {
   useState,
 } from 'react'
 
-import { QRCodeSVG } from 'qrcode.react'
 
 import {
   crearPago,
 } from '../../services/pagoService'
 
 import {
-  consultarPagoQr,
   crearPagoInternet,
   obtenerPagoInternet,
 } from '../../services/pagoInternetService'
@@ -69,11 +67,6 @@ function PagoModal({
   ] = useState(null)
 
   const [
-    segundosRestantes,
-    setSegundosRestantes,
-  ] = useState(0)
-
-  const [
     consultandoQr,
     setConsultandoQr,
   ] = useState(false)
@@ -110,7 +103,6 @@ function PagoModal({
 
     setTransaccionQr(null)
     setEstadoQr(null)
-    setSegundosRestantes(0)
     setConsultandoQr(false)
 
     qrNotificadoRef.current =
@@ -308,76 +300,19 @@ function PagoModal({
     )
   }
 
-  const urlQr =
-    transaccionQr?.token_qr
-      ? `${window.location.origin}/pago-qr/${transaccionQr.token_qr}`
-      : ''
-
   /*
-   * Cuenta regresiva del QR.
-   */
-  useEffect(() => {
-    if (
-      !transaccionQr
-        ?.fecha_vencimiento ||
-      estadoQr !==
-        'PENDIENTE'
-    ) {
-      return
-    }
-
-    const actualizar = () => {
-      const vencimiento =
-        new Date(
-          transaccionQr
-            .fecha_vencimiento
-        ).getTime()
-
-      const restante =
-        Math.max(
-          0,
-          Math.ceil(
-            (
-              vencimiento -
-              Date.now()
-            ) / 1000
-          )
-        )
-
-      setSegundosRestantes(
-        restante
-      )
-    }
-
-    actualizar()
-
-    const intervalo =
-      setInterval(
-        actualizar,
-        1000
-      )
-
-    return () =>
-      clearInterval(
-        intervalo
-      )
-  }, [
-    transaccionQr,
-    estadoQr,
-  ])
-
-  /*
-   * Polling QR.
+   * Polling del estado almacenado en nuestro backend.
    *
-   * Utilizamos setTimeout después
-   * de terminar cada petición para
-   * evitar solicitudes superpuestas.
+   * El frontend NO consulta el estado directamente
+   * en Libélula. Libélula confirma el pago mediante
+   * el aviso GET público y nuestro backend actualiza
+   * la transacción.
    */
   useEffect(() => {
     if (
       !abierto ||
       !transaccionQr
-        ?.token_qr ||
+        ?.id_pago_internet ||
       estadoQr !==
         'PENDIENTE'
     ) {
@@ -385,9 +320,6 @@ function PagoModal({
     }
 
     let cancelado = false
-
-    const token =
-      transaccionQr.token_qr
 
     const idTransaccion =
       transaccionQr
@@ -402,18 +334,21 @@ function PagoModal({
             true
           )
 
-          const respuesta =
-            await consultarPagoQr(
-              token
+          const detalle =
+            await obtenerPagoInternet(
+              idTransaccion
             )
 
           if (cancelado) {
             return
           }
 
-          const nuevoEstado =
-            respuesta
+          const transaccion =
+            detalle
               .transaccion
+
+          const nuevoEstado =
+            transaccion
               ?.estado
 
           if (!nuevoEstado) {
@@ -436,24 +371,8 @@ function PagoModal({
             qrNotificadoRef.current =
               true
 
-            /*
-             * Recuperamos primero el pago
-             * generado por el backend.
-             *
-             * No actualizamos todavía el
-             * estado local del QR porque
-             * hacerlo aquí limpiaría este
-             * efecto antes de ejecutar
-             * onGuardado.
-             */
-            const detalle =
-              await obtenerPagoInternet(
-                idTransaccion
-              )
-
             const pago =
-              detalle
-                .transaccion
+              transaccion
                 ?.pago ??
               null
 
@@ -463,11 +382,6 @@ function PagoModal({
               )
             }
 
-            /*
-             * VentasPage recupera el recibo
-             * que el backend ya generó y
-             * abre ReciboDetalleModal.
-             */
             await onGuardado(
               'Pago QR confirmado correctamente. El recibo fue generado automáticamente.',
               pago,
@@ -478,42 +392,17 @@ function PagoModal({
               }
             )
 
-            /*
-             * Solo después de completar el
-             * flujo del recibo actualizamos
-             * el estado visual y cerramos
-             * este modal.
-             */
             setEstadoQr(
               'APROBADO'
             )
 
             onCerrar()
-
             return
           }
 
-          /*
-           * Para los demás estados sí
-           * podemos actualizar el estado
-           * local inmediatamente.
-           */
           setEstadoQr(
             nuevoEstado
           )
-
-          if (
-            nuevoEstado ===
-            'VENCIDO'
-          ) {
-            continuar = false
-
-            setError(
-              'El código QR venció. Genere un nuevo QR.'
-            )
-
-            return
-          }
 
           if (
             nuevoEstado ===
@@ -522,18 +411,27 @@ function PagoModal({
             continuar = false
 
             setError(
+              transaccion
+                ?.motivo_rechazo ||
               'El pago QR fue rechazado.'
+            )
+          }
+
+          if (
+            nuevoEstado ===
+            'VENCIDO'
+          ) {
+            continuar = false
+
+            setError(
+              'La transacción QR ya no está disponible.'
             )
           }
         } catch (
           errorPeticion
         ) {
-          /*
-           * Un error aislado no
-           * cancela el QR.
-           */
           console.error(
-            'Error al consultar QR:',
+            'Error al consultar el estado del pago QR:',
             errorPeticion
           )
         } finally {
@@ -654,7 +552,7 @@ function PagoModal({
     }
 
     /*
-     * QR mediante pasarela simulada.
+     * QR real mediante Libélula.
      */
     if (
       metodoPago === 'QR'
@@ -691,10 +589,10 @@ function PagoModal({
 
         if (
           !transaccion
-            ?.token_qr
+            ?.qr_simple_url
         ) {
           throw new Error(
-            'La pasarela no devolvió un código QR válido.'
+            'Libélula no devolvió una imagen QR válida.'
           )
         }
 
@@ -792,44 +690,6 @@ function PagoModal({
     }
   }
 
-  const formatearTiempo = (
-    totalSegundos
-  ) => {
-    const minutos =
-      Math.floor(
-        totalSegundos /
-          60
-      )
-
-    const segundos =
-      totalSegundos % 60
-
-    return `${String(
-      minutos
-    ).padStart(
-      2,
-      '0'
-    )}:${String(
-      segundos
-    ).padStart(
-      2,
-      '0'
-    )}`
-  }
-
-  const generarOtroQr =
-    () => {
-      setTransaccionQr(
-        null
-      )
-
-      setEstadoQr(null)
-      setError('')
-
-      qrNotificadoRef.current =
-        false
-    }
-
   if (!abierto) {
     return null
   }
@@ -910,12 +770,13 @@ function PagoModal({
             {qrPendiente && (
               <>
                 <div className="mx-auto flex w-fit rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-
-                  <QRCodeSVG
-                    value={urlQr}
-                    size={250}
-                    level="M"
-                    includeMargin
+                  <img
+                    src={
+                      transaccionQr
+                        .qr_simple_url
+                    }
+                    alt="QR de pago generado por Libélula"
+                    className="h-[250px] w-[250px] object-contain"
                   />
                 </div>
 
@@ -929,14 +790,11 @@ function PagoModal({
                   </div>
 
                   <p className="mt-3 text-sm text-gray-500">
-                    El cliente debe escanear este código QR.
+                    El cliente debe escanear este código QR con su aplicación bancaria.
                   </p>
 
-                  <p className="mt-2 text-lg font-bold text-gray-800">
-                    Vence en{' '}
-                    {formatearTiempo(
-                      segundosRestantes
-                    )}
+                  <p className="mt-2 text-xs text-gray-400">
+                    La confirmación llegará automáticamente desde Libélula.
                   </p>
 
                   {consultandoQr && (
@@ -995,27 +853,7 @@ function PagoModal({
               </p>
             </div>
 
-            {window.location
-              .hostname ===
-              'localhost' && (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                Para escanear desde otro dispositivo posteriormente configuraremos la dirección de red local. El flujo puede probarse desde otra pestaña del navegador.
-              </div>
-            )}
-
             <div className="flex justify-end gap-3 border-t border-gray-200 pt-5">
-
-              {qrVencido && (
-                <button
-                  type="button"
-                  onClick={
-                    generarOtroQr
-                  }
-                  className="rounded-lg bg-pink-600 px-5 py-2 text-sm font-semibold text-white hover:bg-pink-700"
-                >
-                  Generar nuevo QR
-                </button>
-              )}
 
               <button
                 type="button"
@@ -1139,7 +977,7 @@ function PagoModal({
               tipoCobro ===
                 'venta' && (
                 <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-                  Al continuar se generará un código QR. El pago solo será registrado cuando el QR sea confirmado.
+                  Al continuar se generará un QR real de Libélula. El pago solo será registrado cuando Libélula confirme la transacción.
                 </div>
               )}
 
