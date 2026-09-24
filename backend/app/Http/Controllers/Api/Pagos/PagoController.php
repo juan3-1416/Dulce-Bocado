@@ -197,7 +197,7 @@ class PagoController extends Controller
             )
             ->where(
                 'estado',
-                'REGISTRADA'
+                'PENDIENTE_PAGO'
             )
             ->orderByDesc('fecha_venta')
             ->get()
@@ -341,18 +341,32 @@ class PagoController extends Controller
                     ]);
                 }
 
-                if ($esVenta) {
-                    if ($entidad->estado !== 'REGISTRADA') {
-                        throw ValidationException::withMessages([
-                            'id_venta' => 'No se pueden registrar pagos sobre una venta anulada.',
-                        ]);
-                    }
-                    if ($entidad->pagosInternet()->where('estado', 'PENDIENTE')->exists()) {
-                        throw ValidationException::withMessages([
-                            'id_venta' => 'La venta tiene una transacción de pago por internet pendiente. Debe resolverse antes de registrar otro pago.',
-                        ]);
-                    }
-                } else {
+if ($esVenta) {
+    if (
+        $entidad->estado !==
+        'PENDIENTE_PAGO'
+    ) {
+        throw ValidationException::withMessages([
+            'id_venta' =>
+                'La venta no se encuentra pendiente de pago.',
+        ]);
+    }
+
+    if (
+        $entidad
+            ->pagosInternet()
+            ->where(
+                'estado',
+                'PENDIENTE'
+            )
+            ->exists()
+    ) {
+        throw ValidationException::withMessages([
+            'id_venta' =>
+                'La venta tiene un pago QR pendiente. Debe completarlo o resolverlo antes de registrar otro pago.',
+        ]);
+    }
+} else {
                     if (in_array($entidad->estado, ['ENTREGADO', 'CANCELADO'])) {
                         throw ValidationException::withMessages([
                             'id_pedido' => 'No se pueden registrar pagos sobre un pedido finalizado o cancelado.',
@@ -371,6 +385,32 @@ class PagoController extends Controller
                 }
 
                 $monto = round((float) $datos['monto'], 2);
+                /*
+ * Las ventas directas deben pagarse
+ * completamente.
+ *
+ * Los pedidos sí pueden mantener
+ * pagos parciales.
+ */
+if (
+    $esVenta &&
+    abs(
+        $monto -
+        $saldo
+    ) > 0.001
+) {
+    throw ValidationException::withMessages([
+        'monto' =>
+            'Una venta directa debe pagarse por el total pendiente: Bs ' .
+            number_format(
+                $saldo,
+                2,
+                '.',
+                ''
+            ) .
+            '.',
+    ]);
+}
 
                 if ($monto > $saldo) {
                     throw ValidationException::withMessages([
@@ -378,17 +418,58 @@ class PagoController extends Controller
                     ]);
                 }
 
-                return Pago::create([
-                    'id_venta' => $esVenta ? $entidad->id_venta : null,
-                    'id_pedido' => !$esVenta ? $entidad->id_pedido : null,
-                    'id_usuario' => $request->user()->getKey(),
-                    'monto' => $monto,
-                    'metodo_pago' => $datos['metodo_pago'],
-                    'referencia' => !empty($datos['referencia']) ? trim($datos['referencia']) : null,
-                    'estado' => 'REGISTRADO',
-                    'observaciones' => $datos['observaciones'] ?? null,
-                    'fecha_pago' => now(),
-                ]);
+$pago = Pago::create([
+    'id_venta' =>
+        $esVenta
+            ? $entidad->id_venta
+            : null,
+
+    'id_pedido' =>
+        !$esVenta
+            ? $entidad->id_pedido
+            : null,
+
+    'id_usuario' =>
+        $request->user()->getKey(),
+
+    'monto' =>
+        $monto,
+
+    'metodo_pago' =>
+        $datos['metodo_pago'],
+
+    'referencia' =>
+        !empty(
+            $datos['referencia']
+        )
+            ? trim(
+                $datos['referencia']
+            )
+            : null,
+
+    'estado' =>
+        'REGISTRADO',
+
+    'observaciones' =>
+        $datos['observaciones']
+        ?? null,
+
+    'fecha_pago' =>
+        now(),
+]);
+
+/*
+ * Una venta directa solo queda
+ * REGISTRADA después del pago total.
+ */
+if ($esVenta) {
+    $entidad->update([
+        'estado' =>
+            'REGISTRADA',
+    ]);
+}
+
+return $pago;
             }
         );
 

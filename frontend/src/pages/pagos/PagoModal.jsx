@@ -239,16 +239,36 @@ function PagoModal({
     )
   }
 
-  const manejarCambioVenta = (
-    event
-  ) => {
-    setIdVenta(
-      event.target.value
+ const manejarCambioVenta = (
+  event
+) => {
+  const nuevoId =
+    event.target.value
+
+  setIdVenta(nuevoId)
+  setError('')
+
+  const venta =
+    ventas.find(
+      (item) =>
+        Number(
+          item.id_venta
+        ) ===
+        Number(nuevoId)
     )
 
-    setMonto('')
-    setError('')
-  }
+  /*
+   * Una venta directa siempre debe
+   * cobrarse por el saldo completo.
+   */
+  setMonto(
+    venta
+      ? String(
+          venta.saldo
+        )
+      : ''
+  )
+}
 
   const manejarCambioPedido = (
     event
@@ -526,16 +546,43 @@ function PagoModal({
           ?.saldo ?? 0
       )
 
-    if (
-      montoNumero > saldo
-    ) {
-      setError(
-        `El monto no puede superar el saldo pendiente de Bs ${saldo.toFixed(
-          2
-        )}.`
-      )
-      return
-    }
+/*
+ * Venta directa:
+ * obligatoriamente pago completo.
+ */
+if (
+  tipoCobro === 'venta' &&
+  Math.abs(
+    montoNumero -
+    saldo
+  ) > 0.001
+) {
+  setError(
+    `La venta debe pagarse por el total pendiente de Bs ${saldo.toFixed(
+      2
+    )}.`
+  )
+
+  return
+}
+
+/*
+ * Pedido:
+ * sí puede recibir pagos parciales,
+ * pero nunca superiores al saldo.
+ */
+if (
+  tipoCobro === 'pedido' &&
+  montoNumero > saldo
+) {
+  setError(
+    `El monto no puede superar el saldo pendiente de Bs ${saldo.toFixed(
+      2
+    )}.`
+  )
+
+  return
+}
 
     if (
       ![
@@ -947,6 +994,9 @@ function PagoModal({
 
                     setError('')
                   }}
+                  tipoCobro={
+                    tipoCobro
+                  }
                   referencia={
                     referencia
                   }

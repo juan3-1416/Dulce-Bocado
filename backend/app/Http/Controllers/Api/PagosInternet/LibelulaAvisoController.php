@@ -352,7 +352,7 @@ class LibelulaAvisoController extends Controller
 
                 if (
                     $venta->estado !==
-                    'REGISTRADA'
+                    'PENDIENTE_PAGO'
                 ) {
                     return [
                         'tipo' =>
@@ -388,22 +388,28 @@ class LibelulaAvisoController extends Controller
                     2
                 );
 
-                if (
-                    $saldo <= 0
-                    || $montoTransaccion >
-                        $saldo
-                ) {
-                    return [
-                        'tipo' =>
-                            'SALDO_INVALIDO',
+/*
+ * Una venta directa debe pagarse
+ * obligatoriamente por el saldo total.
+ */
+if (
+    $saldo <= 0
+    || abs(
+        $montoTransaccion -
+        $saldo
+    ) > 0.001
+) {
+    return [
+        'tipo' =>
+            'SALDO_INVALIDO',
 
-                        'saldo' =>
-                            $saldo,
+        'saldo' =>
+            $saldo,
 
-                        'monto' =>
-                            $montoTransaccion,
-                    ];
-                }
+        'monto' =>
+            $montoTransaccion,
+    ];
+}
 
                 /*
                  * Crear el Pago real.
@@ -525,7 +531,17 @@ class LibelulaAvisoController extends Controller
                     'fecha_ultima_impresion' =>
                         null,
                 ]);
-
+/*
+ * El pago total ya fue confirmado y
+ * el recibo fue creado correctamente.
+ *
+ * Recién ahora la venta se considera
+ * formalmente registrada.
+ */
+$venta->update([
+    'estado' =>
+        'REGISTRADA',
+]);
                 /*
                  * Solo después de crear Pago y
                  * Recibo marcamos la transacción

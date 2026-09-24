@@ -169,7 +169,7 @@ class PagoInternetController extends Controller
             )
             ->where(
                 'estado',
-                'REGISTRADA'
+                'PENDIENTE_PAGO'
             )
             ->whereDoesntHave(
                 'pagosInternet',
@@ -284,15 +284,15 @@ class PagoInternetController extends Controller
                     ]);
                 }
 
-                if (
-                    $venta->estado !==
-                    'REGISTRADA'
-                ) {
-                    throw ValidationException::withMessages([
-                        'id_venta' =>
-                            'No se puede iniciar un pago sobre una venta anulada.',
-                    ]);
-                }
+if (
+    $venta->estado !==
+    'PENDIENTE_PAGO'
+) {
+    throw ValidationException::withMessages([
+        'id_venta' =>
+            'La venta no se encuentra pendiente de pago.',
+    ]);
+}
 
                 /*
                  * Solo permitimos una transacción online
@@ -348,19 +348,28 @@ class PagoInternetController extends Controller
                     2
                 );
 
-                if ($monto > $saldo) {
-                    throw ValidationException::withMessages([
-                        'monto' =>
-                            'El monto supera el saldo pendiente de la venta. Saldo disponible: Bs ' .
-                            number_format(
-                                $saldo,
-                                2,
-                                '.',
-                                ''
-                            ) .
-                            '.',
-                    ]);
-                }
+/*
+ * Una venta directa debe pagarse
+ * obligatoriamente por el total.
+ */
+if (
+    abs(
+        $monto -
+        $saldo
+    ) > 0.001
+) {
+    throw ValidationException::withMessages([
+        'monto' =>
+            'El pago QR debe realizarse por el total de la venta: Bs ' .
+            number_format(
+                $saldo,
+                2,
+                '.',
+                ''
+            ) .
+            '.',
+    ]);
+}
 
                 /*
                  * Generamos una referencia propia.
