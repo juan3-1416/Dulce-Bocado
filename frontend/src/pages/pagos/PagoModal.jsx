@@ -13,7 +13,7 @@ import PagoFormularioCampos from './components/PagoFormularioCampos'
  * Modal de registro de pagos.
  *
  * Actúa como orquestador: conecta usePagoQr y usePagoFormulario
- * y decide qué vista mostrar (formulario o panel QR).
+ * y decide qué vista mostrar (formulario o panel QR de Libélula).
  *
  * @param {object}      props
  * @param {boolean}     props.abierto
@@ -80,14 +80,10 @@ function PagoModal({
           <PagoVistaQr
             transaccionQr={qr.transaccionQr}
             error={error}
-            urlQr={qr.urlQr}
             qrPendiente={qr.qrPendiente}
             qrAprobado={qr.qrAprobado}
             qrVencido={qr.qrVencido}
-            segundosRestantes={qr.segundosRestantes}
             consultandoQr={qr.consultandoQr}
-            formatearTiempo={qr.formatearTiempo}
-            generarOtroQr={qr.generarOtroQr}
             onCerrar={onCerrar}
           />
         ) : (
@@ -134,6 +130,7 @@ function PagoModal({
                     form.setReferencia('')
                     setError('')
                   }}
+                  tipoCobro={form.tipoCobro}
                   referencia={form.referencia}
                   setReferencia={form.setReferencia}
                   observaciones={form.observaciones}
@@ -148,8 +145,7 @@ function PagoModal({
             {form.metodoPago === 'QR' &&
               form.tipoCobro === 'venta' && (
               <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-                Al continuar se generará un código QR.
-                El pago solo será registrado cuando el QR sea confirmado.
+                Al continuar se generará un QR real de Libélula. El pago solo será registrado cuando Libélula confirme la transacción.
               </div>
             )}
 

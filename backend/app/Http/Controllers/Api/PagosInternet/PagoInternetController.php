@@ -7,18 +7,21 @@ use App\Http\Requests\PagosInternet\ConfirmarPagoInternetRequest;
 use App\Http\Requests\PagosInternet\StorePagoInternetRequest;
 use App\Models\Pago;
 use App\Models\PagoInternet;
+use App\Models\Recibo;
 use App\Models\Venta;
+use App\Services\PagosInternet\PasarelaLibelula;
 use App\Services\PagosInternet\PasarelaPagoSimulada;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use App\Models\Recibo;
 
 class PagoInternetController extends Controller
 {
     public function __construct(
-        private readonly PasarelaPagoSimulada $pasarela
+        private readonly PasarelaLibelula $pasarela,
+        private readonly PasarelaPagoSimulada $pasarelaSimulada
     ) {
     }
 
@@ -166,7 +169,7 @@ class PagoInternetController extends Controller
             )
             ->where(
                 'estado',
-                'REGISTRADA'
+                'PENDIENTE_PAGO'
             )
             ->whereDoesntHave(
                 'pagosInternet',
@@ -247,7 +250,7 @@ class PagoInternetController extends Controller
             'ventas' => $ventas,
 
             'proveedor' =>
-                PasarelaPagoSimulada::PROVEEDOR,
+                PasarelaLibelula::PROVEEDOR,
         ]);
     }
 
@@ -268,6 +271,7 @@ class PagoInternetController extends Controller
                  * operaciones financieras se inicien al mismo tiempo.
                  */
                 $venta = Venta::query()
+                    ->with('cliente')
                     ->lockForUpdate()
                     ->find(
                         $datos['id_venta']
@@ -280,15 +284,15 @@ class PagoInternetController extends Controller
                     ]);
                 }
 
-                if (
-                    $venta->estado !==
-                    'REGISTRADA'
-                ) {
-                    throw ValidationException::withMessages([
-                        'id_venta' =>
-                            'No se puede iniciar un pago sobre una venta anulada.',
-                    ]);
-                }
+if (
+    $venta->estado !==
+    'PENDIENTE_PAGO'
+) {
+    throw ValidationException::withMessages([
+        'id_venta' =>
+            'La venta no se encuentra pendiente de pago.',
+    ]);
+}
 
                 /*
                  * Solo permitimos una transacción online
@@ -344,76 +348,202 @@ class PagoInternetController extends Controller
                     2
                 );
 
-                if ($monto > $saldo) {
-                    throw ValidationException::withMessages([
-                        'monto' =>
-                            'El monto supera el saldo pendiente de la venta. Saldo disponible: Bs ' .
-                            number_format(
-                                $saldo,
-                                2,
-                                '.',
-                                ''
-                            ) .
-                            '.',
-                    ]);
+/*
+ * Una venta directa debe pagarse
+ * obligatoriamente por el total.
+ */
+if (
+    abs(
+        $monto -
+        $saldo
+    ) > 0.001
+) {
+    throw ValidationException::withMessages([
+        'monto' =>
+            'El pago QR debe realizarse por el total de la venta: Bs ' .
+            number_format(
+                $saldo,
+                2,
+                '.',
+                ''
+            ) .
+            '.',
+    ]);
+}
+
+                /*
+                 * Generamos una referencia propia.
+                 *
+                 * Libélula devuelve esta misma referencia
+                 * posteriormente como transaction_id
+                 * en el aviso GET.
+                 */
+                $referencia =
+                    'DULCE-VENTA-' .
+                    $venta->id_venta .
+                    '-' .
+                    Str::upper(
+                        Str::random(12)
+                    );
+
+                /*
+                 * Datos del cliente que se enviarán
+                 * al registro de deuda de Libélula.
+                 */
+                if ($venta->cliente) {
+                    $nombreCliente = trim(
+                        (string) (
+                            $venta->cliente->nombre
+                            ?? ''
+                        )
+                    );
+
+                    $apellidoCliente = trim(
+                        (string) (
+                            $venta->cliente->apellido
+                            ?? ''
+                        )
+                    );
+
+                    $emailCliente = trim(
+                        (string) (
+                            $venta->cliente
+                                ->correo_electronico
+                            ?? ''
+                        )
+                    );
+                } else {
+                    $nombreCliente = trim(
+                        (string) (
+                            $venta
+                                ->nombre_cliente_ocasional
+                            ?? ''
+                        )
+                    );
+
+                    $apellidoCliente = '';
+                    $emailCliente = '';
+                }
+
+                if ($nombreCliente === '') {
+                    $nombreCliente =
+                        'Cliente Dulce Bocado';
                 }
 
                 /*
-                 * Solicitud al proveedor simulado.
+                 * Registrar la deuda real en Libélula.
                  */
                 $respuesta =
-                    $this->pasarela->iniciar(
-                        $venta->id_venta,
+                    $this->pasarela
+                        ->registrarDeuda(
+                            $referencia,
+                            $monto,
+                            $nombreCliente,
+                            $apellidoCliente,
+                            $emailCliente !== ''
+                                ? $emailCliente
+                                : null,
+                            'Pago venta #' .
+                            $venta->id_venta .
+                            ' - Dulce Bocado'
+                        );
+
+                /*
+                 * Verificación adicional:
+                 * el monto devuelto por Libélula
+                 * debe coincidir con el solicitado.
+                 */
+                $montoLibelula = round(
+                    (float) (
+                        $respuesta[
+                            'monto_total'
+                        ] ?? 0
+                    ),
+                    2
+                );
+
+                if (
+                    abs(
+                        $montoLibelula -
                         $monto
-                    );
+                    ) > 0.001
+                ) {
+                    throw ValidationException::withMessages([
+                        'monto' =>
+                            'El monto registrado por Libélula no coincide con el monto solicitado.',
+                    ]);
+                }
 
-return PagoInternet::create([
-    'id_venta' =>
-        $venta->id_venta,
+                return PagoInternet::create([
+                    'id_venta' =>
+                        $venta->id_venta,
 
-    'id_pago' =>
-        null,
+                    'id_pago' =>
+                        null,
 
-    'id_usuario' =>
-        $request->user()->getKey(),
+                    'id_usuario' =>
+                        $request->user()->getKey(),
 
-    'monto' =>
-        $monto,
+                    'monto' =>
+                        $monto,
 
-    'proveedor' =>
-        $respuesta['proveedor'],
+                    'proveedor' =>
+                        $respuesta[
+                            'proveedor'
+                        ],
 
-    'referencia_transaccion' =>
-        $respuesta[
-            'referencia_transaccion'
-        ],
+                    'referencia_transaccion' =>
+                        $respuesta[
+                            'referencia_transaccion'
+                        ],
 
-    'token_qr' =>
-        $respuesta[
-            'token_qr'
-        ],
+                    'id_transaccion_libelula' =>
+                        $respuesta[
+                            'id_transaccion_libelula'
+                        ],
 
-    'estado' =>
-        'PENDIENTE',
+                    'codigo_recaudacion' =>
+                        $respuesta[
+                            'codigo_recaudacion'
+                        ],
 
-    'motivo_rechazo' =>
-        null,
+                    'qr_simple_url' =>
+                        $respuesta[
+                            'qr_simple_url'
+                        ],
 
-    'respuesta_proveedor' =>
-        $respuesta[
-            'respuesta_proveedor'
-        ],
+                    'url_pasarela_pagos' =>
+                        $respuesta[
+                            'url_pasarela_pagos'
+                        ],
 
-    'fecha_solicitud' =>
-        now(),
+                    'estado' =>
+                        'PENDIENTE',
 
-    'fecha_confirmacion' =>
-        null,
+                    'motivo_rechazo' =>
+                        null,
 
-    'fecha_vencimiento' =>
-        $respuesta[
-            'fecha_vencimiento'
-        ],
+                    'respuesta_proveedor' =>
+                        $respuesta[
+                            'respuesta_proveedor'
+                        ],
+
+                    'fecha_solicitud' =>
+                        now(),
+
+                    'fecha_confirmacion' =>
+                        null,
+
+                    /*
+                     * Se mantienen temporalmente
+                     * los campos del flujo QR simulado
+                     * mientras terminamos la transición.
+                     */
+                    'token_qr' =>
+                        null,
+
+                    'fecha_vencimiento' =>
+                        null,
 
                     'fecha_escaneo' =>
                         null,
@@ -983,7 +1113,7 @@ public function confirmarQr(
                  * Obtener respuesta simulada del proveedor.
                  */
                 $respuesta =
-                    $this->pasarela->confirmar(
+                    $this->pasarelaSimulada->confirmar(
                         $datos['resultado'],
                         $datos[
                             'motivo_rechazo'

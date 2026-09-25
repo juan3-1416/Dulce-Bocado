@@ -10,6 +10,7 @@ function PagoFormularioCampos({
   metodosPago = [],
   documentoSeleccionado,
   usarSaldoCompleto,
+  tipoCobro,
 }) {
   return (
     <div className="space-y-4">
@@ -24,40 +25,62 @@ function PagoFormularioCampos({
               Monto
             </label>
 
-            {documentoSeleccionado && (
-              <button
-                type="button"
-                onClick={usarSaldoCompleto}
-                className="text-xs font-semibold text-pink-600 hover:text-pink-700"
-              >
-                Usar saldo completo
-              </button>
-            )}
+{documentoSeleccionado &&
+  tipoCobro === 'pedido' && (
+    <button
+      type="button"
+      onClick={usarSaldoCompleto}
+      className="text-xs font-semibold text-pink-600 hover:text-pink-700"
+    >
+      Usar saldo completo
+    </button>
+  )}
           </div>
 
           <div className="relative">
             <span className="absolute left-3 top-2.5 text-sm text-gray-500">
               Bs
             </span>
-            <input
-              id="monto_pago"
-              type="number"
-              min="0.01"
-              step="0.01"
-              max={documentoSeleccionado ? documentoSeleccionado.saldo : undefined}
-              value={monto}
-              onChange={(e) => setMonto(e.target.value)}
-              required
-              disabled={!documentoSeleccionado}
-              className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 text-sm focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500 disabled:bg-gray-100"
-            />
+<input
+  id="monto_pago"
+  type="number"
+  min="0.01"
+  step="0.01"
+  max={
+    documentoSeleccionado
+      ? documentoSeleccionado.saldo
+      : undefined
+  }
+  value={monto}
+  onChange={(e) =>
+    setMonto(e.target.value)
+  }
+  required
+  disabled={
+    !documentoSeleccionado
+  }
+  readOnly={
+    tipoCobro === 'venta'
+  }
+  className={`w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 text-sm focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500 disabled:bg-gray-100 ${
+    tipoCobro === 'venta'
+      ? 'cursor-not-allowed bg-gray-100 font-semibold text-gray-700'
+      : ''
+  }`}
+/>
           </div>
 
-          {documentoSeleccionado && (
-            <p className="mt-1 text-xs text-gray-500">
-              Máximo: Bs {Number(documentoSeleccionado.saldo).toFixed(2)}
-            </p>
-          )}
+{documentoSeleccionado && (
+  <p className="mt-1 text-xs text-gray-500">
+    {tipoCobro === 'venta'
+      ? `Pago total obligatorio: Bs ${Number(
+          documentoSeleccionado.saldo
+        ).toFixed(2)}`
+      : `Máximo: Bs ${Number(
+          documentoSeleccionado.saldo
+        ).toFixed(2)}`}
+  </p>
+)}
         </div>
 
         <div>

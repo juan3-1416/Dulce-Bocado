@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\Inventario\EgresoController;
 use App\Http\Controllers\Api\Visitas\VisitaController;
 use App\Http\Controllers\Api\Dashboard\DashboardController;
 use App\Http\Controllers\Api\Reportes\ReporteController;
+use App\Http\Controllers\Api\PagosInternet\LibelulaAvisoController;
 
 
 Route::get('/health', function () {
@@ -403,6 +404,24 @@ Route::prefix('pagos')
             [PagoController::class, 'anular']
         )->whereNumber('id');
     });
+    /*
+|--------------------------------------------------------------------------
+| Libélula - Aviso de transacción
+|--------------------------------------------------------------------------
+|
+| Endpoint público utilizado por Libélula para informar
+| el resultado de una transacción.
+|
+| El aviso llega mediante GET con:
+| - transaction_id
+| - error
+| - message
+|
+*/
+Route::get(
+    '/libelula/aviso',
+    [LibelulaAvisoController::class, 'aviso']
+);
     /*
 |--------------------------------------------------------------------------
 | Pago QR público - Simulación académica

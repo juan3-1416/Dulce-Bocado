@@ -214,7 +214,7 @@ class VentaController extends Controller
 
                     'total' => 0,
 
-                    'estado' => 'REGISTRADA',
+                    'estado' => 'PENDIENTE_PAGO',
 
                     'observaciones' =>
                         $datos['observaciones'] ?? null,
@@ -242,7 +242,7 @@ class VentaController extends Controller
 
         return response()->json([
             'message' =>
-                'Venta registrada correctamente.',
+                'Venta creada correctamente.',
 
             'venta' => $venta,
         ], 201);
@@ -276,16 +276,15 @@ class VentaController extends Controller
                     );
                 }
 
-                if (
-                    $venta->estado !==
-                    'REGISTRADA'
-                ) {
-                    abort(
-                        409,
-                        'No se puede editar una venta anulada.'
-                    );
-                }
-
+if (
+    $venta->estado !==
+    'PENDIENTE_PAGO'
+) {
+    abort(
+        409,
+        'Solo se puede editar una venta mientras se encuentra pendiente de pago.'
+    );
+}
                 if (
     $venta->pagos()
         ->where(

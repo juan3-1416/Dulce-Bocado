@@ -24,14 +24,39 @@ class PagoInternet extends Model
         'id_usuario',
         'monto',
         'proveedor',
+
+        /*
+         * Referencia creada por Dulce Bocado.
+         *
+         * Es el identificador que posteriormente
+         * Libélula devuelve como transaction_id
+         * en el aviso GET.
+         */
         'referencia_transaccion',
+
+        /*
+         * Datos devueltos por Libélula al
+         * registrar la deuda.
+         */
+        'id_transaccion_libelula',
+        'codigo_recaudacion',
+        'qr_simple_url',
+        'url_pasarela_pagos',
+
         'estado',
         'motivo_rechazo',
         'respuesta_proveedor',
         'fecha_solicitud',
         'fecha_confirmacion',
 
-        // QR
+        /*
+         * Campos correspondientes al flujo QR
+         * simulado anterior.
+         *
+         * Se mantienen temporalmente para
+         * compatibilidad mientras verificamos
+         * completamente Libélula.
+         */
         'token_qr',
         'fecha_vencimiento',
         'fecha_escaneo',
@@ -97,12 +122,14 @@ class PagoInternet extends Model
 
     public function estaPendiente(): bool
     {
-        return $this->estado === 'PENDIENTE';
+        return $this->estado ===
+            'PENDIENTE';
     }
 
     public function estaVencida(): bool
     {
-        return $this->fecha_vencimiento !== null
+        return
+            $this->fecha_vencimiento !== null
             && now()->greaterThan(
                 $this->fecha_vencimiento
             );

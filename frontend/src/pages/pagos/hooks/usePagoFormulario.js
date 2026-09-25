@@ -189,9 +189,18 @@ export function usePagoFormulario({
   }
 
   const manejarCambioVenta = (event) => {
-    setIdVenta(event.target.value)
-    setMonto('')
+    const nuevoId = event.target.value
+    setIdVenta(nuevoId)
     setError('')
+
+    const venta = ventas.find(
+      (item) => Number(item.id_venta) === Number(nuevoId)
+    )
+
+    /*
+     * Una venta directa siempre debe cobrarse por el saldo completo.
+     */
+    setMonto(venta ? String(venta.saldo) : '')
   }
 
   const manejarCambioPedido = (event) => {
@@ -233,9 +242,35 @@ export function usePagoFormulario({
       documentoSeleccionado?.saldo ?? 0
     )
 
-    if (montoNumero > saldo) {
+    /*
+     * Venta directa:
+     * obligatoriamente pago completo.
+     */
+    if (
+      tipoCobro === 'venta' &&
+      Math.abs(montoNumero - saldo) > 0.001
+    ) {
       setError(
-        `El monto no puede superar el saldo pendiente de Bs ${saldo.toFixed(2)}.`
+        `La venta debe pagarse por el total pendiente de Bs ${saldo.toFixed(
+          2
+        )}.`
+      )
+      return
+    }
+
+    /*
+     * Pedido:
+     * sí puede recibir pagos parciales,
+     * pero nunca superiores al saldo.
+     */
+    if (
+      tipoCobro === 'pedido' &&
+      montoNumero > saldo
+    ) {
+      setError(
+        `El monto no puede superar el saldo pendiente de Bs ${saldo.toFixed(
+          2
+        )}.`
       )
       return
     }
@@ -246,7 +281,7 @@ export function usePagoFormulario({
     }
 
     /*
-     * QR mediante pasarela simulada.
+     * QR real mediante Libélula.
      */
     if (metodoPago === 'QR') {
       if (tipoCobro !== 'venta') {
@@ -267,9 +302,9 @@ export function usePagoFormulario({
 
         const transaccion = respuesta.transaccion
 
-        if (!transaccion?.token_qr) {
+        if (!transaccion?.qr_simple_url) {
           throw new Error(
-            'La pasarela no devolvió un código QR válido.'
+            'Libélula no devolvió una imagen QR válida.'
           )
         }
 
