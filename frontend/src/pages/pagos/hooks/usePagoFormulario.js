@@ -283,41 +283,52 @@ export function usePagoFormulario({
     /*
      * QR real mediante Libélula.
      */
-    if (metodoPago === 'QR') {
-      if (tipoCobro !== 'venta') {
-        setError(
-          'El pago mediante QR de la pasarela está habilitado actualmente para ventas.'
-        )
-        return
-      }
+/*
+ * QR real mediante Libélula.
+ *
+ * Puede corresponder a:
+ * - una venta
+ * - o un pedido
+ */
+if (metodoPago === 'QR') {
+  try {
+    setGuardando(true)
+    setError('')
 
-      try {
-        setGuardando(true)
-        setError('')
-
-        const respuesta = await crearPagoInternet({
-          id_venta: Number(idVenta),
-          monto: montoNumero,
-        })
-
-        const transaccion = respuesta.transaccion
-
-        if (!transaccion?.qr_simple_url) {
-          throw new Error(
-            'Libélula no devolvió una imagen QR válida.'
-          )
-        }
-
-        onIniciarQr(transaccion)
-        setReferencia('')
-      } catch (errorPeticion) {
-        setError(obtenerMensajeError(errorPeticion))
-      } finally {
-        setGuardando(false)
-      }
-
-      return
+    const payloadQr = {
+      monto: montoNumero,
     }
+
+    if (tipoCobro === 'venta') {
+      payloadQr.id_venta = Number(idVenta)
+    } else {
+      payloadQr.id_pedido = Number(idPedido)
+    }
+
+    const respuesta =
+      await crearPagoInternet(payloadQr)
+
+    const transaccion =
+      respuesta.transaccion
+
+    if (!transaccion?.qr_simple_url) {
+      throw new Error(
+        'Libélula no devolvió una imagen QR válida.'
+      )
+    }
+
+    onIniciarQr(transaccion)
+    setReferencia('')
+  } catch (errorPeticion) {
+    setError(
+      obtenerMensajeError(errorPeticion)
+    )
+  } finally {
+    setGuardando(false)
+  }
+
+  return
+}
 
     /*
      * Pago normal en efectivo.

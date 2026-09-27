@@ -92,3 +92,63 @@ export async function listarExistenciasPorAlmacen(idAlmacen) {
 
   return procesarRespuesta(response)
 }
+export async function crearAlmacen(datos) {
+  await prepararCsrf()
+
+  const tokenCsrf = obtenerTokenCsrf()
+
+  const response = await fetch(API_URL, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...(tokenCsrf
+        ? {
+            'X-XSRF-TOKEN': tokenCsrf,
+          }
+        : {}),
+    },
+    body: JSON.stringify({
+      nombre: datos.nombre,
+      descripcion:
+        datos.descripcion?.trim() || null,
+    }),
+  })
+
+  return procesarRespuesta(response)
+}
+export async function enviarProductoAMostrador(
+  idAlmacen,
+  datos
+) {
+  await prepararCsrf()
+
+  const tokenCsrf = obtenerTokenCsrf()
+
+  const response = await fetch(
+    `${API_URL}/${idAlmacen}/enviar-mostrador`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        ...(tokenCsrf
+          ? {
+              'X-XSRF-TOKEN': tokenCsrf,
+            }
+          : {}),
+      },
+      body: JSON.stringify({
+        id_producto_presentacion:
+          datos.id_producto_presentacion,
+
+        cantidad:
+          Number(datos.cantidad),
+      }),
+    }
+  )
+
+  return procesarRespuesta(response)
+}

@@ -20,6 +20,7 @@ class PagoInternet extends Model
 
     protected $fillable = [
         'id_venta',
+        'id_pedido',
         'id_pago',
         'id_usuario',
         'monto',
@@ -95,6 +96,14 @@ class PagoInternet extends Model
             'id_venta'
         );
     }
+    public function pedido(): BelongsTo
+{
+    return $this->belongsTo(
+        Pedido::class,
+        'id_pedido',
+        'id_pedido'
+    );
+}
 
     public function pago(): BelongsTo
     {

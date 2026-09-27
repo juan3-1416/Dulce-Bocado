@@ -21,18 +21,21 @@ class DatabaseSeeder extends Seeder
             // Se ejecuta después para recibir todos los permisos del Administrador
             AdministradorInicialSeeder::class,
 
-            ProductosInicialSeeder::class,
-            ClientesInicialSeeder::class,
-            RecetasInicialSeeder::class,
-            VentasInicialSeeder::class,
-            PagosInicialSeeder::class,
-            PagosInternetInicialSeeder::class,
-            RecibosInicialSeeder::class,
-            PedidosInicialSeeder::class,
-            PedidosEstadoInicialSeeder::class,
-            ProduccionSeeder::class,
-            AlmacenSeeder::class,
-            
+ProductosInicialSeeder::class,
+ClientesInicialSeeder::class,
+
+AlmacenSeeder::class,
+RecetasInicialSeeder::class,
+InventarioMateriasPrimasSeeder::class,
+
+VentasInicialSeeder::class,
+PagosInicialSeeder::class,
+PagosInternetInicialSeeder::class,
+RecibosInicialSeeder::class,
+PedidosInicialSeeder::class,
+PedidosEstadoInicialSeeder::class,
+
+ProduccionSeeder::class,
         ]);
     }
 }

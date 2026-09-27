@@ -81,6 +81,24 @@ function formatearNumero(
 
   return numero.toFixed(decimales)
 }
+function formatearMoneda(
+  valor,
+  decimales = 2
+) {
+  const numero = Number(valor)
+
+  if (!Number.isFinite(numero)) {
+    return 'Bs 0,00'
+  }
+
+  return `Bs ${new Intl.NumberFormat(
+    'es-BO',
+    {
+      minimumFractionDigits: decimales,
+      maximumFractionDigits: decimales,
+    }
+  ).format(numero)}`
+}
 
 function leerRelacion(
   referencia,
@@ -787,13 +805,11 @@ function ProduccionList() {
                 Costo producción
               </p>
 
-              <p className="font-semibold text-slate-800">
-                Bs{' '}
-                {formatearNumero(
-                  costoTotalDetalle,
-                  4
-                )}
-              </p>
+<p className="font-semibold text-slate-800">
+  {formatearMoneda(
+    costoTotalDetalle
+  )}
+</p>
             </div>
 
             <div>
@@ -882,14 +898,11 @@ function ProduccionList() {
                           )}
                         </td>
 
-                        <td className="px-4 py-3 text-right text-sm font-medium text-slate-800">
-                          Bs{' '}
-                          {formatearNumero(
-                            consumo
-                              .costo_total,
-                            4
-                          )}
-                        </td>
+<td className="px-4 py-3 text-right text-sm font-medium text-slate-800">
+  {formatearMoneda(
+    consumo.costo_total
+  )}
+</td>
                       </tr>
                     )
                   )}

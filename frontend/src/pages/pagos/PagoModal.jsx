@@ -142,12 +142,11 @@ function PagoModal({
               </>
             )}
 
-            {form.metodoPago === 'QR' &&
-              form.tipoCobro === 'venta' && (
-              <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-                Al continuar se generará un QR real de Libélula. El pago solo será registrado cuando Libélula confirme la transacción.
-              </div>
-            )}
+{form.metodoPago === 'QR' && (
+  <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+    Al continuar se generará un QR real de Libélula. El pago solo será registrado cuando Libélula confirme la transacción.
+  </div>
+)}
 
             <div className="flex justify-end gap-3 border-t border-gray-200 pt-5">
 

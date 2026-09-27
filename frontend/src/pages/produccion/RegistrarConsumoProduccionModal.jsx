@@ -21,7 +21,30 @@ function formatearNumero(
 
   return numero.toFixed(decimales)
 }
+function formatearMoneda(
+  valor,
+  decimales = 2
+) {
+  const numero = Number(valor)
 
+  if (!Number.isFinite(numero)) {
+    return `Bs ${new Intl.NumberFormat(
+      'es-BO',
+      {
+        minimumFractionDigits: decimales,
+        maximumFractionDigits: decimales,
+      }
+    ).format(0)}`
+  }
+
+  return `Bs ${new Intl.NumberFormat(
+    'es-BO',
+    {
+      minimumFractionDigits: decimales,
+      maximumFractionDigits: decimales,
+    }
+  ).format(numero)}`
+}
 function obtenerMensajeError(errorPeticion) {
   const errores =
     errorPeticion?.data?.errors
@@ -583,13 +606,9 @@ function RegistrarConsumoProduccionModal({
                       Costo calculado
                     </p>
 
-                    <p className="mt-1 text-lg font-bold text-green-800">
-                      Bs{' '}
-                      {formatearNumero(
-                        costoTotal,
-                        4
-                      )}
-                    </p>
+<p className="mt-1 text-lg font-bold text-green-800">
+  {formatearMoneda(costoTotal)}
+</p>
                   </div>
                 </div>
 
@@ -673,17 +692,12 @@ function RegistrarConsumoProduccionModal({
                                   </p>
 
                                   <p className="text-xs text-slate-500">
-                                    Bs{' '}
-                                    {formatearNumero(
-                                      item
-                                        .costo_unitario,
-                                      4
-                                    )}
-                                    {' / '}
-                                    {
-                                      item
-                                        .unidad_medida
-                                    }
+{formatearMoneda(
+  item.costo_unitario,
+  4
+)}
+{' / '}
+{item.unidad_medida}
                                   </p>
                                 </td>
 
@@ -765,13 +779,9 @@ function RegistrarConsumoProduccionModal({
                                   />
                                 </td>
 
-                                <td className="px-4 py-4 text-right text-sm font-semibold text-slate-800">
-                                  Bs{' '}
-                                  {formatearNumero(
-                                    costo,
-                                    4
-                                  )}
-                                </td>
+<td className="px-4 py-4 text-right text-sm font-semibold text-slate-800">
+  {formatearMoneda(costo)}
+</td>
                               </tr>
                             )
                           }

@@ -660,37 +660,57 @@ Route::prefix('almacenes')
     ])
     ->group(function () {
         Route::get('/', [AlmacenController::class, 'index']);
-        Route::get('/{id}', [AlmacenController::class, 'show'])->whereNumber('id');
-        
-        Route::get('/{id}/existencias', [AlmacenController::class, 'existencias'])
+
+        Route::post('/', [AlmacenController::class, 'store']);
+
+        Route::post(
+            '/{id}/enviar-mostrador',
+            [AlmacenController::class, 'enviarAMostrador']
+        )
+            ->middleware([
+                'permiso:inventario.gestionar_egreso',
+                'permiso:inventario.gestionar_ingreso',
+            ])
+            ->whereNumber('id');
+
+        Route::get('/{id}', [AlmacenController::class, 'show'])
+            ->whereNumber('id');
+
+        Route::get(
+            '/{id}/existencias',
+            [AlmacenController::class, 'existencias']
+        )
             ->middleware('permiso:inventario.ver_existencias')
+            ->whereNumber('id');
+    }); // <-- ESTA LÍNEA FALTABA
+
+
+// CU19 - INGRESOS
+Route::prefix('ingresos')
+    ->middleware([
+        'auth:sanctum',
+        'permiso:inventario.gestionar_ingreso',
+    ])
+    ->group(function () {
+        Route::get('/', [IngresoController::class, 'index']);
+        Route::post('/', [IngresoController::class, 'store']);
+        Route::get('/{id}', [IngresoController::class, 'show'])
             ->whereNumber('id');
     });
 
-    // CU19 - INGRESOS
-    Route::prefix('ingresos')
-        ->middleware([
-            'auth:sanctum',
-            'permiso:inventario.gestionar_ingreso',
-        ])
-        ->group(function () {
-            Route::get('/', [IngresoController::class, 'index']);
-            Route::post('/', [IngresoController::class, 'store']);
-            Route::get('/{id}', [IngresoController::class, 'show'])->whereNumber('id');
-        });
 
-    // CU20 - EGRESOS
-    Route::prefix('egresos')
-        ->middleware([
-            'auth:sanctum',
-            'permiso:inventario.gestionar_egreso',
-        ])
-        ->group(function () {
-            Route::get('/', [EgresoController::class, 'index']);
-            Route::post('/', [EgresoController::class, 'store']);
-            Route::get('/{id}', [EgresoController::class, 'show'])->whereNumber('id');
-        });
-
+// CU20 - EGRESOS
+Route::prefix('egresos')
+    ->middleware([
+        'auth:sanctum',
+        'permiso:inventario.gestionar_egreso',
+    ])
+    ->group(function () {
+        Route::get('/', [EgresoController::class, 'index']);
+        Route::post('/', [EgresoController::class, 'store']);
+        Route::get('/{id}', [EgresoController::class, 'show'])
+            ->whereNumber('id');
+    });
 /*
 |--------------------------------------------------------------------------
 | CU22 - Registrar Visitas
