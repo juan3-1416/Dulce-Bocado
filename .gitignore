@@ -22,3 +22,9 @@ frontend/dist/
 # Sistema operativo
 .DS_Store
 Thumbs.db
+
+# PlantUML
+*.png
+*.svg
+*.puml
+*.plantuml

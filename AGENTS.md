@@ -126,16 +126,15 @@ tokens personales ni tocar su configuración sin autorización.
 | CU13 | Gestionar Recibo | ✅ COMPLETADO |
 | CU14 | Gestionar Pedido | ✅ COMPLETADO |
 | CU15 | Gestionar Estado y Entrega de Pedido | ✅ COMPLETADO |
-| CU16 | Gestionar Producción | ✅ COMPLETADO |
-| CU17 | Registrar Consumo, Costo y Desperdicio | ✅ COMPLETADO |
-| CU18 | Gestionar Almacenes y Existencias | ✅ COMPLETADO |
-| CU19 | Gestionar Ingreso de Inventario | ✅ COMPLETADO |
-| CU20 | Gestionar Egreso de Inventario | ✅ COMPLETADO |
-| CU21 | Gestionar Ajuste de Inventario | Cubierto (CU19/CU20) |
-| CU22 | Registrar Visitas | ✅ COMPLETADO |
-| CU23 | Seleccionar Tema | ✅ COMPLETADO |
+| CU16 | Gestionar Producción | ✅ COMPLETADO | |
+| CU17 | Gestionar Almacenes y Existencias | ✅ COMPLETADO |
+| CU18 | Gestionar Ingreso de Inventario | ✅ COMPLETADO |
+| CU19 | Gestionar Egreso de Inventario | ✅ COMPLETADO |
+| CU20 | Gestionar Ajuste de Inventario | Cubierto (CU19/CU20) |
+| CU21 | Registrar Visitas | ✅ COMPLETADO |
+| CU22 | Seleccionar Tema | ✅ COMPLETADO |
 | CU24 | Consultar Dashboard | ✅ COMPLETADO |
-| CU25 | Generar y Enviar Reportes | ⏳ No iniciado |
+| CU25 | Generar y Enviar Reportes | ✅ COMPLETADO |
 
 **No rehacer CU1–CU5** (cerrados). Antes de tocar CU6, revisar su
 implementación actual.
@@ -181,12 +180,6 @@ Laravel↔PostgreSQL, conexión React↔Laravel, proxy Vite, endpoint de salud.
   saldo = 0 y stock suficiente en Mostrador.
 - **Recibos (CU13):** generar, consultar, visualizar, imprimir,
   reimprimir, anular. No es facturación electrónica fiscal.
-- **Proveedores/Compras (CU22):** proveedor, compra, detalle, materias
-  primas, almacén destino, actualización de inventario. Operaciones
-  críticas en transacciones.
-- **Caja y turnos (CU23):** una sola caja física, un turno abierto a la
-  vez; registra usuario, apertura, cierre, ingresos, egresos
-  autorizados. No es un sistema contable completo.
 - **Visitas (CU24):** contador de visitas visible; maneja ruta, contador,
   actualización.
 - **Temas (CU25):** mínimo Claro, Oscuro y Dulce Bocado. Resolver con
