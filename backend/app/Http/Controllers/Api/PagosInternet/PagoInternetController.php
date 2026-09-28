@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use App\Models\Pedido;
 
 class PagoInternetController extends Controller
 {
@@ -259,311 +260,424 @@ class PagoInternetController extends Controller
     | Iniciar pago por internet
     |--------------------------------------------------------------------------
     */
-    public function store(
-        StorePagoInternetRequest $request
-    ): JsonResponse {
-        $datos = $request->validated();
+ public function store(
+    StorePagoInternetRequest $request
+): JsonResponse {
+    $datos = $request->validated();
 
-        $transaccion = DB::transaction(
-            function () use ($datos, $request) {
-                /*
-                 * Bloqueamos la venta para evitar que dos
-                 * operaciones financieras se inicien al mismo tiempo.
-                 */
-                $venta = Venta::query()
+    $transaccion = DB::transaction(
+        function () use ($datos, $request) {
+            $esVenta =
+                !empty($datos['id_venta']);
+
+            /*
+             * --------------------------------------------------------------
+             * Obtener y bloquear operación
+             * --------------------------------------------------------------
+             */
+            if ($esVenta) {
+                $operacion = Venta::query()
                     ->with('cliente')
                     ->lockForUpdate()
                     ->find(
                         $datos['id_venta']
                     );
 
-                if (!$venta) {
+                if (!$operacion) {
                     throw ValidationException::withMessages([
                         'id_venta' =>
                             'La venta seleccionada no existe.',
                     ]);
                 }
 
-if (
-    $venta->estado !==
-    'PENDIENTE_PAGO'
-) {
-    throw ValidationException::withMessages([
-        'id_venta' =>
-            'La venta no se encuentra pendiente de pago.',
-    ]);
-}
-
-                /*
-                 * Solo permitimos una transacción online
-                 * PENDIENTE por venta.
-                 */
-                $existePendiente =
-                    $venta
-                        ->pagosInternet()
-                        ->where(
-                            'estado',
-                            'PENDIENTE'
-                        )
-                        ->exists();
-
-                if ($existePendiente) {
-                    abort(
-                        409,
-                        'La venta ya tiene una transacción de pago por internet pendiente.'
-                    );
-                }
-
-                $totalPagado = round(
-                    (float) $venta
-                        ->pagos()
-                        ->where(
-                            'estado',
-                            'REGISTRADO'
-                        )
-                        ->sum('monto'),
-                    2
-                );
-
-                $totalVenta = round(
-                    (float) $venta->total,
-                    2
-                );
-
-                $saldo = round(
-                    $totalVenta -
-                    $totalPagado,
-                    2
-                );
-
-                if ($saldo <= 0) {
+                if (
+                    $operacion->estado !==
+                    'PENDIENTE_PAGO'
+                ) {
                     throw ValidationException::withMessages([
-                        'monto' =>
-                            'La venta ya se encuentra completamente pagada.',
+                        'id_venta' =>
+                            'La venta no se encuentra pendiente de pago.',
                     ]);
                 }
 
-                $monto = round(
-                    (float) $datos['monto'],
-                    2
-                );
+                $campoOrigen =
+                    'id_venta';
 
-/*
- * Una venta directa debe pagarse
- * obligatoriamente por el total.
- */
-if (
-    abs(
-        $monto -
-        $saldo
-    ) > 0.001
-) {
-    throw ValidationException::withMessages([
-        'monto' =>
-            'El pago QR debe realizarse por el total de la venta: Bs ' .
-            number_format(
-                $saldo,
-                2,
-                '.',
-                ''
-            ) .
-            '.',
-    ]);
-}
+                $idOrigen =
+                    $operacion->id_venta;
 
-                /*
-                 * Generamos una referencia propia.
-                 *
-                 * Libélula devuelve esta misma referencia
-                 * posteriormente como transaction_id
-                 * en el aviso GET.
-                 */
-                $referencia =
-                    'DULCE-VENTA-' .
-                    $venta->id_venta .
-                    '-' .
-                    Str::upper(
-                        Str::random(12)
+                $tipoOrigen =
+                    'VENTA';
+            } else {
+                $operacion = Pedido::query()
+                    ->with('cliente')
+                    ->lockForUpdate()
+                    ->find(
+                        $datos['id_pedido']
                     );
 
-                /*
-                 * Datos del cliente que se enviarán
-                 * al registro de deuda de Libélula.
-                 */
-                if ($venta->cliente) {
-                    $nombreCliente = trim(
-                        (string) (
-                            $venta->cliente->nombre
-                            ?? ''
-                        )
-                    );
-
-                    $apellidoCliente = trim(
-                        (string) (
-                            $venta->cliente->apellido
-                            ?? ''
-                        )
-                    );
-
-                    $emailCliente = trim(
-                        (string) (
-                            $venta->cliente
-                                ->correo_electronico
-                            ?? ''
-                        )
-                    );
-                } else {
-                    $nombreCliente = trim(
-                        (string) (
-                            $venta
-                                ->nombre_cliente_ocasional
-                            ?? ''
-                        )
-                    );
-
-                    $apellidoCliente = '';
-                    $emailCliente = '';
-                }
-
-                if ($nombreCliente === '') {
-                    $nombreCliente =
-                        'Cliente Dulce Bocado';
+                if (!$operacion) {
+                    throw ValidationException::withMessages([
+                        'id_pedido' =>
+                            'El pedido seleccionado no existe.',
+                    ]);
                 }
 
                 /*
-                 * Registrar la deuda real en Libélula.
+                 * Los pedidos pueden recibir pagos mientras
+                 * estén PROGRAMADOS o EN_PROCESO.
                  */
-                $respuesta =
-                    $this->pasarela
-                        ->registrarDeuda(
-                            $referencia,
-                            $monto,
-                            $nombreCliente,
-                            $apellidoCliente,
-                            $emailCliente !== ''
-                                ? $emailCliente
-                                : null,
-                            'Pago venta #' .
-                            $venta->id_venta .
-                            ' - Dulce Bocado'
-                        );
+                if (
+                    !in_array(
+                        $operacion->estado,
+                        [
+                            'PROGRAMADO',
+                            'EN_PROCESO',
+                        ],
+                        true
+                    )
+                ) {
+                    throw ValidationException::withMessages([
+                        'id_pedido' =>
+                            'El pedido no se encuentra disponible para recibir pagos.',
+                    ]);
+                }
 
-                /*
-                 * Verificación adicional:
-                 * el monto devuelto por Libélula
-                 * debe coincidir con el solicitado.
-                 */
-                $montoLibelula = round(
-                    (float) (
-                        $respuesta[
-                            'monto_total'
-                        ] ?? 0
-                    ),
-                    2
+                $campoOrigen =
+                    'id_pedido';
+
+                $idOrigen =
+                    $operacion->id_pedido;
+
+                $tipoOrigen =
+                    'PEDIDO';
+            }
+
+            /*
+             * --------------------------------------------------------------
+             * Solo una transacción online pendiente por operación
+             * --------------------------------------------------------------
+             */
+            $existePendiente =
+                PagoInternet::query()
+                    ->where(
+                        $campoOrigen,
+                        $idOrigen
+                    )
+                    ->where(
+                        'estado',
+                        'PENDIENTE'
+                    )
+                    ->exists();
+
+            if ($existePendiente) {
+                abort(
+                    409,
+                    $tipoOrigen === 'VENTA'
+                        ? 'La venta ya tiene una transacción de pago por internet pendiente.'
+                        : 'El pedido ya tiene una transacción de pago por internet pendiente.'
                 );
+            }
 
+            /*
+             * --------------------------------------------------------------
+             * Calcular saldo real
+             * --------------------------------------------------------------
+             */
+            $totalPagado = round(
+                (float) $operacion
+                    ->pagos()
+                    ->where(
+                        'estado',
+                        'REGISTRADO'
+                    )
+                    ->sum('monto'),
+                2
+            );
+
+            $total = round(
+                (float) $operacion->total,
+                2
+            );
+
+            $saldo = round(
+                $total - $totalPagado,
+                2
+            );
+
+            if ($saldo <= 0) {
+                throw ValidationException::withMessages([
+                    'monto' =>
+                        $tipoOrigen === 'VENTA'
+                            ? 'La venta ya se encuentra completamente pagada.'
+                            : 'El pedido ya se encuentra completamente pagado.',
+                ]);
+            }
+
+            $monto = round(
+                (float) $datos['monto'],
+                2
+            );
+
+            /*
+             * Venta directa:
+             * debe pagarse siempre por el total.
+             *
+             * Pedido:
+             * puede pagarse parcial o totalmente.
+             */
+            if ($esVenta) {
                 if (
                     abs(
-                        $montoLibelula -
-                        $monto
+                        $monto -
+                        $saldo
                     ) > 0.001
                 ) {
                     throw ValidationException::withMessages([
                         'monto' =>
-                            'El monto registrado por Libélula no coincide con el monto solicitado.',
+                            'El pago QR debe realizarse por el total de la venta: Bs ' .
+                            number_format(
+                                $saldo,
+                                2,
+                                '.',
+                                ''
+                            ) .
+                            '.',
                     ]);
                 }
+            } else {
+                if ($monto > $saldo) {
+                    throw ValidationException::withMessages([
+                        'monto' =>
+                            'El monto supera el saldo pendiente del pedido. Saldo disponible: Bs ' .
+                            number_format(
+                                $saldo,
+                                2,
+                                '.',
+                                ''
+                            ) .
+                            '.',
+                    ]);
+                }
+            }
 
-                return PagoInternet::create([
-                    'id_venta' =>
-                        $venta->id_venta,
+            /*
+             * --------------------------------------------------------------
+             * Referencia propia
+             * --------------------------------------------------------------
+             */
+            $referencia =
+                'DULCE-' .
+                $tipoOrigen .
+                '-' .
+                $idOrigen .
+                '-' .
+                Str::upper(
+                    Str::random(12)
+                );
 
-                    'id_pago' =>
-                        null,
+            /*
+             * --------------------------------------------------------------
+             * Datos del cliente
+             * --------------------------------------------------------------
+             */
+            if ($operacion->cliente) {
+                $nombreCliente = trim(
+                    (string) (
+                        $operacion
+                            ->cliente
+                            ->nombre
+                        ?? ''
+                    )
+                );
 
-                    'id_usuario' =>
-                        $request->user()->getKey(),
+                $apellidoCliente = trim(
+                    (string) (
+                        $operacion
+                            ->cliente
+                            ->apellido
+                        ?? ''
+                    )
+                );
 
-                    'monto' =>
+                $emailCliente = trim(
+                    (string) (
+                        $operacion
+                            ->cliente
+                            ->correo_electronico
+                        ?? ''
+                    )
+                );
+            } else {
+                $nombreCliente = trim(
+                    (string) (
+                        $operacion
+                            ->nombre_cliente_ocasional
+                        ?? ''
+                    )
+                );
+
+                $apellidoCliente = '';
+                $emailCliente = '';
+            }
+
+            if ($nombreCliente === '') {
+                $nombreCliente =
+                    'Cliente Dulce Bocado';
+            }
+
+            /*
+             * --------------------------------------------------------------
+             * Registrar deuda real en Libélula
+             * --------------------------------------------------------------
+             */
+            $descripcion =
+                $esVenta
+                    ? 'Pago venta #' .
+                        $idOrigen .
+                        ' - Dulce Bocado'
+                    : 'Pago pedido #' .
+                        $idOrigen .
+                        ' - Dulce Bocado';
+
+            $respuesta =
+                $this->pasarela
+                    ->registrarDeuda(
+                        $referencia,
                         $monto,
+                        $nombreCliente,
+                        $apellidoCliente,
+                        $emailCliente !== ''
+                            ? $emailCliente
+                            : null,
+                        $descripcion
+                    );
 
-                    'proveedor' =>
-                        $respuesta[
-                            'proveedor'
-                        ],
+            /*
+             * El monto devuelto por Libélula
+             * debe coincidir.
+             */
+            $montoLibelula = round(
+                (float) (
+                    $respuesta[
+                        'monto_total'
+                    ] ?? 0
+                ),
+                2
+            );
 
-                    'referencia_transaccion' =>
-                        $respuesta[
-                            'referencia_transaccion'
-                        ],
-
-                    'id_transaccion_libelula' =>
-                        $respuesta[
-                            'id_transaccion_libelula'
-                        ],
-
-                    'codigo_recaudacion' =>
-                        $respuesta[
-                            'codigo_recaudacion'
-                        ],
-
-                    'qr_simple_url' =>
-                        $respuesta[
-                            'qr_simple_url'
-                        ],
-
-                    'url_pasarela_pagos' =>
-                        $respuesta[
-                            'url_pasarela_pagos'
-                        ],
-
-                    'estado' =>
-                        'PENDIENTE',
-
-                    'motivo_rechazo' =>
-                        null,
-
-                    'respuesta_proveedor' =>
-                        $respuesta[
-                            'respuesta_proveedor'
-                        ],
-
-                    'fecha_solicitud' =>
-                        now(),
-
-                    'fecha_confirmacion' =>
-                        null,
-
-                    /*
-                     * Se mantienen temporalmente
-                     * los campos del flujo QR simulado
-                     * mientras terminamos la transición.
-                     */
-                    'token_qr' =>
-                        null,
-
-                    'fecha_vencimiento' =>
-                        null,
-
-                    'fecha_escaneo' =>
-                        null,
+            if (
+                abs(
+                    $montoLibelula -
+                    $monto
+                ) > 0.001
+            ) {
+                throw ValidationException::withMessages([
+                    'monto' =>
+                        'El monto registrado por Libélula no coincide con el monto solicitado.',
                 ]);
             }
-        );
 
-        $transaccion->load([
-            'venta.cliente',
-            'usuario',
-        ]);
+            /*
+             * --------------------------------------------------------------
+             * Crear transacción local
+             * --------------------------------------------------------------
+             */
+            return PagoInternet::create([
+                'id_venta' =>
+                    $esVenta
+                        ? $idOrigen
+                        : null,
 
-        return response()->json([
-            'message' =>
-                'Pago por internet iniciado correctamente.',
+                'id_pedido' =>
+                    $esVenta
+                        ? null
+                        : $idOrigen,
 
-            'transaccion' =>
-                $transaccion,
-        ], 201);
-    }
+                'id_pago' =>
+                    null,
+
+                'id_usuario' =>
+                    $request
+                        ->user()
+                        ->getKey(),
+
+                'monto' =>
+                    $monto,
+
+                'proveedor' =>
+                    $respuesta[
+                        'proveedor'
+                    ],
+
+                'referencia_transaccion' =>
+                    $respuesta[
+                        'referencia_transaccion'
+                    ],
+
+                'id_transaccion_libelula' =>
+                    $respuesta[
+                        'id_transaccion_libelula'
+                    ],
+
+                'codigo_recaudacion' =>
+                    $respuesta[
+                        'codigo_recaudacion'
+                    ],
+
+                'qr_simple_url' =>
+                    $respuesta[
+                        'qr_simple_url'
+                    ],
+
+                'url_pasarela_pagos' =>
+                    $respuesta[
+                        'url_pasarela_pagos'
+                    ],
+
+                'estado' =>
+                    'PENDIENTE',
+
+                'motivo_rechazo' =>
+                    null,
+
+                'respuesta_proveedor' =>
+                    $respuesta[
+                        'respuesta_proveedor'
+                    ],
+
+                'fecha_solicitud' =>
+                    now(),
+
+                'fecha_confirmacion' =>
+                    null,
+
+                'token_qr' =>
+                    null,
+
+                'fecha_vencimiento' =>
+                    null,
+
+                'fecha_escaneo' =>
+                    null,
+            ]);
+        }
+    );
+
+    $transaccion->load([
+        'venta.cliente',
+        'pedido.cliente',
+        'usuario',
+    ]);
+
+    return response()->json([
+        'message' =>
+            'Pago por internet iniciado correctamente.',
+
+        'transaccion' =>
+            $transaccion,
+    ], 201);
+}
 public function consultarQr(
     string $token
 ): JsonResponse {

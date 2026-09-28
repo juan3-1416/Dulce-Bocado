@@ -5,6 +5,7 @@ import {
 } from 'react'
 
 import PagoModal from './PagoModal'
+import ReciboDetalleModal from '../recibos/ReciboDetalleModal'
 
 import {
   anularPago,
@@ -13,22 +14,17 @@ import {
 } from '../../services/pagoService'
 
 function PagosPage() {
-  const [pagos, setPagos] =
-    useState([])
-
-  const [buscar, setBuscar] =
-    useState('')
-
-  const [estado, setEstado] =
-    useState('')
+  const [pagos, setPagos] = useState([])
+  const [buscar, setBuscar] = useState('')
+  const [estado, setEstado] = useState('')
 
   const [
     metodoPagoFiltro,
     setMetodoPagoFiltro,
   ] = useState('')
 
-  const [ventas, setVentas] =
-    useState([])
+  const [ventas, setVentas] = useState([])
+  const [pedidos, setPedidos] = useState([])
 
   const [
     metodosPago,
@@ -37,6 +33,11 @@ function PagosPage() {
     'EFECTIVO',
     'QR',
   ])
+
+  const [
+    reciboSeleccionado,
+    setReciboSeleccionado,
+  ] = useState(null)
 
   const [
     modalAbierto,
@@ -126,6 +127,10 @@ function PagosPage() {
         respuesta.ventas ?? []
       )
 
+      setPedidos(
+        respuesta.pedidos ?? []
+      )
+
       setMetodosPago(
         respuesta.metodos_pago ??
           [
@@ -158,7 +163,7 @@ function PagosPage() {
       } catch (errorPeticion) {
         setError(
           errorPeticion.message ||
-            'No se pudieron cargar las ventas disponibles.'
+            'No se pudieron cargar las ventas y pedidos disponibles.'
         )
       } finally {
         setCargandoCatalogos(false)
@@ -274,25 +279,114 @@ function PagosPage() {
   const obtenerNombreCliente = (
     pago
   ) => {
-    const venta = pago.venta
+    const documento =
+      pago.venta || pago.pedido
 
-    if (!venta) {
+    if (!documento) {
       return '—'
     }
 
-    if (venta.cliente) {
+    if (documento.cliente) {
       return [
-        venta.cliente.nombre,
-        venta.cliente.apellido,
+        documento.cliente.nombre,
+        documento.cliente.apellido,
       ]
         .filter(Boolean)
         .join(' ')
     }
 
     return (
-      venta.nombre_cliente_ocasional ||
+      documento.nombre_cliente_ocasional ||
       'Cliente ocasional'
     )
+  }
+
+  const obtenerDocumentoPago = (
+    pago
+  ) => {
+    if (pago.venta) {
+      return {
+        tipo: 'Venta',
+        numero: pago.id_venta,
+        documento: pago.venta,
+      }
+    }
+
+    if (pago.pedido) {
+      return {
+        tipo: 'Pedido',
+        numero: pago.id_pedido,
+        documento: pago.pedido,
+      }
+    }
+
+    return {
+      tipo: '—',
+      numero: null,
+      documento: null,
+    }
+  }
+
+  const abrirReciboPago = (
+    pago
+  ) => {
+    const recibos =
+      pago.recibos ?? []
+
+    const recibo =
+      recibos.find(
+        (item) =>
+          item.estado === 'EMITIDO'
+      ) ?? recibos[0]
+
+    if (!recibo?.id_recibo) {
+      setError(
+        'No se encontró un recibo asociado a este pago.'
+      )
+      return
+    }
+
+    setError('')
+    setReciboSeleccionado(
+      recibo.id_recibo
+    )
+  }
+
+  const obtenerResumenPago = (
+    pago
+  ) => {
+    const { documento } =
+      obtenerDocumentoPago(pago)
+
+    if (!documento) {
+      return {
+        total: 0,
+        pagadoHastaPago: null,
+        saldoDespuesPago: null,
+      }
+    }
+
+    return {
+      total: Number(
+        documento.total ?? 0
+      ),
+
+      pagadoHastaPago:
+        pago.total_pagado_hasta_pago !== null &&
+        pago.total_pagado_hasta_pago !== undefined
+          ? Number(
+              pago.total_pagado_hasta_pago
+            )
+          : null,
+
+      saldoDespuesPago:
+        pago.saldo_despues_pago !== null &&
+        pago.saldo_despues_pago !== undefined
+          ? Number(
+              pago.saldo_despues_pago
+            )
+          : null,
+    }
   }
 
   const obtenerNombreUsuario = (
@@ -334,7 +428,7 @@ function PagosPage() {
         return 'QR'
 
       case 'ONLINE':
-        return 'Online'
+        return 'QR - Libélula'
 
       default:
         return metodo
@@ -343,7 +437,6 @@ function PagosPage() {
 
   return (
     <section className="space-y-6">
-
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
@@ -351,7 +444,7 @@ function PagosPage() {
           </h1>
 
           <p className="mt-1 text-sm text-gray-600">
-            Registra y controla los pagos asociados a las ventas.
+            Registra y controla los pagos asociados a ventas y pedidos.
           </p>
         </div>
 
@@ -384,7 +477,6 @@ function PagosPage() {
       )}
 
       <div className="grid gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm md:grid-cols-3">
-
         <div>
           <label
             htmlFor="buscar_pago"
@@ -472,14 +564,13 @@ function PagosPage() {
             </option>
 
             <option value="ONLINE">
-              Online
+              QR - Libélula
             </option>
           </select>
         </div>
       </div>
 
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-
         {cargando ? (
           <div className="p-8 text-center text-gray-500">
             Cargando pagos...
@@ -491,7 +582,6 @@ function PagosPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
@@ -499,7 +589,7 @@ function PagosPage() {
                   </th>
 
                   <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
-                    Venta
+                    Origen
                   </th>
 
                   <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
@@ -530,142 +620,201 @@ function PagosPage() {
 
               <tbody className="divide-y divide-gray-200">
                 {pagos.map(
-                  (pago) => (
-                    <tr
-                      key={
-                        pago.id_pago
-                      }
-                      className="align-top hover:bg-gray-50"
-                    >
-                      <td className="px-5 py-4 text-sm font-semibold text-gray-900">
-                        #
-                        {
+                  (pago) => {
+                    const origen =
+                      obtenerDocumentoPago(
+                        pago
+                      )
+
+                    const resumen =
+                      obtenerResumenPago(
+                        pago
+                      )
+
+                    return (
+                      <tr
+                        key={
                           pago.id_pago
                         }
-                      </td>
+                        className="align-top hover:bg-gray-50"
+                      >
+                        <td className="px-5 py-4 text-sm font-semibold text-gray-900">
+                          #{pago.id_pago}
+                        </td>
 
-                      <td className="px-5 py-4">
-                        <p className="text-sm font-semibold text-gray-900">
-                          Venta #
-                          {
-                            pago.id_venta
-                          }
-                        </p>
-
-                        <p className="mt-1 text-xs text-gray-500">
-                          Total venta: Bs{' '}
-                          {Number(
-                            pago.venta
-                              ?.total ??
-                              0
-                          ).toFixed(
-                            2
-                          )}
-                        </p>
-                      </td>
-
-                      <td className="px-5 py-4">
-                        <p className="text-sm font-medium text-gray-900">
-                          {obtenerNombreCliente(
-                            pago
-                          )}
-                        </p>
-
-                        <p className="mt-1 text-xs text-gray-500">
-                          Registrado por:{' '}
-                          {obtenerNombreUsuario(
-                            pago.usuario
-                          )}
-                        </p>
-                      </td>
-
-                      <td className="px-5 py-4">
-                        <p className="text-sm font-bold text-gray-900">
-                          Bs{' '}
-                          {Number(
-                            pago.monto
-                          ).toFixed(
-                            2
-                          )}
-                        </p>
-                      </td>
-
-                      <td className="px-5 py-4">
-                        <p className="text-sm font-medium text-gray-700">
-                          {formatearMetodo(
-                            pago.metodo_pago
-                          )}
-                        </p>
-
-                        {pago.referencia && (
-                          <p className="mt-1 text-xs text-gray-500">
-                            Ref:{' '}
-                            {
-                              pago.referencia
-                            }
+                        <td className="px-5 py-4">
+                          <p className="text-sm font-semibold text-gray-900">
+                            {origen.tipo}
+                            {origen.numero
+                              ? ` #${origen.numero}`
+                              : ''}
                           </p>
-                        )}
-                      </td>
 
-                      <td className="px-5 py-4 text-sm text-gray-600">
-                        {formatearFecha(
-                          pago.fecha_pago
-                        )}
-                      </td>
+                          <div className="mt-2 space-y-1 text-xs text-gray-500">
+                            <p>
+                              Total: Bs{' '}
+                              {resumen.total.toFixed(
+                                2
+                              )}
+                            </p>
 
-                      <td className="px-5 py-4">
-                        {pago.estado ===
-                        'REGISTRADO' ? (
-                          <span className="inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
-                            Registrado
-                          </span>
-                        ) : (
-                          <div>
-                            <span className="inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
-                              Anulado
-                            </span>
+                            {pago.estado ===
+                            'REGISTRADO' ? (
+                              <>
+                                <p className="text-green-700">
+                                  Pagado hasta este pago: Bs{' '}
+                                  {resumen.pagadoHastaPago !==
+                                  null
+                                    ? resumen.pagadoHastaPago.toFixed(
+                                        2
+                                      )
+                                    : '0.00'}
+                                </p>
 
-                            {pago.motivo_anulacion && (
-                              <p className="mt-2 max-w-xs text-xs text-gray-500">
-                                {
-                                  pago.motivo_anulacion
-                                }
-                              </p>
-                            )}
-
-                            {pago.fecha_anulacion && (
-                              <p className="mt-1 text-xs text-gray-400">
-                                {formatearFecha(
-                                  pago.fecha_anulacion
-                                )}
+                                <p
+                                  className={
+                                    resumen.saldoDespuesPago >
+                                    0
+                                      ? 'font-semibold text-amber-700'
+                                      : 'font-semibold text-green-700'
+                                  }
+                                >
+                                  Saldo después del pago: Bs{' '}
+                                  {resumen.saldoDespuesPago !==
+                                  null
+                                    ? resumen.saldoDespuesPago.toFixed(
+                                        2
+                                      )
+                                    : '0.00'}
+                                </p>
+                              </>
+                            ) : (
+                              <p className="text-red-600">
+                                Pago anulado — no afecta el saldo vigente
                               </p>
                             )}
                           </div>
-                        )}
-                      </td>
+                        </td>
 
-                      <td className="px-5 py-4">
-                        {pago.estado ===
-                        'REGISTRADO' ? (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              abrirModalAnular(
-                                pago
-                              )
-                            }
-                            className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
-                          >
-                            Anular
-                          </button>
-                        ) : (
-                          <span className="text-xs text-gray-400">
-                            Sin acciones
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  )
+                        <td className="px-5 py-4">
+                          <p className="text-sm font-medium text-gray-900">
+                            {obtenerNombreCliente(
+                              pago
+                            )}
+                          </p>
+
+                          <p className="mt-1 text-xs text-gray-500">
+                            Registrado por:{' '}
+                            {obtenerNombreUsuario(
+                              pago.usuario
+                            )}
+                          </p>
+                        </td>
+
+                        <td className="px-5 py-4">
+                          <p className="text-sm font-bold text-gray-900">
+                            Bs{' '}
+                            {Number(
+                              pago.monto
+                            ).toFixed(
+                              2
+                            )}
+                          </p>
+                        </td>
+
+                        <td className="px-5 py-4">
+                          <p className="text-sm font-medium text-gray-700">
+                            {formatearMetodo(
+                              pago.metodo_pago
+                            )}
+                          </p>
+
+                          {pago.referencia && (
+                            <p className="mt-1 max-w-[220px] break-all text-xs text-gray-500">
+                              Ref:{' '}
+                              {pago.referencia}
+                            </p>
+                          )}
+                        </td>
+
+                        <td className="px-5 py-4 text-sm text-gray-600">
+                          {formatearFecha(
+                            pago.fecha_pago
+                          )}
+                        </td>
+
+                        <td className="px-5 py-4">
+                          {pago.estado ===
+                          'REGISTRADO' ? (
+                            <span className="inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+                              Registrado
+                            </span>
+                          ) : (
+                            <div>
+                              <span className="inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
+                                Anulado
+                              </span>
+
+                              {pago.motivo_anulacion && (
+                                <p className="mt-2 max-w-xs text-xs text-gray-500">
+                                  {
+                                    pago.motivo_anulacion
+                                  }
+                                </p>
+                              )}
+
+                              {pago.fecha_anulacion && (
+                                <p className="mt-1 text-xs text-gray-400">
+                                  {formatearFecha(
+                                    pago.fecha_anulacion
+                                  )}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </td>
+
+                        <td className="px-5 py-4">
+                          <div className="flex flex-wrap gap-2">
+                            {(pago.recibos
+                              ?.length ??
+                              0) > 0 ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  abrirReciboPago(
+                                    pago
+                                  )
+                                }
+                                className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                              >
+                                Ver recibo
+                              </button>
+                            ) : (
+                              <span className="inline-flex items-center text-xs text-gray-400">
+                                Sin recibo
+                              </span>
+                            )}
+
+                            {pago.estado ===
+                              'REGISTRADO' && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  abrirModalAnular(
+                                    pago
+                                  )
+                                }
+                                className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+                              >
+                                Anular
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  }
                 )}
               </tbody>
             </table>
@@ -680,16 +829,32 @@ function PagosPage() {
           manejarGuardado
         }
         ventas={ventas}
+        pedidos={pedidos}
         metodosPago={
           metodosPago
         }
       />
 
+      <ReciboDetalleModal
+        abierto={Boolean(
+          reciboSeleccionado
+        )}
+        reciboId={
+          reciboSeleccionado
+        }
+        onCerrar={() =>
+          setReciboSeleccionado(
+            null
+          )
+        }
+        onActualizado={
+          cargarPagos
+        }
+      />
+
       {pagoParaAnular && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
-
           <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
-
             <div className="border-b border-gray-200 px-6 py-4">
               <h2 className="text-xl font-bold text-gray-900">
                 Anular Pago
@@ -700,10 +865,10 @@ function PagosPage() {
                 {
                   pagoParaAnular.id_pago
                 }
-                {' — Venta #'}
-                {
-                  pagoParaAnular.id_venta
-                }
+                {' — '}
+                {pagoParaAnular.id_pedido
+                  ? `Pedido #${pagoParaAnular.id_pedido}`
+                  : `Venta #${pagoParaAnular.id_venta}`}
                 {' — Bs '}
                 {Number(
                   pagoParaAnular.monto
@@ -714,9 +879,8 @@ function PagosPage() {
             </div>
 
             <div className="space-y-5 p-6">
-
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                El pago dejará de formar parte del total pagado y el saldo pendiente de la venta será recalculado automáticamente.
+                El pago dejará de formar parte del total pagado y el saldo pendiente de la venta o pedido será recalculado automáticamente.
               </div>
 
               <div>
@@ -749,7 +913,6 @@ function PagosPage() {
               </div>
 
               <div className="flex justify-end gap-3 border-t border-gray-200 pt-5">
-
                 <button
                   type="button"
                   onClick={

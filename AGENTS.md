@@ -126,7 +126,7 @@ tokens personales ni tocar su configuración sin autorización.
 | CU13 | Gestionar Recibo | ✅ COMPLETADO |
 | CU14 | Gestionar Pedido | ✅ COMPLETADO |
 | CU15 | Gestionar Estado y Entrega de Pedido | ✅ COMPLETADO |
-| CU16 | Gestionar Producción | ✅ COMPLETADO | |
+| CU16 | Gestionar Producción | ✅ COMPLETADO |
 | CU17 | Gestionar Almacenes y Existencias | ✅ COMPLETADO |
 | CU18 | Gestionar Ingreso de Inventario | ✅ COMPLETADO |
 | CU19 | Gestionar Egreso de Inventario | ✅ COMPLETADO |

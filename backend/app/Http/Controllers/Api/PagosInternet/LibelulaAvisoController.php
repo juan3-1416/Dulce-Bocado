@@ -12,7 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-
+use App\Models\Pedido;
 class LibelulaAvisoController extends Controller
 {
     /**
@@ -331,77 +331,138 @@ class LibelulaAvisoController extends Controller
                     ];
                 }
 
-                /*
-                 * Bloqueamos también la venta.
-                 */
-                $venta =
-                    Venta::query()
-                        ->with('cliente')
-                        ->lockForUpdate()
-                        ->find(
-                            $transaccion
-                                ->id_venta
-                        );
+/*
+ * --------------------------------------------------------------
+ * Determinar origen de la transacción.
+ * --------------------------------------------------------------
+ *
+ * Una transacción pertenece exactamente a:
+ *
+ * - una venta
+ * - o un pedido
+ */
+$esVenta =
+    $transaccion->id_venta !== null;
 
-                if (!$venta) {
-                    return [
-                        'tipo' =>
-                            'VENTA_NO_ENCONTRADA',
-                    ];
-                }
+if ($esVenta) {
+    $operacion =
+        Venta::query()
+            ->with('cliente')
+            ->lockForUpdate()
+            ->find(
+                $transaccion->id_venta
+            );
 
-                if (
-                    $venta->estado !==
-                    'PENDIENTE_PAGO'
-                ) {
-                    return [
-                        'tipo' =>
-                            'VENTA_INVALIDA',
-                    ];
-                }
+    if (!$operacion) {
+        return [
+            'tipo' =>
+                'OPERACION_NO_ENCONTRADA',
 
-                /*
-                 * Recalculamos el saldo justo
-                 * cuando recibimos el aviso.
-                 */
-                $totalPagado = round(
-                    (float)
-                        $venta
-                            ->pagos()
-                            ->where(
-                                'estado',
-                                'REGISTRADO'
-                            )
-                            ->sum('monto'),
-                    2
-                );
+            'origen' =>
+                'VENTA',
+        ];
+    }
 
-                $totalVenta = round(
-                    (float)
-                        $venta->total,
-                    2
-                );
+    /*
+     * La venta directa debe seguir pendiente
+     * de pago al momento del callback.
+     */
+    if (
+        $operacion->estado !==
+        'PENDIENTE_PAGO'
+    ) {
+        return [
+            'tipo' =>
+                'OPERACION_INVALIDA',
 
-                $saldo = round(
-                    $totalVenta -
-                    $totalPagado,
-                    2
-                );
+            'origen' =>
+                'VENTA',
+        ];
+    }
+} else {
+    $operacion =
+        Pedido::query()
+            ->with('cliente')
+            ->lockForUpdate()
+            ->find(
+                $transaccion->id_pedido
+            );
+
+    if (!$operacion) {
+        return [
+            'tipo' =>
+                'OPERACION_NO_ENCONTRADA',
+
+            'origen' =>
+                'PEDIDO',
+        ];
+    }
+
+    /*
+     * Los pedidos pueden recibir pagos
+     * mientras estén PROGRAMADOS
+     * o EN_PROCESO.
+     */
+    if (
+        !in_array(
+            $operacion->estado,
+            [
+                'PROGRAMADO',
+                'EN_PROCESO',
+            ],
+            true
+        )
+    ) {
+        return [
+            'tipo' =>
+                'OPERACION_INVALIDA',
+
+            'origen' =>
+                'PEDIDO',
+        ];
+    }
+}
 
 /*
- * Una venta directa debe pagarse
- * obligatoriamente por el saldo total.
+ * --------------------------------------------------------------
+ * Recalcular saldo en el momento exacto del callback.
+ * --------------------------------------------------------------
+ *
+ * No confiamos en el saldo que existía
+ * cuando se generó el QR.
  */
-if (
-    $saldo <= 0
-    || abs(
-        $montoTransaccion -
-        $saldo
-    ) > 0.001
-) {
+$totalPagado = round(
+    (float)
+        $operacion
+            ->pagos()
+            ->where(
+                'estado',
+                'REGISTRADO'
+            )
+            ->sum('monto'),
+    2
+);
+
+$totalOperacion = round(
+    (float) $operacion->total,
+    2
+);
+
+$saldo = round(
+    $totalOperacion -
+    $totalPagado,
+    2
+);
+
+if ($saldo <= 0) {
     return [
         'tipo' =>
             'SALDO_INVALIDO',
+
+        'origen' =>
+            $esVenta
+                ? 'VENTA'
+                : 'PEDIDO',
 
         'saldo' =>
             $saldo,
@@ -411,186 +472,258 @@ if (
     ];
 }
 
-                /*
-                 * Crear el Pago real.
-                 *
-                 * Se utiliza el usuario que
-                 * inició la transacción QR.
-                 */
-                $pago = Pago::create([
-                    'id_venta' =>
-                        $venta->id_venta,
-
-                    'id_usuario' =>
-                        $transaccion
-                            ->id_usuario,
-
-                    'monto' =>
-                        $montoTransaccion,
-
-                    'metodo_pago' =>
-                        'ONLINE',
-
-                    'referencia' =>
-                        $transaccion
-                            ->referencia_transaccion,
-
-                    'estado' =>
-                        'REGISTRADO',
-
-                    'observaciones' =>
-                        'Pago QR confirmado automáticamente mediante aviso de Libélula.',
-
-                    'fecha_pago' =>
-                        now(),
-                ]);
-
-                /*
-                 * Datos del cliente para el
-                 * recibo automático.
-                 */
-                if ($venta->cliente) {
-                    $nombreCliente = trim(
-                        ($venta->cliente
-                            ->nombre ?? '') .
-                        ' ' .
-                        ($venta->cliente
-                            ->apellido ?? '')
-                    );
-
-                    if (
-                        $nombreCliente === ''
-                    ) {
-                        $nombreCliente =
-                            'Cliente ocasional';
-                    }
-
-                    $ciNit =
-                        $venta->cliente
-                            ->ci_nit;
-                } else {
-                    $nombreCliente = trim(
-                        (string) (
-                            $venta
-                                ->nombre_cliente_ocasional
-                            ?? ''
-                        )
-                    );
-
-                    if (
-                        $nombreCliente === ''
-                    ) {
-                        $nombreCliente =
-                            'Cliente ocasional';
-                    }
-
-                    $ciNit = null;
-                }
-
-                /*
-                 * Crear recibo automáticamente.
-                 */
-                $recibo = Recibo::create([
-                    'id_pago' =>
-                        $pago->id_pago,
-
-                    'id_usuario_emision' =>
-                        $transaccion
-                            ->id_usuario,
-
-                    'nombre_cliente' =>
-                        $nombreCliente,
-
-                    'ci_nit_cliente' =>
-                        $ciNit,
-
-                    'monto' =>
-                        $pago->monto,
-
-                    'metodo_pago' =>
-                        $pago->metodo_pago,
-
-                    'referencia_pago' =>
-                        $pago->referencia,
-
-                    'fecha_pago' =>
-                        $pago->fecha_pago,
-
-                    'estado' =>
-                        'EMITIDO',
-
-                    'fecha_emision' =>
-                        now(),
-
-                    'cantidad_impresiones' =>
-                        0,
-
-                    'id_usuario_ultima_impresion' =>
-                        null,
-
-                    'fecha_ultima_impresion' =>
-                        null,
-                ]);
 /*
- * El pago total ya fue confirmado y
- * el recibo fue creado correctamente.
+ * --------------------------------------------------------------
+ * Validar monto según tipo de operación.
+ * --------------------------------------------------------------
  *
- * Recién ahora la venta se considera
- * formalmente registrada.
+ * VENTA:
+ * pago obligatorio del saldo completo.
+ *
+ * PEDIDO:
+ * permite pagos parciales.
  */
-$venta->update([
+if ($esVenta) {
+    if (
+        abs(
+            $montoTransaccion -
+            $saldo
+        ) > 0.001
+    ) {
+        return [
+            'tipo' =>
+                'SALDO_INVALIDO',
+
+            'origen' =>
+                'VENTA',
+
+            'saldo' =>
+                $saldo,
+
+            'monto' =>
+                $montoTransaccion,
+        ];
+    }
+} else {
+    if (
+        $montoTransaccion >
+        $saldo
+    ) {
+        return [
+            'tipo' =>
+                'SALDO_INVALIDO',
+
+            'origen' =>
+                'PEDIDO',
+
+            'saldo' =>
+                $saldo,
+
+            'monto' =>
+                $montoTransaccion,
+        ];
+    }
+}
+
+/*
+ * --------------------------------------------------------------
+ * Crear Pago real.
+ * --------------------------------------------------------------
+ */
+$pago = Pago::create([
+    'id_venta' =>
+        $esVenta
+            ? $operacion->id_venta
+            : null,
+
+    'id_pedido' =>
+        $esVenta
+            ? null
+            : $operacion->id_pedido,
+
+    'id_usuario' =>
+        $transaccion
+            ->id_usuario,
+
+    'monto' =>
+        $montoTransaccion,
+
+    'metodo_pago' =>
+        'ONLINE',
+
+    'referencia' =>
+        $transaccion
+            ->referencia_transaccion,
+
     'estado' =>
-        'REGISTRADA',
+        'REGISTRADO',
+
+    'observaciones' =>
+        $esVenta
+            ? 'Pago QR de venta confirmado automáticamente mediante aviso de Libélula.'
+            : 'Pago QR de pedido confirmado automáticamente mediante aviso de Libélula.',
+
+    'fecha_pago' =>
+        now(),
 ]);
-                /*
-                 * Solo después de crear Pago y
-                 * Recibo marcamos la transacción
-                 * como APROBADA.
-                 */
-                $transaccion->update([
-                    'estado' =>
-                        'APROBADO',
 
-                    'id_pago' =>
-                        $pago->id_pago,
+/*
+ * --------------------------------------------------------------
+ * Datos del cliente para el recibo.
+ * --------------------------------------------------------------
+ */
+if ($operacion->cliente) {
+    $nombreCliente = trim(
+        ($operacion->cliente
+            ->nombre ?? '') .
+        ' ' .
+        ($operacion->cliente
+            ->apellido ?? '')
+    );
 
-                    'motivo_rechazo' =>
-                        null,
+    if ($nombreCliente === '') {
+        $nombreCliente =
+            'Cliente ocasional';
+    }
 
-                    'respuesta_proveedor' => [
-                        'registro' =>
-                            $transaccion
-                                ->respuesta_proveedor,
+    $ciNit =
+        $operacion
+            ->cliente
+            ->ci_nit;
+} else {
+    $nombreCliente = trim(
+        (string) (
+            $operacion
+                ->nombre_cliente_ocasional
+            ?? ''
+        )
+    );
 
-                        'aviso' =>
-                            $datosAviso,
-                    ],
+    if ($nombreCliente === '') {
+        $nombreCliente =
+            'Cliente ocasional';
+    }
 
-                    /*
-                     * Se mantiene este campo
-                     * temporalmente por
-                     * compatibilidad histórica.
-                     */
-                    'fecha_escaneo' =>
-                        now(),
+    $ciNit = null;
+}
 
-                    'fecha_confirmacion' =>
-                        now(),
-                ]);
+/*
+ * --------------------------------------------------------------
+ * Crear recibo automáticamente.
+ * --------------------------------------------------------------
+ */
+$recibo = Recibo::create([
+    'id_pago' =>
+        $pago->id_pago,
 
-                return [
-                    'tipo' =>
-                        'APROBADA',
+    'id_usuario_emision' =>
+        $transaccion
+            ->id_usuario,
 
-                    'transaccion' =>
-                        $transaccion,
+    'nombre_cliente' =>
+        $nombreCliente,
 
-                    'pago' =>
-                        $pago,
+    'ci_nit_cliente' =>
+        $ciNit,
 
-                    'recibo' =>
-                        $recibo,
-                ];
+    'monto' =>
+        $pago->monto,
+
+    'metodo_pago' =>
+        $pago->metodo_pago,
+
+    'referencia_pago' =>
+        $pago->referencia,
+
+    'fecha_pago' =>
+        $pago->fecha_pago,
+
+    'estado' =>
+        'EMITIDO',
+
+    'fecha_emision' =>
+        now(),
+
+    'cantidad_impresiones' =>
+        0,
+
+    'id_usuario_ultima_impresion' =>
+        null,
+
+    'fecha_ultima_impresion' =>
+        null,
+]);
+
+/*
+ * --------------------------------------------------------------
+ * Actualizar operación.
+ * --------------------------------------------------------------
+ *
+ * Solo las ventas directas pasan a REGISTRADA.
+ *
+ * Un pedido NO cambia de estado al pagar:
+ *
+ * PROGRAMADO → permanece PROGRAMADO
+ * EN_PROCESO → permanece EN_PROCESO
+ *
+ * Su estado se administra mediante CU15.
+ */
+if ($esVenta) {
+    $operacion->update([
+        'estado' =>
+            'REGISTRADA',
+    ]);
+}
+
+/*
+ * --------------------------------------------------------------
+ * Marcar transacción online como aprobada.
+ * --------------------------------------------------------------
+ */
+$transaccion->update([
+    'estado' =>
+        'APROBADO',
+
+    'id_pago' =>
+        $pago->id_pago,
+
+    'motivo_rechazo' =>
+        null,
+
+    'respuesta_proveedor' => [
+        'registro' =>
+            $transaccion
+                ->respuesta_proveedor,
+
+        'aviso' =>
+            $datosAviso,
+    ],
+
+    'fecha_escaneo' =>
+        now(),
+
+    'fecha_confirmacion' =>
+        now(),
+]);
+
+return [
+    'tipo' =>
+        'APROBADA',
+
+    'origen' =>
+        $esVenta
+            ? 'VENTA'
+            : 'PEDIDO',
+
+    'transaccion' =>
+        $transaccion,
+
+    'pago' =>
+        $pago,
+
+    'recibo' =>
+        $recibo,
+];
             }
         );
 
@@ -706,63 +839,86 @@ $venta->update([
                         'El monto informado por Libélula no coincide con la transacción.',
                 ], 409);
 
-            case 'VENTA_NO_ENCONTRADA':
-                Log::error(
-                    'La venta asociada al aviso de Libélula no existe.',
-                    [
-                        'transaction_id' =>
-                            $transactionId,
-                    ]
-                );
+case 'OPERACION_NO_ENCONTRADA':
+    $origen =
+        $resultado['origen'] ??
+        'OPERACION';
 
-                return response()->json([
-                    'ok' => false,
+    Log::error(
+        'La operación asociada al aviso de Libélula no existe.',
+        [
+            'transaction_id' =>
+                $transactionId,
 
-                    'message' =>
-                        'La venta asociada no existe.',
-                ], 409);
+            'origen' =>
+                $origen,
+        ]
+    );
 
-            case 'VENTA_INVALIDA':
-                Log::error(
-                    'La venta asociada al aviso de Libélula no está disponible.',
-                    [
-                        'transaction_id' =>
-                            $transactionId,
-                    ]
-                );
+    return response()->json([
+        'ok' => false,
 
-                return response()->json([
-                    'ok' => false,
+        'message' =>
+            $origen === 'PEDIDO'
+                ? 'El pedido asociado no existe.'
+                : 'La venta asociada no existe.',
+    ], 409);
 
-                    'message' =>
-                        'La venta asociada no está disponible para recibir el pago.',
-                ], 409);
+case 'OPERACION_INVALIDA':
+    $origen =
+        $resultado['origen'] ??
+        'OPERACION';
 
-            case 'SALDO_INVALIDO':
-                Log::error(
-                    'El saldo de la venta cambió antes del aviso de Libélula.',
-                    [
-                        'transaction_id' =>
-                            $transactionId,
+    Log::error(
+        'La operación asociada al aviso de Libélula no está disponible.',
+        [
+            'transaction_id' =>
+                $transactionId,
 
-                        'saldo' =>
-                            $resultado[
-                                'saldo'
-                            ],
+            'origen' =>
+                $origen,
+        ]
+    );
 
-                        'monto' =>
-                            $resultado[
-                                'monto'
-                            ],
-                    ]
-                );
+    return response()->json([
+        'ok' => false,
 
-                return response()->json([
-                    'ok' => false,
+        'message' =>
+            $origen === 'PEDIDO'
+                ? 'El pedido asociado no está disponible para recibir el pago.'
+                : 'La venta asociada no está disponible para recibir el pago.',
+    ], 409);
 
-                    'message' =>
-                        'El saldo actual de la venta no permite registrar automáticamente este pago.',
-                ], 409);
+case 'SALDO_INVALIDO':
+    $origen =
+        $resultado['origen'] ??
+        'OPERACION';
+
+    Log::error(
+        'El saldo de la operación cambió antes del aviso de Libélula.',
+        [
+            'transaction_id' =>
+                $transactionId,
+
+            'origen' =>
+                $origen,
+
+            'saldo' =>
+                $resultado['saldo'],
+
+            'monto' =>
+                $resultado['monto'],
+        ]
+    );
+
+    return response()->json([
+        'ok' => false,
+
+        'message' =>
+            $origen === 'PEDIDO'
+                ? 'El saldo actual del pedido no permite registrar automáticamente este pago.'
+                : 'El saldo actual de la venta no permite registrar automáticamente este pago.',
+    ], 409);
 
             default:
                 return response()->json([

@@ -23,12 +23,58 @@ class PagoController extends Controller
     public function index(Request $request): JsonResponse
     {
         $pagos = Pago::query()
-            ->with([
-                'venta.cliente',
-                'pedido.cliente',
-                'usuario',
-                'usuarioAnulacion',
+->with([
+    'venta' => function ($query) {
+        $query
+            ->with('cliente')
+            ->withSum(
+                [
+                    'pagos as total_pagado' =>
+                        fn ($pagoQuery) =>
+                            $pagoQuery->where(
+                                'estado',
+                                'REGISTRADO'
+                            ),
+                ],
+                'monto'
+            );
+    },
+
+    'pedido' => function ($query) {
+        $query
+            ->with('cliente')
+            ->withSum(
+                [
+                    'pagos as total_pagado' =>
+                        fn ($pagoQuery) =>
+                            $pagoQuery->where(
+                                'estado',
+                                'REGISTRADO'
+                            ),
+                ],
+                'monto'
+            );
+    },
+
+    'recibos' => function ($query) {
+        $query
+            ->select([
+                'id_recibo',
+                'id_pago',
+                'estado',
+                'fecha_emision',
             ])
+            ->orderByDesc(
+                'fecha_emision'
+            )
+            ->orderByDesc(
+                'id_recibo'
+            );
+    },
+
+    'usuario',
+    'usuarioAnulacion',
+])
             ->when(
                 $request->filled('estado'),
                 fn ($query) =>
@@ -132,6 +178,183 @@ class PagoController extends Controller
             ->orderByDesc('id_pago')
             ->get();
 
+        /*
+        |--------------------------------------------------------------------------
+        | Saldo histórico después de cada pago
+        |--------------------------------------------------------------------------
+        |
+        | Para cada venta o pedido involucrado en el listado, recuperamos todos
+        | sus pagos actualmente REGISTRADOS y reconstruimos el acumulado en orden
+        | cronológico. Así cada movimiento conoce el saldo que quedó después de él.
+        |--------------------------------------------------------------------------
+        */
+        $idsVentas = $pagos
+            ->pluck('id_venta')
+            ->filter(fn ($id) => $id !== null)
+            ->unique()
+            ->values();
+
+        $idsPedidos = $pagos
+            ->pluck('id_pedido')
+            ->filter(fn ($id) => $id !== null)
+            ->unique()
+            ->values();
+
+        $totalesVentas = [];
+        $totalesPedidos = [];
+
+        foreach ($pagos as $pago) {
+            if (
+                $pago->id_venta !== null &&
+                $pago->venta
+            ) {
+                $totalesVentas[$pago->id_venta] = round(
+                    (float) $pago->venta->total,
+                    2
+                );
+            }
+
+            if (
+                $pago->id_pedido !== null &&
+                $pago->pedido
+            ) {
+                $totalesPedidos[$pago->id_pedido] = round(
+                    (float) $pago->pedido->total,
+                    2
+                );
+            }
+        }
+
+        $resumenPorPago = [];
+
+        if (
+            $idsVentas->isNotEmpty() ||
+            $idsPedidos->isNotEmpty()
+        ) {
+            $movimientos = Pago::query()
+                ->select([
+                    'id_pago',
+                    'id_venta',
+                    'id_pedido',
+                    'monto',
+                    'fecha_pago',
+                ])
+                ->where(
+                    'estado',
+                    'REGISTRADO'
+                )
+                ->where(
+                    function ($query) use (
+                        $idsVentas,
+                        $idsPedidos
+                    ) {
+                        if ($idsVentas->isNotEmpty()) {
+                            $query->whereIn(
+                                'id_venta',
+                                $idsVentas
+                            );
+                        }
+
+                        if ($idsPedidos->isNotEmpty()) {
+                            if ($idsVentas->isNotEmpty()) {
+                                $query->orWhereIn(
+                                    'id_pedido',
+                                    $idsPedidos
+                                );
+                            } else {
+                                $query->whereIn(
+                                    'id_pedido',
+                                    $idsPedidos
+                                );
+                            }
+                        }
+                    }
+                )
+                ->orderBy('fecha_pago')
+                ->orderBy('id_pago')
+                ->get();
+
+            $acumulados = [];
+
+            foreach ($movimientos as $movimiento) {
+                if ($movimiento->id_venta !== null) {
+                    $clave =
+                        'VENTA_' .
+                        $movimiento->id_venta;
+
+                    $total =
+                        $totalesVentas[
+                            $movimiento->id_venta
+                        ] ?? 0;
+                } else {
+                    $clave =
+                        'PEDIDO_' .
+                        $movimiento->id_pedido;
+
+                    $total =
+                        $totalesPedidos[
+                            $movimiento->id_pedido
+                        ] ?? 0;
+                }
+
+                $acumulados[$clave] = round(
+                    ($acumulados[$clave] ?? 0) +
+                    (float) $movimiento->monto,
+                    2
+                );
+
+                $saldoDespues = round(
+                    $total -
+                    $acumulados[$clave],
+                    2
+                );
+
+                $resumenPorPago[
+                    $movimiento->id_pago
+                ] = [
+                    'total_pagado_hasta_pago' =>
+                        number_format(
+                            $acumulados[$clave],
+                            2,
+                            '.',
+                            ''
+                        ),
+
+                    'saldo_despues_pago' =>
+                        number_format(
+                            max(
+                                0,
+                                $saldoDespues
+                            ),
+                            2,
+                            '.',
+                            ''
+                        ),
+                ];
+            }
+        }
+
+        foreach ($pagos as $pago) {
+            $resumen =
+                $resumenPorPago[
+                    $pago->id_pago
+                ] ?? null;
+
+            $pago->setAttribute(
+                'total_pagado_hasta_pago',
+                $resumen[
+                    'total_pagado_hasta_pago'
+                ] ?? null
+            );
+
+            $pago->setAttribute(
+                'saldo_despues_pago',
+                $resumen[
+                    'saldo_despues_pago'
+                ] ?? null
+            );
+        }
+
         return response()->json([
             'pagos' => $pagos,
         ]);
@@ -170,12 +393,7 @@ class PagoController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Catálogo de ventas cobrables
-    |--------------------------------------------------------------------------
-    |
-    | Solo aparecen ventas:
-    | - REGISTRADAS
-    | - con saldo pendiente mayor a cero
+    | Catálogo de ventas y pedidos cobrables
     |--------------------------------------------------------------------------
     */
     public function catalogos(): JsonResponse
@@ -281,27 +499,81 @@ class PagoController extends Controller
                 ],
                 'monto'
             )
-            ->whereIn('estado', ['PROGRAMADO', 'EN_PROCESO'])
+            ->whereIn(
+                'estado',
+                [
+                    'PROGRAMADO',
+                    'EN_PROCESO',
+                ]
+            )
             ->orderByDesc('fecha_pedido')
             ->get()
             ->map(function ($pedido) {
-                $total = round((float) $pedido->total, 2);
-                $totalPagado = round((float) ($pedido->total_pagado_agregado ?? 0), 2);
-                $saldo = round($total - $totalPagado, 2);
+                $total = round(
+                    (float) $pedido->total,
+                    2
+                );
+
+                $totalPagado = round(
+                    (float) (
+                        $pedido->total_pagado_agregado ?? 0
+                    ),
+                    2
+                );
+
+                $saldo = round(
+                    $total - $totalPagado,
+                    2
+                );
 
                 return [
-                    'id_pedido' => $pedido->id_pedido,
-                    'id_cliente' => $pedido->id_cliente,
-                    'nombre_cliente_ocasional' => $pedido->nombre_cliente_ocasional,
-                    'cliente' => $pedido->cliente,
-                    'fecha_pedido' => $pedido->fecha_pedido,
-                    'estado' => $pedido->estado,
-                    'total' => number_format($total, 2, '.', ''),
-                    'total_pagado' => number_format($totalPagado, 2, '.', ''),
-                    'saldo' => number_format($saldo, 2, '.', ''),
+                    'id_pedido' =>
+                        $pedido->id_pedido,
+
+                    'id_cliente' =>
+                        $pedido->id_cliente,
+
+                    'nombre_cliente_ocasional' =>
+                        $pedido->nombre_cliente_ocasional,
+
+                    'cliente' =>
+                        $pedido->cliente,
+
+                    'fecha_pedido' =>
+                        $pedido->fecha_pedido,
+
+                    'estado' =>
+                        $pedido->estado,
+
+                    'total' =>
+                        number_format(
+                            $total,
+                            2,
+                            '.',
+                            ''
+                        ),
+
+                    'total_pagado' =>
+                        number_format(
+                            $totalPagado,
+                            2,
+                            '.',
+                            ''
+                        ),
+
+                    'saldo' =>
+                        number_format(
+                            $saldo,
+                            2,
+                            '.',
+                            ''
+                        ),
                 ];
             })
-            ->filter(fn ($pedido) => (float) $pedido['saldo'] > 0)
+            ->filter(
+                fn ($pedido) =>
+                    (float) $pedido['saldo'] > 0
+            )
             ->values();
 
         return response()->json([
@@ -328,148 +600,199 @@ class PagoController extends Controller
         $pago = DB::transaction(
             function () use ($datos, $request) {
                 $esVenta = !empty($datos['id_venta']);
-                $idReferencia = $esVenta ? $datos['id_venta'] : $datos['id_pedido'];
-                $campoReferencia = $esVenta ? 'id_venta' : 'id_pedido';
 
-                $entidad = $esVenta 
-                    ? Venta::query()->lockForUpdate()->find($idReferencia)
-                    : Pedido::query()->lockForUpdate()->find($idReferencia);
+                $idReferencia = $esVenta
+                    ? $datos['id_venta']
+                    : $datos['id_pedido'];
+
+                $campoReferencia = $esVenta
+                    ? 'id_venta'
+                    : 'id_pedido';
+
+                $entidad = $esVenta
+                    ? Venta::query()
+                        ->lockForUpdate()
+                        ->find($idReferencia)
+                    : Pedido::query()
+                        ->lockForUpdate()
+                        ->find($idReferencia);
 
                 if (!$entidad) {
                     throw ValidationException::withMessages([
-                        $campoReferencia => $esVenta ? 'La venta seleccionada no existe.' : 'El pedido seleccionado no existe.',
+                        $campoReferencia =>
+                            $esVenta
+                                ? 'La venta seleccionada no existe.'
+                                : 'El pedido seleccionado no existe.',
                     ]);
                 }
 
-if ($esVenta) {
-    if (
-        $entidad->estado !==
-        'PENDIENTE_PAGO'
-    ) {
-        throw ValidationException::withMessages([
-            'id_venta' =>
-                'La venta no se encuentra pendiente de pago.',
-        ]);
-    }
-
-    if (
-        $entidad
-            ->pagosInternet()
-            ->where(
-                'estado',
-                'PENDIENTE'
-            )
-            ->exists()
-    ) {
-        throw ValidationException::withMessages([
-            'id_venta' =>
-                'La venta tiene un pago QR pendiente. Debe completarlo o resolverlo antes de registrar otro pago.',
-        ]);
-    }
-} else {
-                    if (in_array($entidad->estado, ['ENTREGADO', 'CANCELADO'])) {
+                if ($esVenta) {
+                    if (
+                        $entidad->estado !==
+                        'PENDIENTE_PAGO'
+                    ) {
                         throw ValidationException::withMessages([
-                            'id_pedido' => 'No se pueden registrar pagos sobre un pedido finalizado o cancelado.',
+                            'id_venta' =>
+                                'La venta no se encuentra pendiente de pago.',
+                        ]);
+                    }
+
+                    if (
+                        $entidad
+                            ->pagosInternet()
+                            ->where(
+                                'estado',
+                                'PENDIENTE'
+                            )
+                            ->exists()
+                    ) {
+                        throw ValidationException::withMessages([
+                            'id_venta' =>
+                                'La venta tiene un pago QR pendiente. Debe completarlo o resolverlo antes de registrar otro pago.',
+                        ]);
+                    }
+                } else {
+                    if (
+                        in_array(
+                            $entidad->estado,
+                            [
+                                'ENTREGADO',
+                                'CANCELADO',
+                            ],
+                            true
+                        )
+                    ) {
+                        throw ValidationException::withMessages([
+                            'id_pedido' =>
+                                'No se pueden registrar pagos sobre un pedido finalizado o cancelado.',
                         ]);
                     }
                 }
 
-                $totalPagado = round((float) $entidad->pagos()->where('estado', 'REGISTRADO')->sum('monto'), 2);
-                $totalEntidad = round((float) $entidad->total, 2);
-                $saldo = round($totalEntidad - $totalPagado, 2);
+                $totalPagado = round(
+                    (float) $entidad
+                        ->pagos()
+                        ->where(
+                            'estado',
+                            'REGISTRADO'
+                        )
+                        ->sum('monto'),
+                    2
+                );
+
+                $totalEntidad = round(
+                    (float) $entidad->total,
+                    2
+                );
+
+                $saldo = round(
+                    $totalEntidad -
+                    $totalPagado,
+                    2
+                );
 
                 if ($saldo <= 0) {
                     throw ValidationException::withMessages([
-                        'monto' => $esVenta ? 'La venta ya se encuentra completamente pagada.' : 'El pedido ya se encuentra completamente pagado.',
+                        'monto' =>
+                            $esVenta
+                                ? 'La venta ya se encuentra completamente pagada.'
+                                : 'El pedido ya se encuentra completamente pagado.',
                     ]);
                 }
 
-                $monto = round((float) $datos['monto'], 2);
+                $monto = round(
+                    (float) $datos['monto'],
+                    2
+                );
+
                 /*
- * Las ventas directas deben pagarse
- * completamente.
- *
- * Los pedidos sí pueden mantener
- * pagos parciales.
- */
-if (
-    $esVenta &&
-    abs(
-        $monto -
-        $saldo
-    ) > 0.001
-) {
-    throw ValidationException::withMessages([
-        'monto' =>
-            'Una venta directa debe pagarse por el total pendiente: Bs ' .
-            number_format(
-                $saldo,
-                2,
-                '.',
-                ''
-            ) .
-            '.',
-    ]);
-}
+                 * Las ventas directas deben pagarse completamente.
+                 * Los pedidos sí pueden mantener pagos parciales.
+                 */
+                if (
+                    $esVenta &&
+                    abs(
+                        $monto -
+                        $saldo
+                    ) > 0.001
+                ) {
+                    throw ValidationException::withMessages([
+                        'monto' =>
+                            'Una venta directa debe pagarse por el total pendiente: Bs ' .
+                            number_format(
+                                $saldo,
+                                2,
+                                '.',
+                                ''
+                            ) .
+                            '.',
+                    ]);
+                }
 
                 if ($monto > $saldo) {
                     throw ValidationException::withMessages([
-                        'monto' => 'El monto supera el saldo pendiente. Saldo disponible: Bs ' . number_format($saldo, 2, '.', '') . '.',
+                        'monto' =>
+                            'El monto supera el saldo pendiente. Saldo disponible: Bs ' .
+                            number_format(
+                                $saldo,
+                                2,
+                                '.',
+                                ''
+                            ) .
+                            '.',
                     ]);
                 }
 
-$pago = Pago::create([
-    'id_venta' =>
-        $esVenta
-            ? $entidad->id_venta
-            : null,
+                $pago = Pago::create([
+                    'id_venta' =>
+                        $esVenta
+                            ? $entidad->id_venta
+                            : null,
 
-    'id_pedido' =>
-        !$esVenta
-            ? $entidad->id_pedido
-            : null,
+                    'id_pedido' =>
+                        !$esVenta
+                            ? $entidad->id_pedido
+                            : null,
 
-    'id_usuario' =>
-        $request->user()->getKey(),
+                    'id_usuario' =>
+                        $request->user()->getKey(),
 
-    'monto' =>
-        $monto,
+                    'monto' =>
+                        $monto,
 
-    'metodo_pago' =>
-        $datos['metodo_pago'],
+                    'metodo_pago' =>
+                        $datos['metodo_pago'],
 
-    'referencia' =>
-        !empty(
-            $datos['referencia']
-        )
-            ? trim(
-                $datos['referencia']
-            )
-            : null,
+                    'referencia' =>
+                        !empty($datos['referencia'])
+                            ? trim(
+                                $datos['referencia']
+                            )
+                            : null,
 
-    'estado' =>
-        'REGISTRADO',
+                    'estado' =>
+                        'REGISTRADO',
 
-    'observaciones' =>
-        $datos['observaciones']
-        ?? null,
+                    'observaciones' =>
+                        $datos['observaciones']
+                        ?? null,
 
-    'fecha_pago' =>
-        now(),
-]);
+                    'fecha_pago' =>
+                        now(),
+                ]);
 
-/*
- * Una venta directa solo queda
- * REGISTRADA después del pago total.
- */
-if ($esVenta) {
-    $entidad->update([
-        'estado' =>
-            'REGISTRADA',
-    ]);
-}
+                /*
+                 * Una venta directa solo queda REGISTRADA
+                 * después del pago total.
+                 */
+                if ($esVenta) {
+                    $entidad->update([
+                        'estado' =>
+                            'REGISTRADA',
+                    ]);
+                }
 
-return $pago;
+                return $pago;
             }
         );
 
@@ -480,13 +803,32 @@ return $pago;
         ]);
 
         $resumen = !empty($pago->id_venta)
-            ? ['resumen_venta' => $this->obtenerResumenVenta($pago->id_venta)]
-            : ['resumen_pedido' => $this->obtenerResumenPedido($pago->id_pedido)];
+            ? [
+                'resumen_venta' =>
+                    $this->obtenerResumenVenta(
+                        $pago->id_venta
+                    ),
+            ]
+            : [
+                'resumen_pedido' =>
+                    $this->obtenerResumenPedido(
+                        $pago->id_pedido
+                    ),
+            ];
 
-        return response()->json(array_merge([
-            'message' => 'Pago registrado correctamente.',
-            'pago' => $pago,
-        ], $resumen), 201);
+        return response()->json(
+            array_merge(
+                [
+                    'message' =>
+                        'Pago registrado correctamente.',
+
+                    'pago' =>
+                        $pago,
+                ],
+                $resumen
+            ),
+            201
+        );
     }
 
     /*
@@ -495,145 +837,142 @@ return $pago;
     |--------------------------------------------------------------------------
     |
     | No se edita un pago registrado.
-    | Si existe un error, se anula y posteriormente
-    | se registra uno nuevo.
+    | Si existe un error, se anula y posteriormente se registra uno nuevo.
     |--------------------------------------------------------------------------
     */
-   public function anular(
-    AnularPagoRequest $request,
-    int $id
-): JsonResponse {
-    $datos = $request->validated();
+    public function anular(
+        AnularPagoRequest $request,
+        int $id
+    ): JsonResponse {
+        $datos = $request->validated();
 
-    $pago = DB::transaction(
-        function () use ($request, $datos, $id) {
-            $pago = Pago::query()
-                ->lockForUpdate()
-                ->find($id);
-
-            if (!$pago) {
-                abort(
-                    404,
-                    'Pago no encontrado.'
-                );
-            }
-
-            if ($pago->estado === 'ANULADO') {
-                abort(
-                    409,
-                    'El pago ya se encuentra anulado.'
-                );
-            }
-
-            /*
-             * Bloquear y validar la operación comercial
-             * asociada al pago.
-             */
-            if ($pago->id_venta !== null) {
-                Venta::query()
+        $pago = DB::transaction(
+            function () use ($request, $datos, $id) {
+                $pago = Pago::query()
                     ->lockForUpdate()
-                    ->find($pago->id_venta);
-            } elseif ($pago->id_pedido !== null) {
-                $pedido = Pedido::query()
-                    ->lockForUpdate()
-                    ->find($pago->id_pedido);
+                    ->find($id);
 
-                if (!$pedido) {
+                if (!$pago) {
                     abort(
                         404,
-                        'El pedido asociado al pago no existe.'
+                        'Pago no encontrado.'
+                    );
+                }
+
+                if ($pago->estado === 'ANULADO') {
+                    abort(
+                        409,
+                        'El pago ya se encuentra anulado.'
                     );
                 }
 
                 /*
-                 * Un pedido entregado debe conservar
-                 * saldo cero.
-                 *
-                 * No se permite anular posteriormente
-                 * uno de sus pagos.
+                 * Bloquear y validar la operación comercial
+                 * asociada al pago.
                  */
-                if ($pedido->estado === 'ENTREGADO') {
+                if ($pago->id_venta !== null) {
+                    Venta::query()
+                        ->lockForUpdate()
+                        ->find($pago->id_venta);
+                } elseif ($pago->id_pedido !== null) {
+                    $pedido = Pedido::query()
+                        ->lockForUpdate()
+                        ->find($pago->id_pedido);
+
+                    if (!$pedido) {
+                        abort(
+                            404,
+                            'El pedido asociado al pago no existe.'
+                        );
+                    }
+
+                    /*
+                     * Un pedido entregado debe conservar saldo cero.
+                     * No se permite anular posteriormente uno de sus pagos.
+                     */
+                    if ($pedido->estado === 'ENTREGADO') {
+                        abort(
+                            409,
+                            'No se puede anular un pago de un pedido ya entregado.'
+                        );
+                    }
+                }
+
+                /*
+                 * Si existe un recibo EMITIDO,
+                 * primero debe anularse el recibo.
+                 */
+                if (
+                    $pago
+                        ->recibos()
+                        ->where(
+                            'estado',
+                            'EMITIDO'
+                        )
+                        ->exists()
+                ) {
                     abort(
                         409,
-                        'No se puede anular un pago de un pedido ya entregado.'
+                        'No se puede anular un pago que tiene un recibo emitido. Anule primero el recibo asociado.'
                     );
                 }
+
+                $pago->update([
+                    'estado' =>
+                        'ANULADO',
+
+                    'id_usuario_anulacion' =>
+                        $request->user()->getKey(),
+
+                    'motivo_anulacion' =>
+                        trim(
+                            $datos['motivo_anulacion']
+                        ),
+
+                    'fecha_anulacion' =>
+                        now(),
+                ]);
+
+                return $pago;
             }
+        );
 
-            /*
-             * Si existe un recibo EMITIDO,
-             * primero debe anularse el recibo.
-             */
-            if (
-                $pago->recibos()
-                    ->where(
-                        'estado',
-                        'EMITIDO'
-                    )
-                    ->exists()
-            ) {
-                abort(
-                    409,
-                    'No se puede anular un pago que tiene un recibo emitido. Anule primero el recibo asociado.'
-                );
-            }
+        $pago->load([
+            'venta.cliente',
+            'pedido.cliente',
+            'usuario',
+            'usuarioAnulacion',
+        ]);
 
-            $pago->update([
-                'estado' =>
-                    'ANULADO',
-
-                'id_usuario_anulacion' =>
-                    $request->user()->getKey(),
-
-                'motivo_anulacion' =>
-                    trim(
-                        $datos['motivo_anulacion']
+        if ($pago->id_venta !== null) {
+            $resumen = [
+                'resumen_venta' =>
+                    $this->obtenerResumenVenta(
+                        $pago->id_venta
                     ),
-
-                'fecha_anulacion' =>
-                    now(),
-            ]);
-
-            return $pago;
+            ];
+        } else {
+            $resumen = [
+                'resumen_pedido' =>
+                    $this->obtenerResumenPedido(
+                        $pago->id_pedido
+                    ),
+            ];
         }
-    );
 
-    $pago->load([
-        'venta.cliente',
-        'pedido.cliente',
-        'usuario',
-        'usuarioAnulacion',
-    ]);
+        return response()->json(
+            array_merge(
+                [
+                    'message' =>
+                        'Pago anulado correctamente.',
 
-    if ($pago->id_venta !== null) {
-        $resumen = [
-            'resumen_venta' =>
-                $this->obtenerResumenVenta(
-                    $pago->id_venta
-                ),
-        ];
-    } else {
-        $resumen = [
-            'resumen_pedido' =>
-                $this->obtenerResumenPedido(
-                    $pago->id_pedido
-                ),
-        ];
+                    'pago' =>
+                        $pago,
+                ],
+                $resumen
+            )
+        );
     }
-
-    return response()->json(
-        array_merge(
-            [
-                'message' =>
-                    'Pago anulado correctamente.',
-
-                'pago' =>
-                    $pago,
-            ],
-            $resumen
-        )
-    );
-}
 
     /*
     |--------------------------------------------------------------------------
@@ -712,24 +1051,58 @@ return $pago;
         $pedido = Pedido::query()
             ->findOrFail($idPedido);
 
-        $totalPedido = round((float) $pedido->total, 2);
+        $totalPedido = round(
+            (float) $pedido->total,
+            2
+        );
 
         $totalPagado = round(
             (float) $pedido
                 ->pagos()
-                ->where('estado', 'REGISTRADO')
+                ->where(
+                    'estado',
+                    'REGISTRADO'
+                )
                 ->sum('monto'),
             2
         );
 
-        $saldo = round($totalPedido - $totalPagado, 2);
+        $saldo = round(
+            $totalPedido -
+            $totalPagado,
+            2
+        );
 
         return [
-            'id_pedido' => $pedido->id_pedido,
-            'total' => number_format($totalPedido, 2, '.', ''),
-            'total_pagado' => number_format($totalPagado, 2, '.', ''),
-            'saldo' => number_format(max(0, $saldo), 2, '.', ''),
-            'pagado_completo' => $saldo <= 0,
+            'id_pedido' =>
+                $pedido->id_pedido,
+
+            'total' =>
+                number_format(
+                    $totalPedido,
+                    2,
+                    '.',
+                    ''
+                ),
+
+            'total_pagado' =>
+                number_format(
+                    $totalPagado,
+                    2,
+                    '.',
+                    ''
+                ),
+
+            'saldo' =>
+                number_format(
+                    max(0, $saldo),
+                    2,
+                    '.',
+                    ''
+                ),
+
+            'pagado_completo' =>
+                $saldo <= 0,
         ];
     }
 }

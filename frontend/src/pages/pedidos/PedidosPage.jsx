@@ -710,9 +710,9 @@ function PedidosPage() {
                                         Estado
                                     </th>
 
-                                    <th className="px-5 py-3 text-right text-xs font-semibold uppercase text-gray-600">
-                                        Acciones
-                                    </th>
+                                    <th className="w-[260px] min-w-[260px] px-4 py-3 text-right text-xs font-semibold uppercase text-gray-600">
+    Acciones
+</th>
                                 </tr>
                             </thead>
 
@@ -816,9 +816,10 @@ function PedidosPage() {
                                             </td>
 
                                             {/* Acciones */}
-                                            <td className="px-5 py-4 text-right">
-                                                <div className="flex flex-col items-end gap-2">
-                                                    <div className="flex justify-end gap-2">
+                                           {/* Acciones */}
+<td className="w-[260px] min-w-[260px] px-4 py-4 text-right align-top">
+    <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
                                                         <button
                                                             type="button"
                                                             onClick={() =>
@@ -849,7 +850,7 @@ function PedidosPage() {
                                                         )}
                                                     </div>
 
-                                                    <div className="flex justify-end gap-2 mt-1">
+                                                    <div className="flex max-w-[260px] flex-wrap justify-end gap-2 mt-1">
                                                         {pedido.estado === 'PROGRAMADO' && (
                                                             <>
                                                                 <button
