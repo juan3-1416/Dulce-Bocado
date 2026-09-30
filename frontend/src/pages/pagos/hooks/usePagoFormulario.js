@@ -23,7 +23,7 @@ import { crearPagoInternet } from '../../../services/pagoInternetService'
  * @param {Function}     params.onGuardado
  * @param {Function}     params.onCerrar
  * @param {Function}     params.onIniciarQr
- * @param {Function}     params.setError  — setter compartido del PagoModal
+ * @param {Function}     params.setError — setter compartido del PagoModal
  */
 export function usePagoFormulario({
   abierto,
@@ -61,10 +61,6 @@ export function usePagoFormulario({
   const [guardando, setGuardando] =
     useState(false)
 
-  /*
-   * Inicialización del formulario
-   * cada vez que se abre el modal.
-   */
   useEffect(() => {
     if (!abierto) return
 
@@ -84,11 +80,15 @@ export function usePagoFormulario({
       setTipoCobro('pedido')
 
       setIdPedido(
-        String(pedidoSeleccionadoInicial.id_pedido)
+        String(
+          pedidoSeleccionadoInicial.id_pedido
+        )
       )
 
       setMonto(
-        String(pedidoSeleccionadoInicial.saldo)
+        String(
+          pedidoSeleccionadoInicial.saldo
+        )
       )
 
       return
@@ -105,7 +105,9 @@ export function usePagoFormulario({
       setIdVenta(String(ventaInicialId))
 
       if (ventaInicial) {
-        setMonto(String(ventaInicial.saldo))
+        setMonto(
+          String(ventaInicial.saldo)
+        )
       }
 
       return
@@ -133,7 +135,8 @@ export function usePagoFormulario({
     () =>
       ventas.find(
         (venta) =>
-          Number(venta.id_venta) === Number(idVenta)
+          Number(venta.id_venta) ===
+          Number(idVenta)
       ) ?? null,
     [ventas, idVenta]
   )
@@ -142,7 +145,8 @@ export function usePagoFormulario({
     () =>
       pedidos.find(
         (pedido) =>
-          Number(pedido.id_pedido) === Number(idPedido)
+          Number(pedido.id_pedido) ===
+          Number(idPedido)
       ) ?? null,
     [pedidos, idPedido]
   )
@@ -152,7 +156,9 @@ export function usePagoFormulario({
       ? ventaSeleccionada
       : pedidoSeleccionado
 
-  const obtenerNombreCliente = (documento) => {
+  const obtenerNombreCliente = (
+    documento
+  ) => {
     if (!documento) return ''
 
     if (documento.cliente) {
@@ -165,19 +171,27 @@ export function usePagoFormulario({
     }
 
     return (
-      documento.nombre_cliente_ocasional ||
+      documento
+        .nombre_cliente_ocasional ||
       'Cliente ocasional'
     )
   }
 
-  const obtenerMensajeError = (errorPeticion) => {
-    const errores = errorPeticion.data?.errors
+  const obtenerMensajeError = (
+    errorPeticion
+  ) => {
+    const errores =
+      errorPeticion.data?.errors
 
     if (errores) {
       const primerError =
         Object.values(errores)[0]
 
-      if (Array.isArray(primerError)) {
+      if (
+        Array.isArray(
+          primerError
+        )
+      ) {
         return primerError[0]
       }
     }
@@ -188,67 +202,98 @@ export function usePagoFormulario({
     )
   }
 
-  const manejarCambioVenta = (event) => {
-    const nuevoId = event.target.value
+  const manejarCambioVenta = (
+    event
+  ) => {
+    const nuevoId =
+      event.target.value
+
     setIdVenta(nuevoId)
     setError('')
 
     const venta = ventas.find(
-      (item) => Number(item.id_venta) === Number(nuevoId)
+      (item) =>
+        Number(item.id_venta) ===
+        Number(nuevoId)
     )
 
-    /*
-     * Una venta directa siempre debe cobrarse por el saldo completo.
-     */
-    setMonto(venta ? String(venta.saldo) : '')
+    setMonto(
+      venta
+        ? String(venta.saldo)
+        : ''
+    )
   }
 
-  const manejarCambioPedido = (event) => {
-    setIdPedido(event.target.value)
+  const manejarCambioPedido = (
+    event
+  ) => {
+    setIdPedido(
+      event.target.value
+    )
     setMonto('')
     setError('')
   }
 
   const usarSaldoCompleto = () => {
     if (documentoSeleccionado) {
-      setMonto(String(documentoSeleccionado.saldo))
+      setMonto(
+        String(
+          documentoSeleccionado.saldo
+        )
+      )
     }
   }
 
-  const manejarSubmit = async (event) => {
+  const manejarSubmit = async (
+    event
+  ) => {
     event.preventDefault()
 
-    if (tipoCobro === 'venta' && !idVenta) {
-      setError('Debe seleccionar una venta.')
+    if (
+      tipoCobro === 'venta' &&
+      !idVenta
+    ) {
+      setError(
+        'Debe seleccionar una venta.'
+      )
       return
     }
-
-    if (tipoCobro === 'pedido' && !idPedido) {
-      setError('Debe seleccionar un pedido.')
-      return
-    }
-
-    const montoNumero = Number(monto)
 
     if (
-      !Number.isFinite(montoNumero) ||
+      tipoCobro === 'pedido' &&
+      !idPedido
+    ) {
+      setError(
+        'Debe seleccionar un pedido.'
+      )
+      return
+    }
+
+    const montoNumero =
+      Number(monto)
+
+    if (
+      !Number.isFinite(
+        montoNumero
+      ) ||
       montoNumero <= 0
     ) {
-      setError('El monto debe ser mayor a cero.')
+      setError(
+        'El monto debe ser mayor a cero.'
+      )
       return
     }
 
     const saldo = Number(
-      documentoSeleccionado?.saldo ?? 0
+      documentoSeleccionado
+        ?.saldo ?? 0
     )
 
-    /*
-     * Venta directa:
-     * obligatoriamente pago completo.
-     */
     if (
       tipoCobro === 'venta' &&
-      Math.abs(montoNumero - saldo) > 0.001
+      Math.abs(
+        montoNumero - saldo
+      ) > 0.001
     ) {
       setError(
         `La venta debe pagarse por el total pendiente de Bs ${saldo.toFixed(
@@ -258,11 +303,6 @@ export function usePagoFormulario({
       return
     }
 
-    /*
-     * Pedido:
-     * sí puede recibir pagos parciales,
-     * pero nunca superiores al saldo.
-     */
     if (
       tipoCobro === 'pedido' &&
       montoNumero > saldo
@@ -275,93 +315,164 @@ export function usePagoFormulario({
       return
     }
 
-    if (!['EFECTIVO', 'QR'].includes(metodoPago)) {
-      setError('Seleccione un método de pago válido.')
+    if (
+      ![
+        'EFECTIVO',
+        'QR',
+      ].includes(
+        metodoPago
+      )
+    ) {
+      setError(
+        'Seleccione un método de pago válido.'
+      )
       return
     }
 
-    /*
-     * QR real mediante Libélula.
-     */
-/*
- * QR real mediante Libélula.
- *
- * Puede corresponder a:
- * - una venta
- * - o un pedido
- */
-if (metodoPago === 'QR') {
-  try {
-    setGuardando(true)
-    setError('')
+    if (
+      metodoPago === 'QR'
+    ) {
+      try {
+        setGuardando(true)
+        setError('')
 
-    const payloadQr = {
-      monto: montoNumero,
+        const payloadQr = {
+          monto:
+            montoNumero,
+        }
+
+        if (
+          tipoCobro ===
+          'venta'
+        ) {
+          payloadQr.id_venta =
+            Number(idVenta)
+        } else {
+          payloadQr.id_pedido =
+            Number(idPedido)
+        }
+
+        const respuesta =
+          await crearPagoInternet(
+            payloadQr
+          )
+
+        const transaccion =
+          respuesta.transaccion
+
+        if (
+          !transaccion
+            ?.qr_simple_url
+        ) {
+          throw new Error(
+            'Libélula no devolvió una imagen QR válida.'
+          )
+        }
+
+        onIniciarQr(
+          transaccion
+        )
+
+        setReferencia('')
+      } catch (
+        errorPeticion
+      ) {
+        setError(
+          obtenerMensajeError(
+            errorPeticion
+          )
+        )
+      } finally {
+        setGuardando(false)
+      }
+
+      return
     }
 
-    if (tipoCobro === 'venta') {
-      payloadQr.id_venta = Number(idVenta)
-    } else {
-      payloadQr.id_pedido = Number(idPedido)
-    }
-
-    const respuesta =
-      await crearPagoInternet(payloadQr)
-
-    const transaccion =
-      respuesta.transaccion
-
-    if (!transaccion?.qr_simple_url) {
-      throw new Error(
-        'Libélula no devolvió una imagen QR válida.'
-      )
-    }
-
-    onIniciarQr(transaccion)
-    setReferencia('')
-  } catch (errorPeticion) {
-    setError(
-      obtenerMensajeError(errorPeticion)
-    )
-  } finally {
-    setGuardando(false)
-  }
-
-  return
-}
-
-    /*
-     * Pago normal en efectivo.
-     */
     try {
       setGuardando(true)
       setError('')
 
       const payload = {
-        monto: montoNumero,
-        metodo_pago: 'EFECTIVO',
-        referencia: referencia.trim() || null,
-        observaciones: observaciones.trim() || null,
+        monto:
+          montoNumero,
+
+        metodo_pago:
+          'EFECTIVO',
+
+        referencia:
+          referencia.trim() ||
+          null,
+
+        observaciones:
+          observaciones.trim() ||
+          null,
       }
 
-      if (tipoCobro === 'venta') {
-        payload.id_venta = Number(idVenta)
+      if (
+        tipoCobro ===
+        'venta'
+      ) {
+        payload.id_venta =
+          Number(idVenta)
       } else {
-        payload.id_pedido = Number(idPedido)
+        payload.id_pedido =
+          Number(idPedido)
       }
 
-      const respuesta = await crearPago(payload)
+      const respuesta =
+        await crearPago(
+          payload
+        )
+
+      const pago =
+        respuesta?.pago ??
+        null
+
+      const recibo =
+        respuesta?.recibo ??
+        null
+
+      if (
+        !pago?.id_pago
+      ) {
+        throw new Error(
+          'El pago fue procesado, pero el servidor no devolvió el pago registrado.'
+        )
+      }
+
+      if (
+        !recibo?.id_recibo
+      ) {
+        throw new Error(
+          'El pago fue procesado, pero el servidor no devolvió el recibo generado.'
+        )
+      }
 
       await onGuardado(
         respuesta?.message ||
-          'Pago registrado correctamente.',
-        respuesta?.pago ?? null,
-        { flujo: 'EFECTIVO', recibo_generado: false }
+          'Pago y recibo registrados correctamente.',
+        pago,
+        {
+          flujo:
+            'EFECTIVO',
+
+          recibo_generado:
+            true,
+
+          recibo,
+        }
       )
 
       onCerrar()
-    } catch (errorPeticion) {
-      setError(obtenerMensajeError(errorPeticion))
+    } catch (
+      errorPeticion
+    ) {
+      setError(
+        obtenerMensajeError(
+          errorPeticion
+        )
+      )
     } finally {
       setGuardando(false)
     }

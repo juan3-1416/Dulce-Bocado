@@ -49,7 +49,7 @@ function InicioPage() {
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">
-                    Dashboard Administrativo (CU24)
+                    Dashboard Administrativo
                   </h2>
                   <p className="text-xs text-slate-600 dark:text-slate-400 sm:text-sm">
                     Visualiza KPIs globales, gráficos de ventas, estado de pedidos y existencias críticas en tiempo real.

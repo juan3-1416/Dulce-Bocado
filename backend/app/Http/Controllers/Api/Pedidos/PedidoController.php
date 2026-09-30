@@ -98,11 +98,8 @@ class PedidoController extends Controller
                         $request->string('fecha_entrega')->toString()
                     )
             )
-            ->orderBy('fecha_entrega')
-            ->orderBy('hora_entrega')
-            ->orderByDesc('id_pedido')
-            ->get();
-
+->orderByDesc('id_pedido')
+->get();
         return response()->json([
             'pedidos' => $pedidos,
         ]);
