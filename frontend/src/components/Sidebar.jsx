@@ -177,11 +177,6 @@ const SECCIONES_MENU = [
         permiso: 'ventas.gestionar_venta',
       },
 
-      {
-        nombre: 'Pagos por Internet',
-        ruta: '/pagos-internet',
-        permiso: 'pagos.gestionar_pago_internet',
-      },
 
       {
         nombre: 'Gestión de Pedidos',
