@@ -188,23 +188,45 @@ export default function DashboardPage() {
         />
 
         {/* KPI 5: Visitas & Clientes */}
-        <DashboardKpiCard
-          titulo="Visitas & Tráfico"
-          valor={kpis.total_visitas ?? 0}
-          subtitulo={`${kpis.total_clientes || 0} clientes registrados`}
-          variante="purple"
-          cargando={cargando}
-          badge={{
-            texto: `${kpis.total_clientes || 0} clientes`,
-            tipo: 'neutral',
-          }}
-          icono={
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-          }
-        />
+{/* KPI 5: Ganancia Bruta */}
+<DashboardKpiCard
+  titulo="Ganancia Bruta"
+  valor={`Bs. ${(kpis.ganancia_bruta || 0).toLocaleString('es-BO', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`}
+  subtitulo={`Costo de ventas: Bs. ${(kpis.costo_ventas || 0).toLocaleString('es-BO', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`}
+  variante="success"
+  cargando={cargando}
+  badge={{
+    texto:
+      (kpis.cobertura_costos || 0) >= 100
+        ? `Margen: ${(kpis.margen_bruto || 0).toFixed(1)}%`
+        : `Cobertura: ${(kpis.cobertura_costos || 0).toFixed(1)}%`,
+    tipo:
+      (kpis.cobertura_costos || 0) >= 100
+        ? 'success'
+        : 'warning',
+  }}
+  icono={
+    <svg
+      className="h-6 w-6"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M17 5l2 2-4 4"
+      />
+    </svg>
+  }
+/>
       </div>
 
       {/* 3. Sección Principal de Análisis: Gráficos y Tablas */}

@@ -10,6 +10,7 @@ use App\Models\Cliente;
 use App\Models\DetalleVenta;
 use App\Models\ProductoPresentacion;
 use App\Models\Venta;
+use App\Models\ConsumoProduccion;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -561,6 +562,20 @@ if (
                 $costoPersonalizacion,
                 2
             );
+            $costoUnitarioProduccion =
+    $this->calcularCostoUnitarioProduccion(
+        $productoPresentacion
+            ->id_producto_presentacion
+    );
+
+$costoTotalProduccion =
+    $costoUnitarioProduccion !== null
+        ? round(
+            $costoUnitarioProduccion *
+            $cantidad,
+            2
+        )
+        : null;
 
             DetalleVenta::create([
                 'id_venta' =>
@@ -586,6 +601,11 @@ if (
 
                 'subtotal' =>
                     $subtotal,
+                    'costo_unitario_produccion' =>
+    $costoUnitarioProduccion,
+
+'costo_total_produccion' =>
+    $costoTotalProduccion,
             ]);
 
             $total += $subtotal;
@@ -593,4 +613,74 @@ if (
 
         return round($total, 2);
     }
+    private function calcularCostoUnitarioProduccion(
+    int $idProductoPresentacion
+): ?float {
+    /*
+     * Solo tomamos producciones COMPLETADAS que tengan
+     * consumos reales registrados.
+     */
+    $idsProducciones = ConsumoProduccion::query()
+        ->join(
+            'produccion',
+            'consumo_produccion.id_produccion',
+            '=',
+            'produccion.id_produccion'
+        )
+        ->where(
+            'produccion.id_producto_presentacion',
+            $idProductoPresentacion
+        )
+        ->where(
+            'produccion.estado',
+            'COMPLETADA'
+        )
+        ->distinct()
+        ->pluck(
+            'produccion.id_produccion'
+        );
+
+    if ($idsProducciones->isEmpty()) {
+        return null;
+    }
+
+    /*
+     * Sumamos el costo real de las materias primas
+     * consumidas en esas producciones.
+     */
+    $costoTotalProduccion = (float)
+        ConsumoProduccion::query()
+            ->whereIn(
+                'id_produccion',
+                $idsProducciones
+            )
+            ->sum('costo_total');
+
+    /*
+     * Sumamos únicamente las unidades buenas
+     * obtenidas de esas mismas producciones.
+     */
+    $unidadesBuenas = (float)
+        DB::table('detalle_produccion')
+            ->whereIn(
+                'id_produccion',
+                $idsProducciones
+            )
+            ->whereNotNull(
+                'cantidad_producida'
+            )
+            ->sum(
+                'cantidad_producida'
+            );
+
+    if ($unidadesBuenas <= 0) {
+        return null;
+    }
+
+    return round(
+        $costoTotalProduccion /
+        $unidadesBuenas,
+        4
+    );
+}
 }
