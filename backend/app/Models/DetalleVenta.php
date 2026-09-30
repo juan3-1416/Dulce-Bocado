@@ -22,6 +22,8 @@ class DetalleVenta extends Model
         'costo_personalizacion',
         'detalle_personalizacion',
         'subtotal',
+        'costo_unitario_produccion',
+'costo_total_produccion',
     ];
 
     protected $casts = [
@@ -31,6 +33,8 @@ class DetalleVenta extends Model
         'subtotal' => 'decimal:2',
         'fecha_creacion' => 'datetime',
         'fecha_actualizacion' => 'datetime',
+        'costo_unitario_produccion' => 'decimal:4',
+'costo_total_produccion' => 'decimal:2',
     ];
 
     public function venta(): BelongsTo
