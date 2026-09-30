@@ -455,7 +455,12 @@ class RecetasInicialSeeder extends Seeder
              * catálogo académico definitivo.
              */
 
-
+if (
+    mb_strtolower(trim($producto->nombre)) ===
+    'producto prueba'
+) {
+    continue;
+}
             $recetaBase =
                 $this->obtenerRecetaBase(
                     $producto->nombre

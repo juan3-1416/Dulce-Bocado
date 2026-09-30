@@ -53,6 +53,161 @@ class DashboardController extends Controller
 
         $ventasTotal = (float) $ventasPeriodo->sum('total');
         $ventasCantidad = $ventasPeriodo->count();
+        // Rentabilidad de ventas con costo histórico disponible
+// Costo estimado por receta para presentaciones sin costo histórico
+$costosReceta = DB::table('receta as r')
+    ->join(
+        'detalle_receta as dr',
+        'r.id_receta',
+        '=',
+        'dr.id_receta'
+    )
+    ->join(
+        'materia_prima as mp',
+        'dr.id_materia_prima',
+        '=',
+        'mp.id_materia_prima'
+    )
+    ->where('r.estado', true)
+    ->select(
+        'r.id_producto_presentacion',
+        DB::raw(
+            'SUM(dr.cantidad * mp.costo_unitario) as costo_receta_unitario'
+        )
+    )
+    ->groupBy('r.id_producto_presentacion');
+
+$resumenRentabilidad = DetalleVenta::query()
+    ->join(
+        'venta',
+        'detalle_venta.id_venta',
+        '=',
+        'venta.id_venta'
+    )
+    ->leftJoinSub(
+        $costosReceta,
+        'costos_receta',
+        function ($join) {
+            $join->on(
+                'detalle_venta.id_producto_presentacion',
+                '=',
+                'costos_receta.id_producto_presentacion'
+            );
+        }
+    )
+    ->where(
+        'venta.estado',
+        '!=',
+        'ANULADA'
+    )
+    ->whereBetween(
+        'venta.fecha_venta',
+        [$fechaInicio, $fechaFin]
+    )
+    ->selectRaw(
+        '
+        COUNT(*) as detalles_total,
+
+        SUM(
+            CASE
+                WHEN detalle_venta.costo_total_produccion IS NOT NULL
+                THEN 1
+                ELSE 0
+            END
+        ) as detalles_costo_real,
+
+        SUM(
+            CASE
+                WHEN detalle_venta.costo_total_produccion IS NULL
+                    AND costos_receta.costo_receta_unitario IS NOT NULL
+                THEN 1
+                ELSE 0
+            END
+        ) as detalles_costo_estimado,
+
+        COALESCE(
+            SUM(
+                CASE
+                    WHEN detalle_venta.costo_total_produccion IS NOT NULL
+                        OR costos_receta.costo_receta_unitario IS NOT NULL
+                    THEN detalle_venta.subtotal
+                    ELSE 0
+                END
+            ),
+            0
+        ) as ingresos_con_costo,
+
+        COALESCE(
+            SUM(
+                CASE
+                    WHEN detalle_venta.costo_total_produccion IS NOT NULL
+                    THEN detalle_venta.costo_total_produccion
+
+                    WHEN costos_receta.costo_receta_unitario IS NOT NULL
+                    THEN costos_receta.costo_receta_unitario
+                        * detalle_venta.cantidad
+
+                    ELSE 0
+                END
+            ),
+            0
+        ) as costo_ventas
+        '
+    )
+    ->first();
+
+$detallesTotal =
+    (int) ($resumenRentabilidad->detalles_total ?? 0);
+
+$detallesCostoReal =
+    (int) ($resumenRentabilidad->detalles_costo_real ?? 0);
+
+$detallesCostoEstimado =
+    (int) ($resumenRentabilidad->detalles_costo_estimado ?? 0);
+
+$ingresosConCosto =
+    (float) ($resumenRentabilidad->ingresos_con_costo ?? 0);
+
+$costoVentas =
+    round(
+        (float) ($resumenRentabilidad->costo_ventas ?? 0),
+        2
+    );
+
+$gananciaBruta = round(
+    $ingresosConCosto - $costoVentas,
+    2
+);
+
+$margenBruto =
+    $ingresosConCosto > 0
+        ? round(
+            ($gananciaBruta / $ingresosConCosto) * 100,
+            2
+        )
+        : 0;
+
+$detallesConCosto =
+    $detallesCostoReal + $detallesCostoEstimado;
+
+$coberturaCostos =
+    $detallesTotal > 0
+        ? round(
+            ($detallesConCosto / $detallesTotal) * 100,
+            1
+        )
+        : 0;
+
+$rentabilidadEstimada =
+    $detallesCostoEstimado > 0;
+
+$coberturaCostos =
+    $detallesTotal > 0
+        ? round(
+            ($detallesConCosto / $detallesTotal) * 100,
+            1
+        )
+        : 0;
 
         // Ventas de hoy
         $ventasHoyTotal = (float) Venta::where('estado', '!=', 'ANULADA')
@@ -229,6 +384,12 @@ class DashboardController extends Controller
                 'ventas_total' => $ventasTotal,
                 'ventas_cantidad' => $ventasCantidad,
                 'ventas_hoy' => $ventasHoyTotal,
+                'costo_ventas' => $costoVentas,
+'ganancia_bruta' => $gananciaBruta,
+'margen_bruto' => $margenBruto,
+'cobertura_costos' => $coberturaCostos,
+'ingresos_con_costo' => $ingresosConCosto,
+'rentabilidad_estimada' => $rentabilidadEstimada,
                 'pedidos_activos' => $pedidosActivos,
                 'pedidos_en_proceso' => $pedidosListosEntrega,
                 'pedidos_programados' => $pedidosProgramados,

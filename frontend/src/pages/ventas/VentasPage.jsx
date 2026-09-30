@@ -190,16 +190,13 @@ function VentasPage() {
   const abrirEditarVenta = async (
     venta
   ) => {
-    if (
-      venta.estado ===
-      'ANULADA'
-    ) {
-      setError(
-        'No se puede editar una venta anulada.'
-      )
+if (venta.estado !== 'PENDIENTE_PAGO') {
+  setError(
+    'Solo se pueden editar ventas pendientes de pago.'
+  )
 
-      return
-    }
+  return
+}
 
     try {
       setCargandoCatalogos(true)
@@ -604,27 +601,29 @@ const manejarPagoGuardado = async (
           </label>
 
           <select
-            id="estado_venta"
-            value={estado}
-            onChange={(event) =>
-              setEstado(
-                event.target.value
-              )
-            }
-            className="w-full rounded-lg border border-gray-300 px-3 py-2"
-          >
-            <option value="">
-              Todas
-            </option>
+  id="estado_venta"
+  value={estado}
+  onChange={(event) =>
+    setEstado(event.target.value)
+  }
+  className="w-full rounded-lg border border-gray-300 px-3 py-2"
+>
+  <option value="">
+    Todas
+  </option>
 
-            <option value="REGISTRADA">
-              Registradas
-            </option>
+  <option value="PENDIENTE_PAGO">
+    Pendientes de pago
+  </option>
 
-            <option value="ANULADA">
-              Anuladas
-            </option>
-          </select>
+  <option value="REGISTRADA">
+    Registradas
+  </option>
+
+  <option value="ANULADA">
+    Anuladas
+  </option>
+</select>
         </div>
       </div>
 
@@ -767,64 +766,69 @@ const manejarPagoGuardado = async (
                         )}
                       </td>
 
+<td className="px-5 py-4">
+  {venta.estado === 'REGISTRADA' ? (
+    <span className="inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+      Registrada
+    </span>
+  ) : venta.estado === 'PENDIENTE_PAGO' ? (
+    <span className="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
+      Pendiente de pago
+    </span>
+  ) : (
+    <div>
+      <span className="inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
+        Anulada
+      </span>
+
+      {venta.motivo_anulacion && (
+        <p className="mt-2 max-w-xs text-xs text-gray-500">
+          {venta.motivo_anulacion}
+        </p>
+      )}
+    </div>
+  )}
+</td>
+
                       <td className="px-5 py-4">
-                        {venta.estado ===
-                        'REGISTRADA' ? (
-                          <span className="inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
-                            Registrada
-                          </span>
-                        ) : (
-                          <div>
-                            <span className="inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
-                              Anulada
-                            </span>
+  {venta.estado === 'PENDIENTE_PAGO' ? (
+    <div className="flex flex-wrap gap-2">
+      <button
+        type="button"
+        onClick={() =>
+          abrirEditarVenta(venta)
+        }
+        className="rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50"
+      >
+        Editar
+      </button>
 
-                            {venta.motivo_anulacion && (
-                              <p className="mt-2 max-w-xs text-xs text-gray-500">
-                                {
-                                  venta.motivo_anulacion
-                                }
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </td>
-
-                      <td className="px-5 py-4">
-                        {venta.estado ===
-                        'REGISTRADA' ? (
-                          <div className="flex flex-wrap gap-2">
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                abrirEditarVenta(
-                                  venta
-                                )
-                              }
-                              className="rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50"
-                            >
-                              Editar
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                abrirModalAnular(
-                                  venta
-                                )
-                              }
-                              className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
-                            >
-                              Anular
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-gray-400">
-                            Sin acciones
-                          </span>
-                        )}
-                      </td>
+      <button
+        type="button"
+        onClick={() =>
+          abrirModalAnular(venta)
+        }
+        className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+      >
+        Anular
+      </button>
+    </div>
+  ) : venta.estado === 'REGISTRADA' ? (
+    <button
+      type="button"
+      onClick={() =>
+        abrirModalAnular(venta)
+      }
+      className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+    >
+      Anular
+    </button>
+  ) : (
+    <span className="text-xs text-gray-400">
+      Sin acciones
+    </span>
+  )}
+</td>
                     </tr>
                   )
                 )}

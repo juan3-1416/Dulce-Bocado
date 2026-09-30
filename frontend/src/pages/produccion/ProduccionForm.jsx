@@ -15,6 +15,15 @@ import {
 import {
   crearProduccion,
 } from '../../services/produccionService'
+function formatearCantidad(valor) {
+  const numero = Number(valor)
+
+  if (!Number.isFinite(numero)) {
+    return '0'
+  }
+
+  return Number(numero.toFixed(3)).toString()
+}
 
 function ProduccionForm() {
   const navigate =
@@ -679,23 +688,15 @@ const recetaActual =
                             </td>
 
                             <td className="px-4 py-3 text-right text-sm text-slate-700">
-                              {Number(
-                                insumo
-                                  .cantidad ??
-                                  0
-                              ).toFixed(
-                                3
-                              )}
+{formatearCantidad(
+  insumo.cantidad
+)}
                             </td>
 
                             <td className="px-4 py-3 text-right text-sm font-semibold text-slate-900">
-                              {Number(
-                                insumo
-                                  .requerido ??
-                                  0
-                              ).toFixed(
-                                3
-                              )}
+{formatearCantidad(
+  insumo.requerido
+)}
                             </td>
 
                             <td className="px-4 py-3 text-sm text-slate-700">

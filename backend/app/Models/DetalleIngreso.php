@@ -12,13 +12,15 @@ class DetalleIngreso extends Model
     protected $table = 'detalle_ingreso';
     protected $primaryKey = 'id_detalle_ingreso';
 
-    protected $fillable = [
-        'id_ingreso',
-        'id_almacen',
-        'id_producto_presentacion',
-        'id_materia_prima',
-        'cantidad'
-    ];
+protected $fillable = [
+    'id_ingreso',
+    'id_almacen',
+    'id_producto_presentacion',
+    'id_materia_prima',
+    'cantidad',
+    'precio_unitario',
+    'costo_total',
+];
 
     public function ingreso()
     {
