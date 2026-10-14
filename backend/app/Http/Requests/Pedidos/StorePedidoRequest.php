@@ -28,6 +28,10 @@ class StorePedidoRequest extends FormRequest
                     'OCASIONAL',
                 ]),
             ],
+            'prioridad' => [
+'required',
+'in:NORMAL,ALTA,URGENTE',
+],
 
             'id_cliente' => [
                 'nullable',
@@ -102,6 +106,7 @@ class StorePedidoRequest extends FormRequest
                 'min:0',
             ],
         ];
+
     }
 
     public function messages(): array
