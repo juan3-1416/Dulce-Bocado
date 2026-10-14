@@ -15,10 +15,6 @@ function PedidoModal({
     const [clientes, setClientes] = useState([]);
     const [presentaciones, setPresentaciones] = useState([]);
 
-    const [prioridad, setPrioridad] =
-useState('NORMAL')
-
-
     const [cargandoCatalogos, setCargandoCatalogos] =
         useState(false);
 

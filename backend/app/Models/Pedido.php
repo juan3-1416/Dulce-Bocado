@@ -30,7 +30,6 @@ class Pedido extends Model
         'id_usuario_cancelacion',
         'motivo_cancelacion',
         'fecha_cancelacion',
-        'prioridad',
     ];
 
     protected $casts = [
