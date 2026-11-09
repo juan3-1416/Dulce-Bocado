@@ -164,6 +164,18 @@ function UsuariosPage() {
             setErrorFormulario('');
             setMensaje('');
 
+            if (
+  formulario.contrasena &&
+  formulario.contrasena !==
+    formulario.contrasena_confirmation
+) {
+  setErrorFormulario(
+    'Las contraseñas no coinciden.',
+  )
+  setGuardando(false)
+  return
+}
+
             if (usuarioEditando) {
                 const datosActualizar = {
                     nombre: formulario.nombre,

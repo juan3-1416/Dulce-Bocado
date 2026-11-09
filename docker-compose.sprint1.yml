@@ -1,0 +1,56 @@
+services:
+  security-db:
+    image: postgres:16-alpine
+    container_name: dulce_bocado_security_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dulce_security
+      POSTGRES_USER: dulce_security_user
+      POSTGRES_PASSWORD: dulce_security_pass
+    ports:
+      - "5433:5432"
+    volumes:
+      - security_postgres_data:/var/lib/postgresql/data
+    networks:
+      - dulce_bocado_net
+
+  security-service:
+    build:
+      context: ./microservices/security-service
+      dockerfile: Dockerfile
+    container_name: dulce_bocado_security_service
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./microservices/security-service:/var/www/html
+    ports:
+      - "8001:8000"
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      DB_CONNECTION: pgsql
+      DB_HOST: security-db
+      DB_PORT: 5432
+      DB_DATABASE: dulce_security
+      DB_USERNAME: dulce_security_user
+      DB_PASSWORD: dulce_security_pass
+    depends_on:
+      - security-db
+    networks:
+      - dulce_bocado_net
+
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: dulce_bocado_gateway
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - security-service
+    networks:
+      - dulce_bocado_net
+
+volumes:
+  security_postgres_data:
