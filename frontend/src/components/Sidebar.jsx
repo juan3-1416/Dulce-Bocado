@@ -94,14 +94,24 @@ const SECCIONES_MENU = [
       permiso: 'seguridad.gestionar_usuario',
     },
     {
-      nombre: 'Asignaciones',
-      ruta: '/seguridad/asignaciones',
-      permiso: 'seguridad.asignar_roles_permisos',
+      nombre: 'Roles',
+      ruta: '/seguridad/roles',
+      permiso: 'seguridad.gestionar_rol',
+    },
+    {
+      nombre: 'Permisos',
+      ruta: '/seguridad/permisos',
+      permiso: 'seguridad.gestionar_permiso',
     },
     {
       nombre: 'Rol - Permiso',
       ruta: '/seguridad/rol-permiso',
       permiso: 'seguridad.gestionar_rol_permiso',
+    },
+    {
+      nombre: 'Asignaciones',
+      ruta: '/seguridad/asignaciones',
+      permiso: 'seguridad.asignar_roles_permisos',
     },
   ],
 },
