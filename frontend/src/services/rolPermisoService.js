@@ -1,134 +1,236 @@
-const API_URL = '/api/seguridad/rol-permisos';
+import {
+  ApiError,
+  eliminarToken,
+  obtenerToken,
+} from './authService'
 
-function obtenerCookie(nombre) {
-    const cookies = document.cookie.split(';');
+const BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  'http://localhost:8080'
 
-    for (const cookie of cookies) {
-        const [clave, ...valor] = cookie.trim().split('=');
-
-        if (clave === nombre) {
-            return valor.join('=');
-        }
-    }
-
-    return null;
-}
-
-function obtenerTokenCsrf() {
-    const token = obtenerCookie('XSRF-TOKEN');
-
-    return token
-        ? decodeURIComponent(token)
-        : null;
-}
-
-async function prepararCsrf() {
-    const response = await fetch('/sanctum/csrf-cookie', {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-        },
-    });
-
-    if (!response.ok) {
-        throw new Error(
-            'No se pudo preparar la protección CSRF.'
-        );
-    }
-}
+const ROLES_URL = `${BASE_URL}/api/roles`
+const PERMISOS_URL = `${BASE_URL}/api/permisos`
 
 async function procesarRespuesta(response) {
-    let data = {};
+  let data = {}
 
-    try {
-        data = await response.json();
-    } catch {
-        data = {};
+  try {
+    data = await response.json()
+  } catch {
+    data = {}
+  }
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      eliminarToken()
     }
 
-    if (!response.ok) {
-        const error = new Error(
-            data.message ||
-            'Ocurrió un error al procesar la solicitud.'
-        );
+    throw new ApiError(
+      data.message ||
+        'Ocurrió un error al procesar la solicitud.',
+      response.status,
+      data,
+    )
+  }
 
-        error.status = response.status;
-        error.data = data;
+  return data
+}
 
-        throw error;
-    }
+function headers(conContenido = false) {
+  const token = obtenerToken()
 
-    return data;
+  const resultado = {
+    Accept: 'application/json',
+  }
+
+  if (token) {
+    resultado.Authorization =
+      `Bearer ${token}`
+  }
+
+  if (conContenido) {
+    resultado['Content-Type'] =
+      'application/json'
+  }
+
+  return resultado
+}
+
+async function obtenerRoles() {
+  const response = await fetch(ROLES_URL, {
+    headers: headers(),
+  })
+
+  const data =
+    await procesarRespuesta(response)
+
+  return data.roles ?? []
+}
+
+async function obtenerPermisos() {
+  const response = await fetch(
+    PERMISOS_URL,
+    {
+      headers: headers(),
+    },
+  )
+
+  const data =
+    await procesarRespuesta(response)
+
+  return data.permisos ?? []
+}
+
+async function obtenerPermisosRol(rolId) {
+  const response = await fetch(
+    `${ROLES_URL}/${rolId}/permisos`,
+    {
+      headers: headers(),
+    },
+  )
+
+  return procesarRespuesta(response)
 }
 
 export async function listarRolPermisos() {
-    const response = await fetch(API_URL, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-        },
-    });
+  const roles = await obtenerRoles()
 
-    return procesarRespuesta(response);
+  const respuestas = await Promise.all(
+    roles.map(async (rol) => {
+      const data =
+        await obtenerPermisosRol(
+          rol.id_rol,
+        )
+
+      return (data.relaciones ?? []).map(
+        (relacion) => ({
+          ...relacion,
+          rol,
+        }),
+      )
+    }),
+  )
+
+  return {
+    relaciones: respuestas.flat(),
+  }
 }
 
 export async function obtenerCatalogosRolPermiso() {
-    const response = await fetch(
-        `${API_URL}/catalogos`,
-        {
-            method: 'GET',
-            credentials: 'include',
-            headers: {
-                Accept: 'application/json',
-            },
-        }
-    );
+  const [roles, permisos] =
+    await Promise.all([
+      obtenerRoles(),
+      obtenerPermisos(),
+    ])
 
-    return procesarRespuesta(response);
+  return {
+    roles,
+    permisos,
+  }
 }
 
 export async function asignarRolPermiso(
-    rolId,
-    permisoId
+  rolId,
+  permisoId,
 ) {
-    await prepararCsrf();
+  const actual =
+    await obtenerPermisosRol(rolId)
 
-    const token = obtenerTokenCsrf();
+  const ids = [
+    ...(actual.permisos ?? []).map(
+      (permiso) =>
+        permiso.id_permiso,
+    ),
+    Number(permisoId),
+  ]
 
-    const response = await fetch(API_URL, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            'X-XSRF-TOKEN': token ?? '',
-        },
-        body: JSON.stringify({
-            rol_id: Number(rolId),
-            permiso_id: Number(permisoId),
-        }),
-    });
+  const permisoIds = [
+    ...new Set(ids),
+  ]
 
-    return procesarRespuesta(response);
+  const response = await fetch(
+    `${ROLES_URL}/${rolId}/permisos`,
+    {
+      method: 'PUT',
+      headers: headers(true),
+      body: JSON.stringify({
+        permiso_ids: permisoIds,
+      }),
+    },
+  )
+
+  const data =
+    await procesarRespuesta(response)
+
+  return {
+    ...data,
+    message:
+      'Permiso asignado al rol correctamente.',
+  }
 }
-export async function quitarRolPermiso(id) {
-    await prepararCsrf();
 
-    const token = obtenerTokenCsrf();
+export async function quitarRolPermiso(
+  idRolPermiso,
+) {
+  const listado =
+    await listarRolPermisos()
 
-    const response = await fetch(
-        `${API_URL}/${id}`,
-        {
-            method: 'DELETE',
-            credentials: 'include',
-            headers: {
-                Accept: 'application/json',
-                'X-XSRF-TOKEN': token ?? '',
-            },
-        }
-    );
+  const relacion =
+    listado.relaciones.find(
+      (item) =>
+        Number(
+          item.id_rol_permiso,
+        ) ===
+        Number(idRolPermiso),
+    )
 
-    return procesarRespuesta(response);
+  if (!relacion) {
+    throw new ApiError(
+      'La relación Rol-Permiso no existe.',
+      404,
+      {},
+    )
+  }
+
+  const actual =
+    await obtenerPermisosRol(
+      relacion.rol.id_rol,
+    )
+
+  const permisoIds =
+    (actual.permisos ?? [])
+      .filter(
+        (permiso) =>
+          Number(
+            permiso.id_permiso,
+          ) !==
+          Number(
+            relacion.permiso
+              .id_permiso,
+          ),
+      )
+      .map(
+        (permiso) =>
+          permiso.id_permiso,
+      )
+
+  const response = await fetch(
+    `${ROLES_URL}/${relacion.rol.id_rol}/permisos`,
+    {
+      method: 'PUT',
+      headers: headers(true),
+      body: JSON.stringify({
+        permiso_ids: permisoIds,
+      }),
+    },
+  )
+
+  const data =
+    await procesarRespuesta(response)
+
+  return {
+    ...data,
+    message:
+      'Permiso quitado del rol correctamente.',
+  }
 }

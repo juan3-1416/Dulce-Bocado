@@ -1,174 +1,186 @@
-const API_URL = '/api/seguridad/usuario-rol-permisos';
+import {
+  ApiError,
+  eliminarToken,
+  obtenerToken,
+} from './authService'
 
-function obtenerCookie(nombre) {
-    const cookies = document.cookie.split(';');
+const BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  'http://localhost:8080'
 
-    for (const cookie of cookies) {
-        const [clave, ...valor] = cookie.trim().split('=');
+const ASIGNACIONES_URL =
+  `${BASE_URL}/api/asignaciones`
 
-        if (clave === nombre) {
-            return valor.join('=');
-        }
-    }
+const USUARIOS_URL =
+  `${BASE_URL}/api/usuarios`
 
-    return null;
-}
-
-function obtenerTokenCsrf() {
-    const token = obtenerCookie('XSRF-TOKEN');
-
-    return token
-        ? decodeURIComponent(token)
-        : null;
-}
-
-async function prepararCsrf() {
-    const response = await fetch('/sanctum/csrf-cookie', {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-        },
-    });
-
-    if (!response.ok) {
-        throw new Error(
-            'No se pudo preparar la protección CSRF.'
-        );
-    }
-}
+const ROLES_URL =
+  `${BASE_URL}/api/roles`
 
 async function procesarRespuesta(response) {
-    let data = {};
+  let data = {}
 
-    try {
-        data = await response.json();
-    } catch {
-        data = {};
+  try {
+    data = await response.json()
+  } catch {
+    data = {}
+  }
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      eliminarToken()
     }
 
-    if (!response.ok) {
-        const error = new Error(
-            data.message ||
-            'Ocurrió un error al procesar la solicitud.'
-        );
+    throw new ApiError(
+      data.message ||
+        'Ocurrió un error al procesar la solicitud.',
+      response.status,
+      data,
+    )
+  }
 
-        error.status = response.status;
-        error.data = data;
-
-        throw error;
-    }
-
-    return data;
+  return data
 }
 
-export async function listarUsuarioRolPermisos(usuarioId = null) {
-    const url = usuarioId
-        ? `${API_URL}?usuario_id=${encodeURIComponent(usuarioId)}`
-        : API_URL;
+function headers(conContenido = false) {
+  const token = obtenerToken()
 
-    const response = await fetch(url, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-        },
-    });
+  const resultado = {
+    Accept: 'application/json',
+  }
 
-    return procesarRespuesta(response);
+  if (token) {
+    resultado.Authorization =
+      `Bearer ${token}`
+  }
+
+  if (conContenido) {
+    resultado['Content-Type'] =
+      'application/json'
+  }
+
+  return resultado
+}
+
+export async function listarUsuarioRolPermisos(
+  usuarioId = null,
+) {
+  const url = usuarioId
+    ? `${ASIGNACIONES_URL}?usuario_id=${encodeURIComponent(usuarioId)}`
+    : ASIGNACIONES_URL
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: headers(),
+  })
+
+  return procesarRespuesta(response)
 }
 
 export async function obtenerCatalogosUsuarioRolPermiso() {
-    const response = await fetch(`${API_URL}/catalogos`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-        },
-    });
+  const [
+    respuestaUsuarios,
+    respuestaRoles,
+  ] = await Promise.all([
+    fetch(USUARIOS_URL, {
+      headers: headers(),
+    }),
+    fetch(ROLES_URL, {
+      headers: headers(),
+    }),
+  ])
 
-    return procesarRespuesta(response);
+  const usuariosData =
+    await procesarRespuesta(
+      respuestaUsuarios,
+    )
+
+  const rolesData =
+    await procesarRespuesta(
+      respuestaRoles,
+    )
+
+  return {
+    usuarios:
+      usuariosData.usuarios ?? [],
+    roles:
+      rolesData.roles ?? [],
+  }
 }
 
-export async function asignarUsuarioRolPermiso(usuarioId, rolPermisoId) {
-    await prepararCsrf();
+export async function asignarUsuarioRolPermiso(
+  usuarioId,
+  rolPermisoId,
+) {
+  const response = await fetch(
+    ASIGNACIONES_URL,
+    {
+      method: 'POST',
+      headers: headers(true),
+      body: JSON.stringify({
+        usuario_id:
+          Number(usuarioId),
+        rol_permiso_id:
+          Number(rolPermisoId),
+      }),
+    },
+  )
 
-    const token = obtenerTokenCsrf();
-
-    const response = await fetch(API_URL, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            'X-XSRF-TOKEN': token ?? '',
-        },
-        body: JSON.stringify({
-            usuario_id: Number(usuarioId),
-            rol_permiso_id: Number(rolPermisoId),
-        }),
-    });
-
-    return procesarRespuesta(response);
+  return procesarRespuesta(response)
 }
 
-export async function asignarRolAUsuario(usuarioId, rolId) {
-    await prepararCsrf();
+export async function asignarRolAUsuario(
+  usuarioId,
+  rolId,
+) {
+  const response = await fetch(
+    `${ASIGNACIONES_URL}/asignar-rol`,
+    {
+      method: 'POST',
+      headers: headers(true),
+      body: JSON.stringify({
+        usuario_id:
+          Number(usuarioId),
+        rol_id:
+          Number(rolId),
+      }),
+    },
+  )
 
-    const token = obtenerTokenCsrf();
-
-    const response = await fetch(`${API_URL}/asignar-rol`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            'X-XSRF-TOKEN': token ?? '',
-        },
-        body: JSON.stringify({
-            usuario_id: Number(usuarioId),
-            rol_id: Number(rolId),
-        }),
-    });
-
-    return procesarRespuesta(response);
+  return procesarRespuesta(response)
 }
 
-export async function quitarUsuarioRolPermiso(id) {
-    await prepararCsrf();
+export async function quitarUsuarioRolPermiso(
+  id,
+) {
+  const response = await fetch(
+    `${ASIGNACIONES_URL}/${id}`,
+    {
+      method: 'DELETE',
+      headers: headers(),
+    },
+  )
 
-    const token = obtenerTokenCsrf();
-
-    const response = await fetch(`${API_URL}/${id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-            'X-XSRF-TOKEN': token ?? '',
-        },
-    });
-
-    return procesarRespuesta(response);
+  return procesarRespuesta(response)
 }
 
-export async function quitarRolAUsuario(usuarioId, rolId) {
-    await prepararCsrf();
+export async function quitarRolAUsuario(
+  usuarioId,
+  rolId,
+) {
+  const response = await fetch(
+    `${ASIGNACIONES_URL}/quitar-rol`,
+    {
+      method: 'POST',
+      headers: headers(true),
+      body: JSON.stringify({
+        usuario_id:
+          Number(usuarioId),
+        rol_id:
+          Number(rolId),
+      }),
+    },
+  )
 
-    const token = obtenerTokenCsrf();
-
-    const response = await fetch(`${API_URL}/quitar-rol`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            'X-XSRF-TOKEN': token ?? '',
-        },
-        body: JSON.stringify({
-            usuario_id: Number(usuarioId),
-            rol_id: Number(rolId),
-        }),
-    });
-
-    return procesarRespuesta(response);
+  return procesarRespuesta(response)
 }
