@@ -17,10 +17,12 @@ Actualizar esta tabla **en el mismo cambio** que completa cada paso. Usar `EN CU
 | 4. Catálogo REST | **HECHO (adaptador aislado)** | 11-11-2026: adaptador HTTP y contrato propuesto, 14 pruebas Catalog simuladas; suite Sales 35/35 (71 aserciones). Catalog real aún no existe ni se ha acordado costo de personalización. Ver evidencia paso 4. | Confirmar contrato con responsable de Catalog (T204–T205), probar contenedores reales y fijar costo adicional antes de habilitar personalización. |
 | 5. API de ventas | **HECHO (T215 aislado)** | 11-11-2026: cinco rutas protegidas, cálculo decimal, snapshots, transacciones, edición/cancelación de borrador e idempotencia. Suite Sales en PostgreSQL aislado 48/48; Customer/Catalog simulados. Ver evidencia paso 5. | Integrar contratos y credenciales reales de Customer/Catalog; probar usuario autorizado real. Luego paso 6 Gateway. |
 | 6. Gateway | **PENDIENTE** | `/api/ventas` continúa en fallback legado. | Ruta explícita a Sales y prueba de enrutamiento. |
-| 7. React | **PENDIENTE** | UI de Ventas todavía usa contrato monolítico. | Adaptar cuando Sales tenga contrato probado. |
+| 7. React | **EN CURSO (navegación)** | 11-11-2026: la opción y ruta `/ventas` usan `ventas.ver` de Security; la pantalla muestra el estado de preparación sin ejecutar el flujo monolítico. `npm run build` aprobó. La API/UI de Ventas aún no están integradas. | Implementar listado, detalle y operaciones contra Sales mediante Gateway cuando estén disponibles Customer y Catalog reales. |
 | 8. Integración y evidencia | **PENDIENTE** | Sin pruebas PS2 ejecutadas para nuevo Sales. | Pruebas integrales, Jira y Sprint Review. |
 
 Por cada cambio de estado registrar: fecha, responsable, rama/commit, comandos ejecutados, resultado observado, pruebas aprobadas/fallidas, enlaces de evidencia o ruta de logs y limitaciones. Una marca `HECHO` parcial debe nombrar exactamente qué quedó probado.
+
+**Ajuste parcial del paso 7 (11-11-2026, rama `devFabian`):** después de iniciar sesión con el administrador de Security se comprobó que recibe `ventas.ver`, `ventas.crear`, `ventas.modificar` y `ventas.anular`. El menú y la ruta React todavía exigían `ventas.gestionar_venta` del monolito, por lo que ocultaban Ventas. Ambos ahora exigen `ventas.ver`. `/ventas` abre una pantalla de preparación y no ejecuta las llamadas legadas de `VentasPage`. `docker compose -f docker-compose.yml -f docker-compose.sprint1.yml -f docker-compose.sprint2.sales.yml exec -T frontend npm run build` terminó correctamente (114 módulos). Falta el flujo funcional React → Gateway → Sales del paso 7; no se considera terminado.
 
 ## 1. Fuentes y estado comprobado
 
