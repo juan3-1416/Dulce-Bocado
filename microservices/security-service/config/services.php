@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'internal_service' => [
+        'key' => env('INTERNAL_SERVICE_KEY'),
+    ],
+
 ];

@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: dulce_security_user
       POSTGRES_PASSWORD: dulce_security_pass
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - security_postgres_data:/var/lib/postgresql/data
     networks:
@@ -21,10 +21,13 @@ services:
     container_name: dulce_bocado_security_service
     restart: unless-stopped
     working_dir: /var/www/html
+    env_file:
+      - ./microservices/security-service/.env
     volumes:
       - ./microservices/security-service:/var/www/html
+      - security_vendor:/var/www/html/vendor
     ports:
-      - "8001:8000"
+      - "127.0.0.1:8001:8000"
     environment:
       APP_ENV: local
       APP_DEBUG: "true"
@@ -34,6 +37,9 @@ services:
       DB_DATABASE: dulce_security
       DB_USERNAME: dulce_security_user
       DB_PASSWORD: dulce_security_pass
+      SESSION_DRIVER: file
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
     depends_on:
       - security-db
     networks:
@@ -54,3 +60,4 @@ services:
 
 volumes:
   security_postgres_data:
+  security_vendor:

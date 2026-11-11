@@ -6,7 +6,12 @@ use App\Http\Controllers\RolController;
 use App\Http\Controllers\PermisoController;
 use App\Http\Controllers\RolPermisoController;
 use App\Http\Controllers\AsignacionController;
+use App\Http\Controllers\IntrospeccionController;
+use App\Http\Middleware\VerificarServicioInterno;
 use Illuminate\Support\Facades\Route;
+
+Route::post('/internal/introspect', IntrospeccionController::class)
+    ->middleware(VerificarServicioInterno::class);
 
 /*
 |--------------------------------------------------------------------------

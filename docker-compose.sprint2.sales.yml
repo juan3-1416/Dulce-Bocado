@@ -1,0 +1,57 @@
+services:
+  sales-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dulce_sales
+      POSTGRES_USER: dulce_sales_user
+      POSTGRES_PASSWORD: ${SALES_DB_PASSWORD:-dulce_sales_local_only}
+    volumes:
+      - sales_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dulce_sales_user -d dulce_sales"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - dulce_bocado_net
+
+  sales-service:
+    build:
+      context: ./microservices/sales-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    working_dir: /var/www/html
+    env_file:
+      - ./microservices/sales-service/.env
+    volumes:
+      - ./microservices/sales-service:/var/www/html
+      - sales_vendor:/var/www/html/vendor
+    environment:
+      APP_NAME: Dulce Bocado Sales
+      APP_ENV: local
+      APP_DEBUG: "true"
+      DB_CONNECTION: pgsql
+      DB_HOST: sales-db
+      DB_PORT: 5432
+      DB_DATABASE: dulce_sales
+      DB_USERNAME: dulce_sales_user
+      DB_PASSWORD: ${SALES_DB_PASSWORD:-dulce_sales_local_only}
+      SESSION_DRIVER: file
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
+    depends_on:
+      sales-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(file_get_contents('http://127.0.0.1:8000/up') === false ? 1 : 0);"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - dulce_bocado_net
+
+volumes:
+  sales_postgres_data:
+  sales_vendor:
