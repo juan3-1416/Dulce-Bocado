@@ -41,7 +41,7 @@ class CatalogoController extends Controller
 
     public function productos(Request $request): JsonResponse
     {
-        $query = Producto::with('categoria')->orderBy('nombre');
+        $query = Producto::with('categoria')->withCount('presentaciones')->orderBy('nombre');
         if ($request->filled('buscar')) {
             $query->where('nombre', 'like', '%'.trim((string) $request->query('buscar')).'%');
         }
@@ -68,7 +68,7 @@ class CatalogoController extends Controller
     public function actualizarProducto(Request $request, Producto $producto): JsonResponse
     {
         $datos = $request->validate([
-            'id_categoria' => ['required', 'integer', Rule::exists('categorias', 'id_categoria')->where('estado', true)],
+            'id_categoria' => ['required', 'integer', Rule::exists('categorias', 'id_categoria')],
             'nombre' => ['required', 'string', 'max:150', Rule::unique('productos', 'nombre')->where('id_categoria', $request->integer('id_categoria'))->ignore($producto->id_producto, 'id_producto')],
             'descripcion' => ['nullable', 'string', 'max:2000'],
             'estado' => ['sometimes', 'boolean'],
@@ -118,7 +118,9 @@ class CatalogoController extends Controller
     private function validarPresentacion(Request $request, ?Presentacion $actual = null): array
     {
         return $request->validate([
-            'id_producto' => ['required', 'integer', Rule::exists('productos', 'id_producto')->where('estado', true)],
+            'id_producto' => ['required', 'integer', $actual
+                ? Rule::exists('productos', 'id_producto')
+                : Rule::exists('productos', 'id_producto')->where('estado', true)],
             'nombre' => ['required', 'string', 'max:200', Rule::unique('presentaciones', 'nombre')
                 ->where('id_producto', $request->integer('id_producto'))
                 ->ignore($actual?->presentacion_id, 'presentacion_id')],

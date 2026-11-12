@@ -15,4 +15,9 @@ class Producto extends Model
     {
         return $this->belongsTo(Categoria::class, 'id_categoria', 'id_categoria');
     }
+
+    public function presentaciones()
+    {
+        return $this->hasMany(Presentacion::class, 'id_producto', 'id_producto');
+    }
 }

@@ -5,7 +5,7 @@ import {
     actualizarCategoria,
 } from '../../services/categoriaService.js';
 
-function CategoriasModal({ isOpen, onClose }) {
+function CategoriasModal({ isOpen, onClose, puedeGestionar = false }) {
     const [categorias, setCategorias] = useState([]);
     const [cargando, setCargando] = useState(false);
     const [error, setError] = useState('');
@@ -123,7 +123,7 @@ function CategoriasModal({ isOpen, onClose }) {
                         </div>
                     )}
 
-                    <form onSubmit={manejarGuardado} className="mb-6 rounded-lg bg-gray-50 p-4">
+                    {puedeGestionar && <form onSubmit={manejarGuardado} className="mb-6 rounded-lg bg-gray-50 p-4">
                         <h3 className="mb-3 text-sm font-semibold text-gray-700">
                             {editandoId ? 'Editar Categoría' : 'Nueva Categoría'}
                         </h3>
@@ -172,7 +172,7 @@ function CategoriasModal({ isOpen, onClose }) {
                                 </button>
                             </div>
                         </div>
-                    </form>
+                    </form>}
 
                     {cargando ? (
                         <div className="py-4 text-center text-sm text-gray-500">Cargando...</div>
@@ -198,12 +198,12 @@ function CategoriasModal({ isOpen, onClose }) {
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3 text-right text-sm">
-                                                <button
+                                                {puedeGestionar && <button
                                                     onClick={() => iniciarEdicion(cat)}
                                                     className="text-pink-600 hover:text-pink-900"
                                                 >
                                                     Editar
-                                                </button>
+                                                </button>}
                                             </td>
                                         </tr>
                                     ))}

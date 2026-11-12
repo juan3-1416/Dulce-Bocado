@@ -140,7 +140,7 @@ function App() {
           <Route
             element={
               <ProtectedRoute
-                permiso="productos.gestionar_producto"
+                permiso="catalogo.ver"
               />
             }
           >

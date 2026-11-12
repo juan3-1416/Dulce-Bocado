@@ -124,7 +124,7 @@ const SECCIONES_MENU = [
       {
         nombre: 'Productos y Presentaciones',
         ruta: '/productos',
-        permiso: 'productos.gestionar_producto',
+        permiso: 'catalogo.ver',
       },
       {
         nombre: 'Recetas',

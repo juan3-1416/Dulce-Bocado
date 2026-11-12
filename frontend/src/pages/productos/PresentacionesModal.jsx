@@ -1,334 +1,125 @@
-import { useState, useEffect, useCallback } from 'react';
-import {
-    listarPresentaciones,
-    crearPresentacion,
-    cambiarEstadoPresentacion,
-    asignarPresentacionProducto,
-    actualizarPrecioPresentacionProducto,
-    desvincularPresentacionProducto
-} from '../../services/presentacionService.js';
-import {
-    formularioVacio,
-    normalizarBooleano,
-    obtenerPivot,
-    obtenerPrecio,
-    permitePersonalizacion
-} from './utils/presentacionHelpers.js';
-import PresentacionForm from './components/PresentacionForm.jsx';
-import PresentacionesTabla from './components/PresentacionesTabla.jsx';
+import { useCallback, useEffect, useState } from 'react'
+import { actualizarPresentacion, crearPresentacion, listarPresentaciones } from '../../services/presentacionService'
 
-function PresentacionesModal({ isOpen, onClose, producto }) {
-    const [presentaciones, setPresentaciones] = useState([]);
-    const [catalogoGlobal, setCatalogoGlobal] = useState([]);
-    const [cargando, setCargando] = useState(false);
-    const [error, setError] = useState('');
-    const [mensaje, setMensaje] = useState('');
+const vacio = { nombre: '', precio: '', disponible: true, permite_personalizacion: false }
 
-    // Modo: "vincular" = elegir existente del catálogo | "nueva" = crear nueva y vincular
-    const [modo, setModo] = useState('vincular');
+function PresentacionesModal({ isOpen, onClose, producto, puedeGestionar = false }) {
+  const [presentaciones, setPresentaciones] = useState([])
+  const [formulario, setFormulario] = useState(vacio)
+  const [editandoId, setEditandoId] = useState(null)
+  const [cargando, setCargando] = useState(false)
+  const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState('')
+  const [mensaje, setMensaje] = useState('')
 
-    // ID de la presentación siendo editada en el formulario
-    const [editandoId, setEditandoId] = useState(null);
-
-    const [formulario, setFormulario] = useState(formularioVacio());
-    const [guardando, setGuardando] = useState(false);
-
-    /*
-    | Cargar datos
-    */
-    const cargarDatos = useCallback(async () => {
-        if (!producto) {
-            return;
-        }
-
-        try {
-            setCargando(true);
-            setError('');
-
-            // Presentaciones vinculadas al producto actual
-            const respProducto = await listarPresentaciones({
-                id_producto: producto.id_producto
-            });
-            setPresentaciones(respProducto.presentaciones ?? []);
-
-            // Catálogo global de presentaciones activas
-            const respCatalogo = await listarPresentaciones({
-                estado: true
-            });
-            setCatalogoGlobal(respCatalogo.presentaciones ?? []);
-        } catch (err) {
-            setError(err.message || 'Error al cargar presentaciones.');
-        } finally {
-            setCargando(false);
-        }
-    }, [producto]);
-
-    useEffect(() => {
-        if (isOpen && producto) {
-            cargarDatos();
-            setEditandoId(null);
-            setModo('vincular');
-            setFormulario(formularioVacio());
-            setError('');
-            setMensaje('');
-        }
-    }, [isOpen, producto, cargarDatos]);
-
-    /*
-    | Manejo del Formulario
-    */
-    const manejarCambio = (e) => {
-        const { name, value, type, checked } = e.target;
-        setFormulario((prev) => ({
-            ...prev,
-            [name]: type === 'checkbox' ? checked : value
-        }));
-    };
-
-    const manejarGuardado = async (e) => {
-        e.preventDefault();
-
-        try {
-            setGuardando(true);
-            setError('');
-            setMensaje('');
-
-            const precioNum = parseFloat(formulario.precio);
-
-            if (Number.isNaN(precioNum) || precioNum <= 0) {
-                setError('El precio debe ser un número mayor a 0.');
-                return;
-            }
-
-            // Editar configuración existente
-            if (editandoId) {
-                await actualizarPrecioPresentacionProducto(
-                    producto.id_producto,
-                    editandoId,
-                    {
-                        precio: precioNum,
-                        permite_personalizacion: formulario.permite_personalizacion
-                    }
-                );
-                setMensaje('Configuración de la presentación actualizada con éxito.');
-            }
-            // Vincular presentación existente del catálogo
-            else if (modo === 'vincular') {
-                if (!formulario.id_presentacion) {
-                    setError('Seleccione una presentación del catálogo.');
-                    return;
-                }
-
-                await asignarPresentacionProducto(
-                    producto.id_producto,
-                    {
-                        id_presentacion: parseInt(formulario.id_presentacion, 10),
-                        precio: precioNum,
-                        permite_personalizacion: formulario.permite_personalizacion
-                    }
-                );
-                setMensaje('Presentación vinculada al producto con éxito.');
-            }
-            // Crear nueva presentación y vincular
-            else {
-                if (!formulario.nombre.trim()) {
-                    setError('Ingrese el nombre de la nueva presentación.');
-                    return;
-                }
-
-                const respNueva = await crearPresentacion({
-                    nombre: formulario.nombre.trim(),
-                    descripcion: formulario.descripcion ? formulario.descripcion.trim() : null
-                });
-
-                const nuevaId = respNueva.presentacion?.id_presentacion;
-
-                if (!nuevaId) {
-                    throw new Error('No se pudo obtener el ID de la nueva presentación.');
-                }
-
-                await asignarPresentacionProducto(
-                    producto.id_producto,
-                    {
-                        id_presentacion: nuevaId,
-                        precio: precioNum,
-                        permite_personalizacion: formulario.permite_personalizacion
-                    }
-                );
-                setMensaje('Nueva presentación creada y vinculada al producto con éxito.');
-            }
-
-            setFormulario(formularioVacio());
-            setEditandoId(null);
-            setModo('vincular');
-            await cargarDatos();
-        } catch (err) {
-            const errores = err.data?.errors;
-
-            if (errores) {
-                const primerError = Object.values(errores)?.[0]?.[0];
-                setError(primerError || 'Error de validación.');
-            } else {
-                setError(err.message || 'Error al guardar presentación.');
-            }
-        } finally {
-            setGuardando(false);
-        }
-    };
-
-    /*
-    |--------------------------------------------------------------------------
-    | Acciones sobre presentaciones
-    |--------------------------------------------------------------------------
-    */
-    const iniciarEdicion = (pres) => {
-        const pivot = obtenerPivot(pres, producto?.id_producto);
-
-        setEditandoId(pres.id_presentacion);
-        setFormulario({
-            id_presentacion: pres.id_presentacion,
-            nombre: pres.nombre || '',
-            precio: pivot?.precio ?? '',
-            descripcion: pres.descripcion || '',
-            permite_personalizacion: normalizarBooleano(pivot?.permite_personalizacion)
-        });
-
-        setError('');
-        setMensaje('');
-    };
-
-    const cancelarEdicion = () => {
-        setEditandoId(null);
-        setFormulario(formularioVacio());
-        setError('');
-        setMensaje('');
-    };
-
-    const desvincular = async (pres) => {
-        const confirmar = window.confirm(
-            `¿Deseas desvincular la presentación "${pres.nombre}" de este producto? La presentación seguirá existiendo en el catálogo general.`
-        );
-
-        if (!confirmar) {
-            return;
-        }
-
-        try {
-            setCargando(true);
-            setError('');
-            setMensaje('');
-
-            await desvincularPresentacionProducto(
-                producto.id_producto,
-                pres.id_presentacion
-            );
-
-            setMensaje('Presentación desvinculada del producto con éxito.');
-            await cargarDatos();
-        } catch (err) {
-            setError(err.message || 'Error al desvincular la presentación.');
-        } finally {
-            setCargando(false);
-        }
-    };
-
-    const cambiarEstado = async (pres) => {
-        try {
-            setError('');
-            setMensaje('');
-
-            await cambiarEstadoPresentacion(
-                pres.id_presentacion,
-                !pres.estado
-            );
-
-            await cargarDatos();
-        } catch (err) {
-            setError(err.message || 'Error al cambiar estado.');
-        }
-    };
-
-    if (!isOpen || !producto) {
-        return null;
+  const cargar = useCallback(async () => {
+    if (!producto) return
+    try {
+      setCargando(true)
+      setError('')
+      const respuesta = await listarPresentaciones({ id_producto: producto.id_producto })
+      setPresentaciones(respuesta.presentaciones ?? [])
+    } catch (err) {
+      setPresentaciones([])
+      setError(err.message || 'No se pudieron cargar las presentaciones.')
+    } finally {
+      setCargando(false)
     }
+  }, [producto])
 
-    const idsVinculados = new Set(presentaciones.map((p) => p.id_presentacion));
-    const presentacionesDisponiblesParaVincular = catalogoGlobal.filter(
-        (p) => !idsVinculados.has(p.id_presentacion)
-    );
+  useEffect(() => {
+    if (!isOpen) return
+    setFormulario(vacio)
+    setEditandoId(null)
+    setMensaje('')
+    cargar()
+  }, [isOpen, cargar])
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-            <div className="flex max-h-[95vh] w-full max-w-5xl flex-col rounded-xl bg-white shadow-xl">
-                {/* Encabezado */}
-                <div className="flex items-center justify-between border-b px-6 py-4">
-                    <div>
-                        <h2 className="text-xl font-bold text-gray-900">
-                            Presentaciones y Precios
-                        </h2>
-                        <p className="text-sm text-gray-500">
-                            Producto:{' '}
-                            <span className="font-semibold text-gray-700">
-                                {producto.nombre}
-                            </span>
-                        </p>
-                    </div>
+  if (!isOpen || !producto) return null
 
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600"
-                    >
-                        ✕
-                    </button>
-                </div>
+  const editar = (presentacion) => {
+    setEditandoId(presentacion.presentacion_id)
+    setFormulario({
+      nombre: presentacion.nombre,
+      precio: String(presentacion.precio),
+      disponible: Boolean(presentacion.disponible),
+      permite_personalizacion: Boolean(presentacion.permite_personalizacion),
+    })
+    setError('')
+  }
 
-                <div className="overflow-y-auto p-6">
-                    {/* Alertas */}
-                    {error && (
-                        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                            {error}
-                        </div>
-                    )}
+  const guardar = async (event) => {
+    event.preventDefault()
+    const precio = Number(formulario.precio)
+    if (!Number.isFinite(precio) || precio < 0) {
+      setError('El precio debe ser un número mayor o igual a cero.')
+      return
+    }
+    try {
+      setGuardando(true)
+      setError('')
+      const datos = {
+        id_producto: producto.id_producto,
+        nombre: formulario.nombre.trim(),
+        precio: precio.toFixed(2),
+        moneda: 'BOB',
+        disponible: formulario.disponible,
+        permite_personalizacion: formulario.permite_personalizacion,
+      }
+      if (editandoId) await actualizarPresentacion(editandoId, datos)
+      else await crearPresentacion(datos)
+      setMensaje(editandoId ? 'Presentación actualizada.' : 'Presentación creada.')
+      setEditandoId(null)
+      setFormulario(vacio)
+      await cargar()
+    } catch (err) {
+      const primerError = Object.values(err.data?.errors ?? {})[0]
+      setError((Array.isArray(primerError) ? primerError[0] : null) || err.message || 'No se pudo guardar la presentación.')
+    } finally {
+      setGuardando(false)
+    }
+  }
 
-                    {mensaje && (
-                        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">
-                            {mensaje}
-                        </div>
-                    )}
-
-                    {/* Formulario */}
-                    <PresentacionForm
-                        editandoId={editandoId}
-                        modo={modo}
-                        setModo={setModo}
-                        formulario={formulario}
-                        setFormulario={setFormulario}
-                        manejarCambio={manejarCambio}
-                        manejarGuardado={manejarGuardado}
-                        cancelarEdicion={cancelarEdicion}
-                        guardando={guardando}
-                        presentacionesDisponiblesParaVincular={presentacionesDisponiblesParaVincular}
-                        formularioVacio={formularioVacio}
-                        setError={setError}
-                        setMensaje={setMensaje}
-                    />
-
-                    {/* Tabla de presentaciones */}
-                    <PresentacionesTabla
-                        cargando={cargando}
-                        presentaciones={presentaciones}
-                        productoId={producto?.id_producto}
-                        obtenerPrecio={obtenerPrecio}
-                        permitePersonalizacion={permitePersonalizacion}
-                        cambiarEstado={cambiarEstado}
-                        iniciarEdicion={iniciarEdicion}
-                        desvincular={desvincular}
-                    />
-                </div>
-            </div>
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="flex max-h-[95vh] w-full max-w-5xl flex-col rounded-xl bg-white shadow-xl">
+      <div className="flex items-center justify-between border-b px-6 py-4">
+        <div><h2 className="text-xl font-bold text-gray-900">Presentaciones y precios</h2><p className="text-sm text-gray-500">Producto: {producto.nombre}</p></div>
+        <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-700" aria-label="Cerrar">✕</button>
+      </div>
+      <div className="space-y-5 overflow-y-auto p-6">
+        {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+        {mensaje && <p className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">{mensaje}</p>}
+        {puedeGestionar && <form onSubmit={guardar} className="space-y-4 rounded-lg bg-gray-50 p-4">
+          <h3 className="font-semibold text-gray-800">{editandoId ? 'Editar presentación' : 'Nueva presentación'}</h3>
+          <div className="grid gap-4 sm:grid-cols-[1fr_150px]">
+            <label className="text-sm font-medium text-gray-700">Nombre
+              <input required maxLength={200} value={formulario.nombre} onChange={(event) => setFormulario((actual) => ({ ...actual, nombre: event.target.value }))} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" />
+            </label>
+            <label className="text-sm font-medium text-gray-700">Precio Bs
+              <input type="number" required min="0" step="0.01" value={formulario.precio} onChange={(event) => setFormulario((actual) => ({ ...actual, precio: event.target.value }))} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" />
+            </label>
+          </div>
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" checked={formulario.disponible} onChange={(event) => setFormulario((actual) => ({ ...actual, disponible: event.target.checked }))} />Disponible para venta</label>
+            <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" checked={formulario.permite_personalizacion} onChange={(event) => setFormulario((actual) => ({ ...actual, permite_personalizacion: event.target.checked }))} />Permite personalización</label>
+          </div>
+          <div className="flex gap-2">
+            {editandoId && <button type="button" onClick={() => { setEditandoId(null); setFormulario(vacio) }} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold">Cancelar edición</button>}
+            <button type="submit" disabled={guardando} className="rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{guardando ? 'Guardando...' : editandoId ? 'Actualizar' : 'Crear'}</button>
+          </div>
+        </form>}
+        <div className="overflow-x-auto rounded-lg border border-gray-200">
+          {cargando ? <p className="p-6 text-sm text-gray-500">Cargando presentaciones...</p> : <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50"><tr><th className="px-4 py-3 text-left text-xs uppercase text-gray-600">Presentación</th><th className="px-4 py-3 text-left text-xs uppercase text-gray-600">Precio</th><th className="px-4 py-3 text-left text-xs uppercase text-gray-600">Disponibilidad</th><th className="px-4 py-3 text-right text-xs uppercase text-gray-600">Acciones</th></tr></thead>
+            <tbody className="divide-y divide-gray-200">{presentaciones.map((item) => <tr key={item.presentacion_id}>
+              <td className="px-4 py-3 text-sm font-medium">{item.nombre}</td><td className="px-4 py-3 text-sm">Bs {Number(item.precio).toFixed(2)}</td><td className="px-4 py-3 text-sm">{item.disponible ? 'Disponible' : 'No disponible'}</td>
+              <td className="px-4 py-3 text-right">{puedeGestionar && <button type="button" onClick={() => editar(item)} className="text-sm font-semibold text-pink-600 hover:text-pink-800">Editar</button>}</td>
+            </tr>)}{presentaciones.length === 0 && <tr><td colSpan="4" className="px-4 py-6 text-center text-sm text-gray-500">No hay presentaciones registradas.</td></tr>}</tbody>
+          </table>}
         </div>
-    );
+      </div>
+    </div>
+  </div>
 }
 
-export default PresentacionesModal;
+export default PresentacionesModal

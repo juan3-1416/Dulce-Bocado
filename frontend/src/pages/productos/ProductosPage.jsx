@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
-import { listarProductos, cambiarEstadoProducto } from '../../services/productoService';
+import { listarProductos, actualizarProducto } from '../../services/catalogoProductoService';
 import { listarCategorias } from '../../services/categoriaService';
 
 import ProductoModal from './ProductoModal';
 import CategoriasModal from './CategoriasModal';
 import PresentacionesModal from './PresentacionesModal';
+import { useAuth } from '../../context/AuthContext';
 
 function ProductosPage() {
+    const { tienePermiso } = useAuth();
+    const puedeGestionar = tienePermiso('catalogo.gestionar');
     const [productos, setProductos] = useState([]);
     const [categorias, setCategorias] = useState([]);
     const [cargando, setCargando] = useState(true);
@@ -29,7 +32,7 @@ function ProductosPage() {
             const respCat = await listarCategorias({ solo_activas: true });
             setCategorias(respCat.categorias ?? []);
         } catch (err) {
-            console.error("Error al cargar categorías", err);
+            setError(err.message || 'Error al cargar categorías.');
         }
     }, []);
 
@@ -40,6 +43,7 @@ function ProductosPage() {
             const resp = await listarProductos(filtros);
             setProductos(resp.productos ?? []);
         } catch (err) {
+            setProductos([]);
             setError(err.message || 'Error al cargar productos.');
         } finally {
             setCargando(false);
@@ -62,10 +66,15 @@ function ProductosPage() {
     const toggleEstadoProducto = async (producto) => {
         if (!window.confirm(`¿Seguro que deseas ${producto.estado ? 'desactivar' : 'activar'} el producto "${producto.nombre}"?`)) return;
         try {
-            await cambiarEstadoProducto(producto.id_producto, !producto.estado);
+            await actualizarProducto(producto.id_producto, {
+                id_categoria: producto.id_categoria,
+                nombre: producto.nombre,
+                descripcion: producto.descripcion,
+                estado: !producto.estado,
+            });
             cargarProductos();
         } catch (err) {
-            alert(err.message || 'Error al cambiar estado.');
+            setError(err.message || 'Error al cambiar estado.');
         }
     };
 
@@ -96,14 +105,14 @@ function ProductosPage() {
                         onClick={() => setModalCatAbierto(true)}
                         className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
                     >
-                        Gestionar Categorías
+                        {puedeGestionar ? 'Gestionar Categorías' : 'Ver Categorías'}
                     </button>
-                    <button
+                    {puedeGestionar && <button
                         onClick={abrirNuevoProducto}
                         className="rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold text-white hover:bg-pink-700"
                     >
                         Nuevo Producto
-                    </button>
+                    </button>}
                 </div>
             </div>
 
@@ -190,18 +199,18 @@ function ProductosPage() {
                                                 >
                                                     Gestionar Presentaciones
                                                 </button>
-                                                <button
+                                                {puedeGestionar && <button
                                                     onClick={() => abrirEditarProducto(prod)}
                                                     className="rounded border border-pink-200 px-2 py-1 text-xs font-semibold text-pink-600 hover:bg-pink-50"
                                                 >
                                                     Editar
-                                                </button>
-                                                <button
+                                                </button>}
+                                                {puedeGestionar && <button
                                                     onClick={() => toggleEstadoProducto(prod)}
                                                     className={`rounded border px-2 py-1 text-xs font-semibold ${prod.estado ? 'border-red-200 text-red-600 hover:bg-red-50' : 'border-green-200 text-green-700 hover:bg-green-50'}`}
                                                 >
                                                     {prod.estado ? 'Desactivar' : 'Activar'}
-                                                </button>
+                                                </button>}
                                             </div>
                                         </td>
                                     </tr>
@@ -223,6 +232,7 @@ function ProductosPage() {
             <CategoriasModal 
                 isOpen={modalCatAbierto} 
                 onClose={() => { setModalCatAbierto(false); cargarFiltrosBasicos(); }} 
+                puedeGestionar={puedeGestionar}
             />
             <ProductoModal
                 isOpen={modalProductoAbierto}
@@ -240,6 +250,7 @@ function ProductosPage() {
                 isOpen={modalPresAbierto}
                 onClose={() => { setModalPresAbierto(false); cargarProductos(); }}
                 producto={productoSeleccionado}
+                puedeGestionar={puedeGestionar}
             />
         </section>
     );
