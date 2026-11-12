@@ -155,7 +155,7 @@ function App() {
           <Route
             element={
               <ProtectedRoute
-                permiso="clientes.gestionar_cliente"
+                permiso="clientes.ver"
               />
             }
           >

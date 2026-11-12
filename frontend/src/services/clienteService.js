@@ -1,150 +1,63 @@
-const API_URL = '/api/clientes';
+import { ApiError, obtenerToken } from './authService'
 
-function obtenerCookie(nombre) {
-    const cookies = document.cookie.split(';');
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+const API_URL = `${API_BASE}/api/clientes`
 
-    for (const cookie of cookies) {
-        const [clave, ...valor] = cookie.trim().split('=');
+async function solicitar(url, { method = 'GET', body } = {}) {
+  const token = obtenerToken()
+  const response = await fetch(url, {
+    method,
+    headers: {
+      Accept: 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  })
 
-        if (clave === nombre) {
-            return valor.join('=');
-        }
-    }
+  let data = {}
+  try {
+    data = await response.json()
+  } catch {
+    // La API puede devolver una respuesta sin cuerpo.
+  }
 
-    return null;
+  if (!response.ok) {
+    throw new ApiError(
+      data.message || 'No se pudo completar la solicitud de clientes.',
+      response.status,
+      data,
+    )
+  }
+
+  return data
 }
 
-function obtenerTokenCsrf() {
-    const token = obtenerCookie('XSRF-TOKEN');
-
-    return token
-        ? decodeURIComponent(token)
-        : null;
+export function listarClientes(filtros = {}) {
+  const query = new URLSearchParams()
+  if (filtros.buscar?.trim()) query.set('buscar', filtros.buscar.trim())
+  if (filtros.estado !== '' && filtros.estado !== undefined) {
+    query.set('estado', String(filtros.estado))
+  }
+  const suffix = query.toString()
+  return solicitar(suffix ? `${API_URL}?${suffix}` : API_URL)
 }
 
-async function prepararCsrf() {
-    const response = await fetch('/sanctum/csrf-cookie', {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-        },
-    });
-
-    if (!response.ok) {
-        throw new Error(
-            'No se pudo preparar la protección CSRF.'
-        );
-    }
+export function obtenerCliente(id) {
+  return solicitar(`${API_URL}/${id}`)
 }
 
-async function procesarRespuesta(response) {
-    let data = {};
-
-    try {
-        data = await response.json();
-    } catch {
-        data = {};
-    }
-
-    if (!response.ok) {
-        const error = new Error(
-            data.message ||
-            'Ocurrió un error al procesar la solicitud.'
-        );
-
-        error.status = response.status;
-        error.data = data;
-
-        throw error;
-    }
-
-    return data;
+export function crearCliente(datos) {
+  return solicitar(API_URL, { method: 'POST', body: datos })
 }
 
-export async function listarClientes(filtros = {}) {
-    const url = new URL(API_URL, window.location.origin);
-    
-    if (filtros.buscar) {
-        url.searchParams.append('buscar', filtros.buscar);
-    }
-    if (filtros.estado !== undefined && filtros.estado !== '') {
-        url.searchParams.append('estado', filtros.estado ? '1' : '0');
-    }
-
-    const response = await fetch(url, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-        },
-    });
-
-    return procesarRespuesta(response);
+export function actualizarCliente(id, datos) {
+  return solicitar(`${API_URL}/${id}`, { method: 'PUT', body: datos })
 }
 
-export async function obtenerCliente(id) {
-    const response = await fetch(`${API_URL}/${id}`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-        },
-    });
-
-    return procesarRespuesta(response);
-}
-
-export async function crearCliente(datos) {
-    await prepararCsrf();
-    const token = obtenerTokenCsrf();
-
-    const response = await fetch(API_URL, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            'X-XSRF-TOKEN': token ?? '',
-        },
-        body: JSON.stringify(datos),
-    });
-
-    return procesarRespuesta(response);
-}
-
-export async function actualizarCliente(id, datos) {
-    await prepararCsrf();
-    const token = obtenerTokenCsrf();
-
-    const response = await fetch(`${API_URL}/${id}`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            'X-XSRF-TOKEN': token ?? '',
-        },
-        body: JSON.stringify(datos),
-    });
-
-    return procesarRespuesta(response);
-}
-
-export async function cambiarEstadoCliente(id, estado) {
-    await prepararCsrf();
-    const token = obtenerTokenCsrf();
-
-    const response = await fetch(`${API_URL}/${id}/estado`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            'X-XSRF-TOKEN': token ?? '',
-        },
-        body: JSON.stringify({ estado }),
-    });
-
-    return procesarRespuesta(response);
+export function cambiarEstadoCliente(id, estado) {
+  return solicitar(`${API_URL}/${id}/estado`, {
+    method: 'PATCH',
+    body: { estado },
+  })
 }

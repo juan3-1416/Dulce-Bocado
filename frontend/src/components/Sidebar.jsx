@@ -210,7 +210,7 @@ const SECCIONES_MENU = [
       {
         nombre: 'Directorio de Clientes',
         ruta: '/clientes',
-        permiso: 'clientes.gestionar_cliente',
+        permiso: 'clientes.ver',
       },
     ],
   },

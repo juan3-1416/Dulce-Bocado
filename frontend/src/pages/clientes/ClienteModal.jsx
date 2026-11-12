@@ -75,8 +75,9 @@ function ClienteModal({ abierto, alCerrar, cliente, alGuardarExitoso }) {
                 correo_electronico: formulario.correo_electronico.trim() || null,
                 direccion: formulario.direccion.trim() || null,
                 observaciones: formulario.observaciones.trim() || null,
-                estado: formulario.estado,
             };
+
+            if (!cliente) payload.estado = formulario.estado;
 
             if (cliente?.id_cliente) {
                 await actualizarCliente(cliente.id_cliente, payload);
@@ -84,7 +85,7 @@ function ClienteModal({ abierto, alCerrar, cliente, alGuardarExitoso }) {
                 await crearCliente(payload);
             }
 
-            alGuardarExitoso();
+            alGuardarExitoso(cliente ? 'Cliente actualizado correctamente.' : 'Cliente registrado correctamente.');
             alCerrar();
         } catch (err) {
             if (err.data?.errors) {
@@ -272,7 +273,7 @@ function ClienteModal({ abierto, alCerrar, cliente, alGuardarExitoso }) {
                     </div>
 
                     {/* Estado activo */}
-                    <div className="flex items-center gap-2 pt-1">
+                    {!cliente && <div className="flex items-center gap-2 pt-1">
                         <input
                             type="checkbox"
                             id="estado_cliente"
@@ -284,7 +285,7 @@ function ClienteModal({ abierto, alCerrar, cliente, alGuardarExitoso }) {
                         <label htmlFor="estado_cliente" className="text-sm font-medium text-slate-700 cursor-pointer">
                             Cliente Activo (habilitado para registrar pedidos y ventas)
                         </label>
-                    </div>
+                    </div>}
 
                     {/* Footer / Botones */}
                     <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">

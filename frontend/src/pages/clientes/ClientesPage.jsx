@@ -1,8 +1,13 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { listarClientes, cambiarEstadoCliente } from '../../services/clienteService';
 import ClienteModal from './ClienteModal';
+import { useAuth } from '../../context/AuthContext';
 
 function ClientesPage() {
+    const { tienePermiso } = useAuth();
+    const puedeCrear = tienePermiso('clientes.crear');
+    const puedeModificar = tienePermiso('clientes.modificar');
+    const puedeCambiarEstado = tienePermiso('clientes.cambiar_estado');
     const [clientes, setClientes] = useState([]);
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState('');
@@ -24,6 +29,7 @@ function ClientesPage() {
             const respuesta = await listarClientes(filtros);
             setClientes(respuesta.clientes ?? []);
         } catch (err) {
+            setClientes([]);
             setError(err.message || 'Error al cargar los clientes.');
         } finally {
             setCargando(false);
@@ -49,6 +55,12 @@ function ClientesPage() {
         setModalAbierto(true);
     };
 
+    const guardarExitoso = (mensaje) => {
+        setMensajeExito(mensaje);
+        setError('');
+        cargarClientes();
+    };
+
     const alternarEstado = async (cliente) => {
         const accion = cliente.estado ? 'desactivar' : 'activar';
         if (!window.confirm(`¿Estás seguro de que deseas ${accion} al cliente "${cliente.nombre}"?`)) {
@@ -61,7 +73,7 @@ function ClientesPage() {
             setTimeout(() => setMensajeExito(''), 3000);
             cargarClientes();
         } catch (err) {
-            alert(err.message || 'Error al cambiar el estado del cliente.');
+            setError(err.message || 'Error al cambiar el estado del cliente.');
         }
     };
 
@@ -85,7 +97,7 @@ function ClientesPage() {
                         Registro y gestión de clientes para pedidos no presenciales, reservas y entregas.
                     </p>
                 </div>
-                <button
+                {puedeCrear && <button
                     type="button"
                     onClick={abrirModalNuevo}
                     className="inline-flex items-center justify-center gap-2 rounded-xl bg-pink-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-pink-700 transition"
@@ -94,7 +106,7 @@ function ClientesPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                     </svg>
                     <span>Nuevo Cliente</span>
-                </button>
+                </button>}
             </div>
 
             {/* Tarjetas de Métricas Rápidas */}
@@ -257,14 +269,14 @@ function ClientesPage() {
                                             </span>
                                         </td>
                                         <td className="px-5 py-3.5 text-right space-x-2">
-                                            <button
+                                            {puedeModificar && <button
                                                 type="button"
                                                 onClick={() => abrirModalEditar(cliente)}
                                                 className="inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition"
                                             >
                                                 Editar
-                                            </button>
-                                            <button
+                                            </button>}
+                                            {puedeCambiarEstado && <button
                                                 type="button"
                                                 onClick={() => alternarEstado(cliente)}
                                                 className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-lg transition ${
@@ -274,7 +286,7 @@ function ClientesPage() {
                                                 }`}
                                             >
                                                 {cliente.estado ? 'Desactivar' : 'Activar'}
-                                            </button>
+                                            </button>}
                                         </td>
                                     </tr>
                                 ))}
@@ -289,7 +301,7 @@ function ClientesPage() {
                 abierto={modalAbierto}
                 alCerrar={() => setModalAbierto(false)}
                 cliente={clienteSeleccionado}
-                alGuardarExitoso={cargarClientes}
+                alGuardarExitoso={guardarExitoso}
             />
         </div>
     );
