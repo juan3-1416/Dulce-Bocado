@@ -10,9 +10,12 @@ import {
   listarRecetas,
   obtenerCatalogosReceta,
   cambiarEstadoReceta,
-} from '../../services/recetaService'
+} from '../../services/catalogoRecetaService'
+import { useAuth } from '../../context/AuthContext'
 
 function RecetasPage() {
+  const { tienePermiso } = useAuth()
+  const puedeGestionar = tienePermiso('recetas.gestionar')
   const [recetas, setRecetas] =
     useState([])
 
@@ -227,7 +230,7 @@ return (
         </p>
       </div>
 
-      <button
+      {puedeGestionar && <button
         type="button"
         onClick={abrirNuevaReceta}
         disabled={cargandoCatalogos}
@@ -236,7 +239,7 @@ return (
         {cargandoCatalogos
           ? 'Cargando...'
           : 'Nueva Receta'}
-      </button>
+      </button>}
     </div>
 
     {mensaje && (
@@ -406,7 +409,7 @@ return (
 
 <td className="px-6 py-4">
   <div className="flex flex-wrap gap-2">
-    <button
+    {puedeGestionar && <button
       type="button"
       onClick={() =>
         abrirEditarReceta(receta)
@@ -414,9 +417,9 @@ return (
       className="rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50"
     >
       Editar
-    </button>
+    </button>}
 
-    <button
+    {puedeGestionar && <button
       type="button"
       onClick={() =>
         cambiarEstado(receta)
@@ -430,7 +433,7 @@ return (
       {receta.estado
         ? 'Desactivar'
         : 'Activar'}
-    </button>
+    </button>}
   </div>
 </td>
                 </tr>

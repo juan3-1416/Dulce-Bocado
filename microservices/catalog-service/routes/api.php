@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CatalogoController;
+use App\Http\Controllers\RecetaController;
 use App\Http\Middleware\AutorizarPermisoCatalogo;
 use Illuminate\Support\Facades\Route;
 
@@ -26,3 +27,25 @@ Route::get('/presentaciones/{presentacion}', [CatalogoController::class, 'presen
     ->middleware(AutorizarPermisoCatalogo::class.':catalogo.ver,interno')->whereNumber('presentacion');
 Route::put('/presentaciones/{presentacion}', [CatalogoController::class, 'actualizarPresentacion'])
     ->middleware(AutorizarPermisoCatalogo::class.':catalogo.gestionar')->whereNumber('presentacion');
+
+Route::get('/materias-primas', [RecetaController::class, 'materiasPrimas'])
+    ->middleware(AutorizarPermisoCatalogo::class.':recetas.ver');
+Route::post('/materias-primas', [RecetaController::class, 'guardarMateriaPrima'])
+    ->middleware(AutorizarPermisoCatalogo::class.':recetas.gestionar');
+Route::put('/materias-primas/{materiaPrima}', [RecetaController::class, 'actualizarMateriaPrima'])
+    ->middleware(AutorizarPermisoCatalogo::class.':recetas.gestionar')->whereNumber('materiaPrima');
+Route::patch('/materias-primas/{materiaPrima}/estado', [RecetaController::class, 'cambiarEstadoMateriaPrima'])
+    ->middleware(AutorizarPermisoCatalogo::class.':recetas.gestionar')->whereNumber('materiaPrima');
+
+Route::get('/recetas', [RecetaController::class, 'recetas'])
+    ->middleware(AutorizarPermisoCatalogo::class.':recetas.ver');
+Route::post('/recetas', [RecetaController::class, 'guardarReceta'])
+    ->middleware(AutorizarPermisoCatalogo::class.':recetas.gestionar');
+Route::get('/recetas/{receta}', [RecetaController::class, 'receta'])
+    ->middleware(AutorizarPermisoCatalogo::class.':recetas.ver')->whereNumber('receta');
+Route::put('/recetas/{receta}', [RecetaController::class, 'actualizarReceta'])
+    ->middleware(AutorizarPermisoCatalogo::class.':recetas.gestionar')->whereNumber('receta');
+Route::patch('/recetas/{receta}/estado', [RecetaController::class, 'cambiarEstadoReceta'])
+    ->middleware(AutorizarPermisoCatalogo::class.':recetas.gestionar')->whereNumber('receta');
+Route::get('/presentaciones/{presentacion}/receta', [RecetaController::class, 'recetaPorPresentacion'])
+    ->middleware(AutorizarPermisoCatalogo::class.':recetas.ver,interno')->whereNumber('presentacion');

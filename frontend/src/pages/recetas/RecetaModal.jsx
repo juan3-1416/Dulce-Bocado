@@ -7,7 +7,7 @@ import {
 import {
   actualizarReceta,
   crearReceta,
-} from '../../services/recetaService'
+} from '../../services/catalogoRecetaService'
 
 function RecetaModal({
   abierto,

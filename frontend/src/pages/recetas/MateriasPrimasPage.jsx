@@ -9,9 +9,12 @@ import {
   cambiarEstadoMateriaPrima,
   crearMateriaPrima,
   listarMateriasPrimas,
-} from '../../services/materiaPrimaService'
+} from '../../services/catalogoMateriaPrimaService'
+import { useAuth } from '../../context/AuthContext'
 
 function MateriasPrimasPage() {
+  const { tienePermiso } = useAuth()
+  const puedeGestionar = tienePermiso('recetas.gestionar')
   const [materiasPrimas, setMateriasPrimas] =
     useState([])
 
@@ -264,13 +267,13 @@ function MateriasPrimasPage() {
           </p>
         </div>
 
-        <button
+        {puedeGestionar && <button
           type="button"
           onClick={abrirNueva}
           className="rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold text-white hover:bg-pink-700"
         >
           Nueva Materia Prima
-        </button>
+        </button>}
       </div>
 
       {mensaje && (
@@ -440,7 +443,7 @@ function MateriasPrimasPage() {
 
                       <td className="px-6 py-4">
                         <div className="flex flex-wrap gap-2">
-                          <button
+                          {puedeGestionar && <button
                             type="button"
                             onClick={() =>
                               abrirEditar(
@@ -450,9 +453,9 @@ function MateriasPrimasPage() {
                             className="rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50"
                           >
                             Editar
-                          </button>
+                          </button>}
 
-                          <button
+                          {puedeGestionar && <button
                             type="button"
                             onClick={() =>
                               cambiarEstado(
@@ -468,7 +471,7 @@ function MateriasPrimasPage() {
                             {materiaPrima.estado
                               ? 'Desactivar'
                               : 'Activar'}
-                          </button>
+                          </button>}
                         </div>
                       </td>
                     </tr>

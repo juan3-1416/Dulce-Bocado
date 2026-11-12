@@ -11,6 +11,8 @@ Este es el registro único de avances y de pruebas pendientes del Sprint 2. Actu
 | T204 | En desarrollo | Base independiente de `catalog-service` con MySQL, Compose, Laravel, modelos y migración inicial de categorías, productos y presentaciones. | Configurar entorno local, migrar, completar API y autorización. |
 | T205 | En desarrollo | API protegida de categorías, productos y presentaciones; validaciones de datos y detalle interno de presentación para Sales. El esquema separa producto y presentación, con precio y disponibilidad comercial. Gateway enruta solo rutas exactas de Catalog. | Registrar permisos en Security, configurar entorno y comprobar contratos al cierre. |
 | T206 | En desarrollo | Vista de productos, categorías y presentaciones del monolito adaptada al contrato de Catalog; servicios React usan Gateway/Bearer y permisos `catalogo.ver`/`catalogo.gestionar`. La presentación ahora pertenece directamente al producto. | Registrar permisos, compilar y comprobar el flujo al cierre. |
+| T207 | En desarrollo | Catalog posee tablas de materias primas, recetas y detalles; API para listado, alta, edición y cambio de estado, con validación de ingredientes y cantidades. | Registrar permisos `recetas.ver`/`recetas.gestionar`, aplicar migración y comprobar el contrato al cierre. |
+| T208 | En desarrollo | Vistas existentes de Recetas y Materias Primas usan adaptadores Bearer hacia Catalog. Producción e Inventario conservan sus servicios legados. | Compilar, comprobar flujos completos y permisos al cierre. |
 | T214–T215 | Código aportado por `devFabian` | Base/API de Sales y conexión real con Customer. | Integración con Catalog y pruebas conjuntas. |
 | T216 | En desarrollo | Formulario existente de Ventas adaptado a `sales-service`; envía cliente, `presentacion_id` y cantidad. Alta/edición cerradas hasta obtener presentaciones compatibles. | Confirmar lista de Catalog y probar alta/edición completa. |
 
@@ -22,6 +24,8 @@ Este es el registro único de avances y de pruebas pendientes del Sprint 2. Actu
 - Sales: `POST /api/ventas` y `PUT /api/ventas/{id}` reciben cliente, observaciones e `items: [{ presentacion_id, cantidad }]`; Sales calcula total, precio y snapshot. No enviar costo, precio ni personalización desde React.
 - La vista de catálogo monolítica modela presentaciones globales que se vinculan a productos. El nuevo esquema hace que cada presentación pertenezca a un producto. T206 debe adaptar la interacción existente a esa relación, sin copiar las rutas de vinculación del monolito.
 - Inventario sigue consumiendo `productoService.js` legado hasta su migración posterior; la vista nueva de Catálogo usa `catalogoProductoService.js` para no cambiar ese flujo fuera del Sprint 2.
+- Recetas usan `presentacion_id` directamente, sin la tabla puente `producto_presentacion` del monolito. `GET /api/presentaciones/{id}/receta` expone la receta por API; los ingredientes se guardan en una transacción local con cantidades positivas y materias primas activas. Las vistas existentes reciben una adaptación de nombres para conservar su presentación visual.
+- Producción e Inventario conservan `recetaService.js` y `materiaPrimaService.js` legados. Las vistas de Sprint 2 usan `catalogoRecetaService.js` y `catalogoMateriaPrimaService.js` hasta la migración de esos módulos.
 
 ## Pruebas a ejecutar al cierre del Sprint 2
 
@@ -44,7 +48,9 @@ Este es el registro único de avances y de pruebas pendientes del Sprint 2. Actu
 - [ ] Categorías, productos y presentaciones: alta, consulta, edición, desactivación y persistencia MySQL.
 - [ ] Rechazar precio negativo; exigir producto válido para cada presentación y comprobar disponibilidad comercial.
 - [ ] Confirmar contrato de listado y detalle de presentación por Gateway e internamente desde Sales.
-- [ ] Registrar receta válida; rechazar insumo faltante o cantidad no positiva; verificar vínculo con presentación.
+- [ ] Registrar receta válida; rechazar insumo faltante, duplicado o cantidad no positiva; verificar vínculo único con presentación.
+- [ ] Consultar y editar receta sin cambiar su presentación; activar/desactivar receta y materia prima.
+- [ ] Verificar `GET /api/presentaciones/{id}/receta` por contrato interno y rechazar actor o clave inválidos.
 - [ ] Migrar las vistas de Catálogo y Recetas del monolito a Gateway/Bearer sin rutas ni cookies legadas.
 
 ### Pedidos — T209–T213 / PS2-07–13
@@ -64,4 +70,4 @@ Este es el registro único de avances y de pruebas pendientes del Sprint 2. Actu
 
 ## Límites actuales
 
-No se ejecutan aún las pruebas funcionales por decisión del equipo. Los pasos T203, T205, T206 y T216 conservan ese estado pendiente. Catalog ya define API de negocio, rutas específicas de Gateway y la vista React migrada en código; faltan los permisos `catalogo.ver` y `catalogo.gestionar` en Security y la configuración local de los servicios. El Gateway usa resolución DNS dinámica para poder iniciar aunque el archivo Compose de Catalog no esté incluido; las solicitudes a Catalog requieren ese contenedor. Las rutas anidadas del monolito siguen en su fallback. La interfaz de Ventas mantiene alta/edición deshabilitadas mientras Catalog no devuelva un listado compatible.
+No se ejecutan aún las pruebas funcionales por decisión del equipo. Los pasos T203, T205–T208 y T216 conservan ese estado pendiente. Catalog ya define API de negocio, rutas específicas de Gateway y vistas React migradas en código; faltan los permisos `catalogo.ver`, `catalogo.gestionar`, `recetas.ver` y `recetas.gestionar` en Security y la configuración local de los servicios. El Gateway usa resolución DNS dinámica para poder iniciar aunque el archivo Compose de Catalog no esté incluido; las solicitudes a Catalog requieren ese contenedor. Las rutas anidadas del monolito siguen en su fallback. La interfaz de Ventas mantiene alta/edición deshabilitadas mientras Catalog no devuelva un listado compatible.

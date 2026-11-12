@@ -129,12 +129,12 @@ const SECCIONES_MENU = [
       {
         nombre: 'Recetas',
         ruta: '/recetas',
-        permiso: 'recetas.gestionar_receta',
+        permiso: 'recetas.ver',
       },
       {
         nombre: 'Materias Primas',
         ruta: '/recetas/materias-primas',
-        permiso: 'recetas.gestionar_receta',
+        permiso: 'recetas.ver',
       },
     ],
   },

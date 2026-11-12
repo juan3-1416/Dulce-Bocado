@@ -170,7 +170,7 @@ function App() {
           <Route
             element={
               <ProtectedRoute
-                permiso="recetas.gestionar_receta"
+                permiso="recetas.ver"
               />
             }
           >
