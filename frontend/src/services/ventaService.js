@@ -1,44 +1,52 @@
-const API_URL = '/api/ventas'
+import {
+  ApiError,
+  obtenerToken,
+} from './authService'
 
-function obtenerCookie(nombre) {
-  const cookies = document.cookie.split(';')
+const API_BASE =
+  import.meta.env.VITE_API_URL ||
+  'http://localhost:8080'
 
-  for (const cookie of cookies) {
-    const [clave, ...valor] = cookie.trim().split('=')
+const API_URL = `${API_BASE}/api/ventas`
 
-    if (clave === nombre) {
-      return valor.join('=')
-    }
+function generarIdempotencyKey() {
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.randomUUID === 'function'
+  ) {
+    return `venta-${crypto.randomUUID()}`
   }
 
-  return null
+  return `venta-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 14)}`
 }
 
-function obtenerTokenCsrf() {
-  const token = obtenerCookie('XSRF-TOKEN')
+function obtenerHeaders({
+  json = false,
+  idempotencyKey = null,
+} = {}) {
+  const token = obtenerToken()
 
-  return token
-    ? decodeURIComponent(token)
-    : null
-}
-
-async function prepararCsrf() {
-  const response = await fetch(
-    '/sanctum/csrf-cookie',
-    {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json',
-      },
-    }
-  )
-
-  if (!response.ok) {
-    throw new Error(
-      'No se pudo preparar la protección CSRF.'
-    )
+  const headers = {
+    Accept: 'application/json',
   }
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
+  if (json) {
+    headers['Content-Type'] =
+      'application/json'
+  }
+
+  if (idempotencyKey) {
+    headers['Idempotency-Key'] =
+      idempotencyKey
+  }
+
+  return headers
 }
 
 async function procesarRespuesta(response) {
@@ -51,36 +59,44 @@ async function procesarRespuesta(response) {
   }
 
   if (!response.ok) {
-    const error = new Error(
-      data.message ||
-        'Ocurrió un error al procesar la solicitud.'
+    const mensaje =
+      data?.error?.message ||
+      data?.message ||
+      'Ocurrió un error al procesar la solicitud.'
+
+    throw new ApiError(
+      mensaje,
+      response.status,
+      data,
     )
-
-    error.status = response.status
-    error.data = data
-
-    throw error
   }
 
   return data
 }
 
 export async function listarVentas(
-  parametros = {}
+  parametros = {},
 ) {
   const query = new URLSearchParams()
-
-  if (parametros.buscar) {
-    query.set(
-      'buscar',
-      parametros.buscar
-    )
-  }
 
   if (parametros.estado) {
     query.set(
       'estado',
-      parametros.estado
+      parametros.estado,
+    )
+  }
+
+  if (parametros.per_page) {
+    query.set(
+      'per_page',
+      String(parametros.per_page),
+    )
+  }
+
+  if (parametros.page) {
+    query.set(
+      'page',
+      String(parametros.page),
     )
   }
 
@@ -90,10 +106,7 @@ export async function listarVentas(
 
   const response = await fetch(url, {
     method: 'GET',
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-    },
+    headers: obtenerHeaders(),
   })
 
   return procesarRespuesta(response)
@@ -104,49 +117,28 @@ export async function obtenerVenta(id) {
     `${API_URL}/${id}`,
     {
       method: 'GET',
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json',
-      },
-    }
+      headers: obtenerHeaders(),
+    },
   )
 
   return procesarRespuesta(response)
 }
 
-export async function obtenerCatalogosVenta() {
-  const response = await fetch(
-    `${API_URL}/catalogos`,
-    {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json',
-      },
-    }
-  )
-
-  return procesarRespuesta(response)
-}
-
-export async function crearVenta(datos) {
-  await prepararCsrf()
-
-  const token = obtenerTokenCsrf()
-
+export async function crearVenta(
+  datos,
+  idempotencyKey =
+    generarIdempotencyKey(),
+) {
   const response = await fetch(
     API_URL,
     {
       method: 'POST',
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type':
-          'application/json; charset=utf-8',
-        'X-XSRF-TOKEN': token ?? '',
-      },
+      headers: obtenerHeaders({
+        json: true,
+        idempotencyKey,
+      }),
       body: JSON.stringify(datos),
-    }
+    },
   )
 
   return procesarRespuesta(response)
@@ -154,25 +146,20 @@ export async function crearVenta(datos) {
 
 export async function actualizarVenta(
   id,
-  datos
+  datos,
+  idempotencyKey =
+    generarIdempotencyKey(),
 ) {
-  await prepararCsrf()
-
-  const token = obtenerTokenCsrf()
-
   const response = await fetch(
     `${API_URL}/${id}`,
     {
       method: 'PUT',
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type':
-          'application/json; charset=utf-8',
-        'X-XSRF-TOKEN': token ?? '',
-      },
+      headers: obtenerHeaders({
+        json: true,
+        idempotencyKey,
+      }),
       body: JSON.stringify(datos),
-    }
+    },
   )
 
   return procesarRespuesta(response)
@@ -180,28 +167,22 @@ export async function actualizarVenta(
 
 export async function anularVenta(
   id,
-  motivoAnulacion
+  motivo,
+  idempotencyKey =
+    generarIdempotencyKey(),
 ) {
-  await prepararCsrf()
-
-  const token = obtenerTokenCsrf()
-
   const response = await fetch(
     `${API_URL}/${id}/anular`,
     {
-      method: 'PATCH',
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type':
-          'application/json; charset=utf-8',
-        'X-XSRF-TOKEN': token ?? '',
-      },
-      body: JSON.stringify({
-        motivo_anulacion:
-          motivoAnulacion,
+      method: 'POST',
+      headers: obtenerHeaders({
+        json: true,
+        idempotencyKey,
       }),
-    }
+      body: JSON.stringify({
+        motivo,
+      }),
+    },
   )
 
   return procesarRespuesta(response)

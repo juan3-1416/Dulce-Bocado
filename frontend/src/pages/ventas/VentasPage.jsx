@@ -4,72 +4,24 @@ import {
   useState,
 } from 'react'
 
-import VentaModal from './VentaModal'
-import PagoModal from '../pagos/PagoModal'
-import ReciboDetalleModal from '../recibos/ReciboDetalleModal'
-
 import {
   anularVenta,
   listarVentas,
-  obtenerCatalogosVenta,
+  obtenerVenta,
 } from '../../services/ventaService'
 
-import {
-  obtenerCatalogosPago,
-} from '../../services/pagoService'
-
-import {
-  crearRecibo,
-  listarRecibos,
-} from '../../services/reciboService'
 function VentasPage() {
   const [ventas, setVentas] =
     useState([])
 
-  const [buscar, setBuscar] =
-    useState('')
-
   const [estado, setEstado] =
     useState('')
 
-  const [clientes, setClientes] =
-    useState([])
+  const [pagina, setPagina] =
+    useState(1)
 
-  const [
-    productosPresentaciones,
-    setProductosPresentaciones,
-  ] = useState([])
-
-  const [modalAbierto, setModalAbierto] =
-    useState(false)
-
-  const [
-    modalPagoAbierto,
-    setModalPagoAbierto,
-  ] = useState(false)
-
-  const [
-    ventasParaPago,
-    setVentasParaPago,
-  ] = useState([])
-
-  const [
-    metodosPago,
-    setMetodosPago,
-  ] = useState([
-    'EFECTIVO',
-    'QR',
-  ])
-
-  const [
-    ventaPagoInicialId,
-    setVentaPagoInicialId,
-  ] = useState(null)
-
-  const [
-    reciboSeleccionado,
-    setReciboSeleccionado,
-  ] = useState(null)
+  const [paginacion, setPaginacion] =
+    useState(null)
 
   const [
     ventaSeleccionada,
@@ -90,8 +42,8 @@ function VentasPage() {
     useState(true)
 
   const [
-    cargandoCatalogos,
-    setCargandoCatalogos,
+    cargandoDetalle,
+    setCargandoDetalle,
   ] = useState(false)
 
   const [anulando, setAnulando] =
@@ -111,339 +63,89 @@ function VentasPage() {
 
         const respuesta =
           await listarVentas({
-            buscar,
             estado,
+            page: pagina,
+            per_page: 15,
           })
 
         setVentas(
-          respuesta.ventas ?? []
+          respuesta.data ?? [],
         )
+
+        setPaginacion({
+          currentPage:
+            respuesta.current_page ?? 1,
+          lastPage:
+            respuesta.last_page ?? 1,
+          total:
+            respuesta.total ?? 0,
+        })
       } catch (errorPeticion) {
         if (
-          errorPeticion.status === 403
-        ) {
-          setError(
-            'No tienes permiso para gestionar ventas.'
-          )
-        } else if (
           errorPeticion.status === 401
         ) {
           setError(
-            'Tu sesión ha expirado.'
+            'Tu sesión no es válida o ha expirado.',
+          )
+        } else if (
+          errorPeticion.status === 403
+        ) {
+          setError(
+            'No tienes permiso para consultar ventas.',
           )
         } else {
           setError(
             errorPeticion.message ||
-              'No se pudieron cargar las ventas.'
+              'No se pudieron cargar las ventas.',
           )
         }
+
+        setVentas([])
       } finally {
         setCargando(false)
       }
-    }, [buscar, estado])
-
-  const cargarCatalogos =
-    useCallback(async () => {
-      const respuesta =
-        await obtenerCatalogosVenta()
-
-      setClientes(
-        respuesta.clientes ?? []
-      )
-
-      setProductosPresentaciones(
-        respuesta.productos_presentaciones ??
-          []
-      )
-    }, [])
+    }, [estado, pagina])
 
   useEffect(() => {
-    const temporizador =
-      setTimeout(() => {
-        cargarVentas()
-      }, 300)
-
-    return () =>
-      clearTimeout(temporizador)
+    cargarVentas()
   }, [cargarVentas])
 
-  const abrirNuevaVenta = async () => {
-    try {
-      setCargandoCatalogos(true)
-      setError('')
-      setMensaje('')
-      setVentaSeleccionada(null)
+  useEffect(() => {
+    setPagina(1)
+  }, [estado])
 
-      await cargarCatalogos()
-
-      setModalAbierto(true)
-    } catch (errorPeticion) {
-      setError(
-        errorPeticion.message ||
-          'No se pudieron cargar los datos para registrar la venta.'
-      )
-    } finally {
-      setCargandoCatalogos(false)
-    }
-  }
-
-  const abrirEditarVenta = async (
-    venta
+  const abrirDetalle = async (
+    venta,
   ) => {
-if (venta.estado !== 'PENDIENTE_PAGO') {
-  setError(
-    'Solo se pueden editar ventas pendientes de pago.'
-  )
-
-  return
-}
-
     try {
-      setCargandoCatalogos(true)
+      setCargandoDetalle(true)
       setError('')
-      setMensaje('')
 
-      await cargarCatalogos()
+      const respuesta =
+        await obtenerVenta(
+          venta.id_venta,
+        )
 
       setVentaSeleccionada(
-        venta
+        respuesta.venta ??
+          respuesta,
       )
-
-      setModalAbierto(true)
     } catch (errorPeticion) {
       setError(
         errorPeticion.message ||
-          'No se pudieron cargar los datos para editar la venta.'
+          'No se pudo consultar la venta.',
       )
     } finally {
-      setCargandoCatalogos(false)
+      setCargandoDetalle(false)
     }
   }
 
-  const cerrarModal = () => {
-    setModalAbierto(false)
-    setVentaSeleccionada(null)
-  }
-
-  const manejarGuardado = async (
-    mensajeRespuesta,
-    ventaGuardada = null,
-    accion = 'editar'
-  ) => {
-    setMensaje(
-      mensajeRespuesta
-    )
-
-    await cargarVentas()
-
-    if (
-      accion !== 'crear' ||
-      !ventaGuardada?.id_venta
-    ) {
-      return
-    }
-
-    try {
-      setError('')
-
-      const respuestaPago =
-        await obtenerCatalogosPago()
-
-      const ventasCobrables =
-        respuestaPago.ventas ?? []
-
-      const ventaNueva =
-        ventasCobrables.find(
-          (venta) =>
-            Number(
-              venta.id_venta
-            ) ===
-            Number(
-              ventaGuardada.id_venta
-            )
-        )
-
-      if (!ventaNueva) {
-        setError(
-          'La venta fue registrada correctamente, pero no se encontró disponible para procesar el pago.'
-        )
-
-        return
-      }
-
-      setVentasParaPago([
-        ventaNueva,
-      ])
-
-      setMetodosPago(
-        respuestaPago.metodos_pago ??
-          [
-            'EFECTIVO',
-            'QR',
-          ]
-      )
-
-      setVentaPagoInicialId(
-        ventaNueva.id_venta
-      )
-
-      setModalPagoAbierto(true)
-    } catch (errorPeticion) {
-      setError(
-        errorPeticion.message ||
-          'La venta fue registrada correctamente, pero no se pudo abrir el proceso de pago.'
-      )
-    }
-  }
-
-  const cerrarModalPago = () => {
-    setModalPagoAbierto(false)
-    setVentasParaPago([])
-    setVentaPagoInicialId(null)
-  }
-
-const manejarPagoGuardado = async (
-  mensajeRespuesta,
-  pagoGuardado,
-  contexto = {}
-) => {
-  if (!pagoGuardado?.id_pago) {
-    setMensaje(
-      mensajeRespuesta
-    )
-
-    return
-  }
-
-  try {
-    setError('')
-
-    await cargarVentas()
-
-    /*
-     * Pago QR:
-     * el backend ya creó tanto
-     * el pago como el recibo.
-     *
-     * NO debemos crear otro recibo.
-     */
-    if (
-      contexto
-        ?.recibo_generado
-    ) {
-      setMensaje(
-        'Venta y pago QR confirmados correctamente. El recibo fue generado automáticamente.'
-      )
-
-      const respuestaRecibos =
-        await listarRecibos({
-          buscar:
-            String(
-              pagoGuardado.id_pago
-            ),
-
-          estado:
-            'EMITIDO',
-        })
-
-      const recibo =
-        (
-          respuestaRecibos
-            .recibos ?? []
-        ).find(
-          (item) =>
-            Number(
-              item.id_pago
-            ) ===
-              Number(
-                pagoGuardado.id_pago
-              ) &&
-            item.estado ===
-              'EMITIDO'
-        )
-
-      if (
-        recibo
-          ?.id_recibo
-      ) {
-        setReciboSeleccionado(
-          recibo.id_recibo
-        )
-      }
-
-      return
-    }
-
-    /*
-     * Pago normal:
-     * generamos el recibo desde
-     * el frontend como ya hacía
-     * el sistema.
-     */
-    const respuestaRecibo =
-      await crearRecibo({
-        id_pago:
-          Number(
-            pagoGuardado.id_pago
-          ),
-      })
-
-    setMensaje(
-      'Venta y pago registrados correctamente. El recibo fue generado automáticamente.'
-    )
-
-    if (
-      respuestaRecibo
-        ?.recibo
-        ?.id_recibo
-    ) {
-      setReciboSeleccionado(
-        respuestaRecibo
-          .recibo
-          .id_recibo
-      )
-    }
-  } catch (
-    errorPeticion
-  ) {
-    if (
-      contexto
-        ?.recibo_generado
-    ) {
-      setMensaje(
-        'El pago QR fue confirmado y el recibo fue generado automáticamente.'
-      )
-
-      setError(
-        errorPeticion.message
-          ? `El pago fue procesado correctamente, pero no se pudo abrir automáticamente el recibo: ${errorPeticion.message}`
-          : 'El pago fue procesado correctamente, pero no se pudo abrir automáticamente el recibo.'
-      )
-
-      return
-    }
-
-    setMensaje(
-      'El pago fue registrado correctamente.'
-    )
-
-    setError(
-      errorPeticion.message
-        ? `El pago fue registrado, pero no se pudo generar el recibo automáticamente: ${errorPeticion.message}`
-        : 'El pago fue registrado, pero no se pudo generar el recibo automáticamente.'
-    )
-  }
-}
   const abrirModalAnular = (
-    venta
+    venta,
   ) => {
     setError('')
     setMensaje('')
-
-    setVentaParaAnular(
-      venta
-    )
-
+    setVentaParaAnular(venta)
     setMotivoAnulacion('')
   }
 
@@ -463,7 +165,7 @@ const manejarPagoGuardado = async (
 
       if (motivo.length < 5) {
         setError(
-          'El motivo de anulación debe tener al menos 5 caracteres.'
+          'El motivo de anulación debe tener al menos 5 caracteres.',
         )
 
         return
@@ -475,11 +177,11 @@ const manejarPagoGuardado = async (
 
         await anularVenta(
           ventaParaAnular.id_venta,
-          motivo
+          motivo,
         )
 
         setMensaje(
-          'Venta anulada correctamente.'
+          'Venta anulada correctamente.',
         )
 
         setVentaParaAnular(null)
@@ -489,48 +191,64 @@ const manejarPagoGuardado = async (
       } catch (errorPeticion) {
         setError(
           errorPeticion.message ||
-            'No se pudo anular la venta.'
+            'No se pudo anular la venta.',
         )
       } finally {
         setAnulando(false)
       }
     }
 
-  const obtenerNombreCliente = (
-    venta
+  const obtenerCliente = (
+    venta,
   ) => {
-    if (venta.cliente) {
-      return [
-        venta.cliente.nombre,
-        venta.cliente.apellido,
-      ]
-        .filter(Boolean)
-        .join(' ')
+    if (
+      venta.nombre_cliente_ocasional
+    ) {
+      return (
+        venta.nombre_cliente_ocasional
+      )
     }
 
-    return (
-      venta.nombre_cliente_ocasional ||
-      'Cliente ocasional'
-    )
+    if (venta.id_cliente) {
+      return `Cliente #${venta.id_cliente}`
+    }
+
+    return 'Cliente ocasional'
   }
 
   const formatearFecha = (
-    fecha
+    fecha,
   ) => {
     if (!fecha) {
       return '—'
     }
 
     return new Date(
-      fecha
-    ).toLocaleString(
-      'es-BO'
-    )
+      fecha,
+    ).toLocaleString('es-BO')
+  }
+
+  const obtenerClaseEstado = (
+    estadoVenta,
+  ) => {
+    if (
+      estadoVenta === 'BORRADOR'
+    ) {
+      return 'bg-amber-100 text-amber-700'
+    }
+
+    if (
+      estadoVenta === 'ANULADA' ||
+      estadoVenta === 'CANCELADA'
+    ) {
+      return 'bg-red-100 text-red-700'
+    }
+
+    return 'bg-gray-100 text-gray-700'
   }
 
   return (
     <section className="space-y-6">
-
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
@@ -538,22 +256,29 @@ const manejarPagoGuardado = async (
           </h1>
 
           <p className="mt-1 text-sm text-gray-600">
-            Registra y administra las ventas realizadas en Dulce Bocado.
+            Ventas administradas por
+            Sales Service.
           </p>
         </div>
 
         <button
           type="button"
-          onClick={abrirNuevaVenta}
-          disabled={
-            cargandoCatalogos
-          }
-          className="rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold text-white hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-50"
+          disabled
+          title="Disponible cuando Customer Service y Catalog Service estén integrados."
+          className="cursor-not-allowed rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold text-white opacity-50"
         >
-          {cargandoCatalogos
-            ? 'Cargando...'
-            : 'Nueva Venta'}
+          Nueva Venta
         </button>
+      </div>
+
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        El registro y edición de
+        ventas se habilitarán cuando
+        Customer Service y Catalog
+        Service estén disponibles.
+        El listado, consulta y
+        anulación utilizan el nuevo
+        Sales Service.
       </div>
 
       {mensaje && (
@@ -568,79 +293,51 @@ const manejarPagoGuardado = async (
         </div>
       )}
 
-      <div className="grid gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm md:grid-cols-2">
+      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <label
+          htmlFor="estado_venta"
+          className="mb-1 block text-sm font-medium text-gray-700"
+        >
+          Estado
+        </label>
 
-        <div>
-          <label
-            htmlFor="buscar_venta"
-            className="mb-1 block text-sm font-medium text-gray-700"
-          >
-            Buscar
-          </label>
+        <select
+          id="estado_venta"
+          value={estado}
+          onChange={(event) =>
+            setEstado(
+              event.target.value,
+            )
+          }
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 md:max-w-sm"
+        >
+          <option value="">
+            Todas
+          </option>
 
-          <input
-            id="buscar_venta"
-            type="text"
-            value={buscar}
-            onChange={(event) =>
-              setBuscar(
-                event.target.value
-              )
-            }
-            placeholder="Cliente o producto..."
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
-          />
-        </div>
+          <option value="BORRADOR">
+            Borrador
+          </option>
 
-        <div>
-          <label
-            htmlFor="estado_venta"
-            className="mb-1 block text-sm font-medium text-gray-700"
-          >
-            Estado
-          </label>
-
-          <select
-  id="estado_venta"
-  value={estado}
-  onChange={(event) =>
-    setEstado(event.target.value)
-  }
-  className="w-full rounded-lg border border-gray-300 px-3 py-2"
->
-  <option value="">
-    Todas
-  </option>
-
-  <option value="PENDIENTE_PAGO">
-    Pendientes de pago
-  </option>
-
-  <option value="REGISTRADA">
-    Registradas
-  </option>
-
-  <option value="ANULADA">
-    Anuladas
-  </option>
-</select>
-        </div>
+          <option value="ANULADA">
+            Anulada
+          </option>
+        </select>
       </div>
 
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-
         {cargando ? (
           <div className="p-8 text-center text-gray-500">
             Cargando ventas...
           </div>
         ) : ventas.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
-            No existen ventas registradas.
+            No existen ventas
+            registradas.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
@@ -649,10 +346,6 @@ const manejarPagoGuardado = async (
 
                   <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
                     Cliente
-                  </th>
-
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
-                    Productos
                   </th>
 
                   <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
@@ -680,157 +373,94 @@ const manejarPagoGuardado = async (
                       key={
                         venta.id_venta
                       }
-                      className="align-top hover:bg-gray-50"
+                      className="hover:bg-gray-50"
                     >
                       <td className="px-5 py-4 text-sm font-semibold text-gray-900">
-                        #{venta.id_venta}
+                        #
+                        {
+                          venta.id_venta
+                        }
                       </td>
 
-                      <td className="px-5 py-4">
-                        <p className="text-sm font-semibold text-gray-900">
-                          {obtenerNombreCliente(
-                            venta
-                          )}
-                        </p>
-
-                        <p className="mt-1 text-xs text-gray-500">
-                          Registrada por:{' '}
-                          {venta.usuario
-                            ?.nombre ||
-                            '—'}
-                        </p>
-                      </td>
-
-                      <td className="px-5 py-4">
-                        <div className="space-y-2">
-                          {venta.detalles?.map(
-                            (
-                              detalle
-                            ) => (
-                              <div
-                                key={
-                                  detalle.id_detalle_venta
-                                }
-                                className="text-sm text-gray-700"
-                              >
-                                <span className="font-medium">
-                                  {
-                                    detalle
-                                      .producto_presentacion
-                                      ?.producto
-                                      ?.nombre
-                                  }
-                                </span>
-
-                                {' — '}
-
-                                {
-                                  detalle
-                                    .producto_presentacion
-                                    ?.presentacion
-                                    ?.nombre
-                                }
-
-                                {' × '}
-
-                                {
-                                  detalle.cantidad
-                                }
-
-                                <div className="text-xs text-gray-500">
-                                  Bs{' '}
-                                  {Number(
-                                    detalle.subtotal
-                                  ).toFixed(
-                                    2
-                                  )}
-                                </div>
-                              </div>
-                            )
-                          )}
-                        </div>
+                      <td className="px-5 py-4 text-sm text-gray-700">
+                        {obtenerCliente(
+                          venta,
+                        )}
                       </td>
 
                       <td className="px-5 py-4 text-sm font-bold text-gray-900">
                         Bs{' '}
                         {Number(
-                          venta.total
-                        ).toFixed(
-                          2
-                        )}
+                          venta.total ??
+                            0,
+                        ).toFixed(2)}
                       </td>
 
                       <td className="px-5 py-4 text-sm text-gray-600">
                         {formatearFecha(
-                          venta.fecha_venta
+                          venta.fecha_venta ??
+                            venta.created_at,
                         )}
                       </td>
 
-<td className="px-5 py-4">
-  {venta.estado === 'REGISTRADA' ? (
-    <span className="inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
-      Registrada
-    </span>
-  ) : venta.estado === 'PENDIENTE_PAGO' ? (
-    <span className="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
-      Pendiente de pago
-    </span>
-  ) : (
-    <div>
-      <span className="inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
-        Anulada
-      </span>
-
-      {venta.motivo_anulacion && (
-        <p className="mt-2 max-w-xs text-xs text-gray-500">
-          {venta.motivo_anulacion}
-        </p>
-      )}
-    </div>
-  )}
-</td>
+                      <td className="px-5 py-4">
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${obtenerClaseEstado(
+                            venta.estado,
+                          )}`}
+                        >
+                          {
+                            venta.estado
+                          }
+                        </span>
+                      </td>
 
                       <td className="px-5 py-4">
-  {venta.estado === 'PENDIENTE_PAGO' ? (
-    <div className="flex flex-wrap gap-2">
-      <button
-        type="button"
-        onClick={() =>
-          abrirEditarVenta(venta)
-        }
-        className="rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50"
-      >
-        Editar
-      </button>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              abrirDetalle(
+                                venta,
+                              )
+                            }
+                            disabled={
+                              cargandoDetalle
+                            }
+                            className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                          >
+                            Ver
+                          </button>
 
-      <button
-        type="button"
-        onClick={() =>
-          abrirModalAnular(venta)
-        }
-        className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
-      >
-        Anular
-      </button>
-    </div>
-  ) : venta.estado === 'REGISTRADA' ? (
-    <button
-      type="button"
-      onClick={() =>
-        abrirModalAnular(venta)
-      }
-      className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
-    >
-      Anular
-    </button>
-  ) : (
-    <span className="text-xs text-gray-400">
-      Sin acciones
-    </span>
-  )}
-</td>
+                          {venta.estado ===
+                            'BORRADOR' && (
+                            <>
+                              <button
+                                type="button"
+                                disabled
+                                title="Pendiente de integración con Customer y Catalog."
+                                className="cursor-not-allowed rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-500 opacity-50"
+                              >
+                                Editar
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  abrirModalAnular(
+                                    venta,
+                                  )
+                                }
+                                className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+                              >
+                                Anular
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
                     </tr>
-                  )
+                  ),
                 )}
               </tbody>
             </table>
@@ -838,59 +468,206 @@ const manejarPagoGuardado = async (
         )}
       </div>
 
-      <VentaModal
-        abierto={modalAbierto}
-        onCerrar={cerrarModal}
-        onGuardado={manejarGuardado}
-        clientes={clientes}
-        productosPresentaciones={
-          productosPresentaciones
-        }
-        venta={
-          ventaSeleccionada
-        }
-      />
+      {paginacion && (
+        <div className="flex items-center justify-between text-sm text-gray-600">
+          <span>
+            Total:{' '}
+            {paginacion.total}
+          </span>
 
-      <PagoModal
-        abierto={
-          modalPagoAbierto
-        }
-        onCerrar={
-          cerrarModalPago
-        }
-        onGuardado={
-          manejarPagoGuardado
-        }
-        ventas={
-          ventasParaPago
-        }
-        pedidos={[]}
-        metodosPago={
-          metodosPago
-        }
-        ventaInicialId={
-          ventaPagoInicialId
-        }
-      />
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              disabled={
+                paginacion.currentPage <=
+                1
+              }
+              onClick={() =>
+                setPagina(
+                  (actual) =>
+                    Math.max(
+                      1,
+                      actual - 1,
+                    ),
+                )
+              }
+              className="rounded-lg border border-gray-300 px-3 py-2 disabled:opacity-40"
+            >
+              Anterior
+            </button>
 
-      <ReciboDetalleModal
-        abierto={Boolean(
-          reciboSeleccionado
-        )}
-        reciboId={
-          reciboSeleccionado
-        }
-        onCerrar={() =>
-          setReciboSeleccionado(
-            null
-          )
-        }
-      />
+            <span>
+              Página{' '}
+              {
+                paginacion.currentPage
+              }{' '}
+              de{' '}
+              {paginacion.lastPage}
+            </span>
+
+            <button
+              type="button"
+              disabled={
+                paginacion.currentPage >=
+                paginacion.lastPage
+              }
+              onClick={() =>
+                setPagina(
+                  (actual) =>
+                    actual + 1,
+                )
+              }
+              className="rounded-lg border border-gray-300 px-3 py-2 disabled:opacity-40"
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
+      )}
+
+      {ventaSeleccionada && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">
+                  Venta #
+                  {
+                    ventaSeleccionada.id_venta
+                  }
+                </h2>
+
+                <p className="mt-1 text-sm text-gray-500">
+                  {
+                    ventaSeleccionada.estado
+                  }
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setVentaSeleccionada(
+                    null,
+                  )
+                }
+                className="rounded-lg px-3 py-2 text-gray-500 hover:bg-gray-100"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-5 p-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <p className="text-xs font-semibold uppercase text-gray-500">
+                    Cliente
+                  </p>
+
+                  <p className="mt-1 text-sm text-gray-900">
+                    {obtenerCliente(
+                      ventaSeleccionada,
+                    )}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold uppercase text-gray-500">
+                    Total
+                  </p>
+
+                  <p className="mt-1 text-lg font-bold text-gray-900">
+                    Bs{' '}
+                    {Number(
+                      ventaSeleccionada.total ??
+                        0,
+                    ).toFixed(2)}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <p className="mb-2 text-sm font-semibold text-gray-900">
+                  Detalles
+                </p>
+
+                {ventaSeleccionada
+                  .detalles?.length ? (
+                  <div className="space-y-3">
+                    {ventaSeleccionada.detalles.map(
+                      (
+                        detalle,
+                      ) => (
+                        <div
+                          key={
+                            detalle.id_detalle_venta
+                          }
+                          className="rounded-lg border border-gray-200 p-4"
+                        >
+                          <p className="font-semibold text-gray-900">
+                            {detalle.nombre_presentacion_snapshot ||
+                              `Presentación #${detalle.presentacion_id}`}
+                          </p>
+
+                          <p className="mt-1 text-sm text-gray-600">
+                            Cantidad:{' '}
+                            {
+                              detalle.cantidad
+                            }
+                          </p>
+
+                          <p className="text-sm text-gray-600">
+                            Precio
+                            unitario: Bs{' '}
+                            {Number(
+                              detalle.precio_unitario_snapshot ??
+                                0,
+                            ).toFixed(
+                              2,
+                            )}
+                          </p>
+
+                          <p className="mt-1 text-sm font-semibold text-gray-900">
+                            Subtotal: Bs{' '}
+                            {Number(
+                              detalle.subtotal ??
+                                0,
+                            ).toFixed(
+                              2,
+                            )}
+                          </p>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">
+                    Sin detalles.
+                  </p>
+                )}
+              </div>
+
+              {ventaSeleccionada.observaciones && (
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">
+                    Observaciones
+                  </p>
+
+                  <p className="mt-1 text-sm text-gray-600">
+                    {
+                      ventaSeleccionada.observaciones
+                    }
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {ventaParaAnular && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
-
             <div className="border-b border-gray-200 px-6 py-4">
               <h2 className="text-xl font-bold text-gray-900">
                 Anular Venta
@@ -901,22 +678,20 @@ const manejarPagoGuardado = async (
                 {
                   ventaParaAnular.id_venta
                 }
-                {' — Bs '}
-                {Number(
-                  ventaParaAnular.total
-                ).toFixed(2)}
               </p>
             </div>
 
             <div className="space-y-5 p-6">
-
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                Una venta anulada no podrá volver a activarse ni editarse.
+                Solo los borradores
+                pueden anularse en
+                Sprint 2.
               </div>
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">
-                  Motivo de anulación
+                  Motivo de
+                  anulación
                 </label>
 
                 <textarea
@@ -925,28 +700,25 @@ const manejarPagoGuardado = async (
                   }
                   onChange={(event) =>
                     setMotivoAnulacion(
-                      event.target.value
+                      event.target
+                        .value,
                     )
                   }
                   rows={4}
                   maxLength={500}
-                  placeholder="Explique el motivo de la anulación..."
                   className="w-full rounded-lg border border-gray-300 px-3 py-2"
                 />
-
-                <p className="mt-1 text-xs text-gray-400">
-                  Mínimo 5 caracteres.
-                </p>
               </div>
 
               <div className="flex justify-end gap-3 border-t border-gray-200 pt-5">
-
                 <button
                   type="button"
                   onClick={
                     cerrarModalAnular
                   }
-                  disabled={anulando}
+                  disabled={
+                    anulando
+                  }
                   className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700"
                 >
                   Cancelar
@@ -963,7 +735,7 @@ const manejarPagoGuardado = async (
                       .trim()
                       .length < 5
                   }
-                  className="rounded-lg bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
                 >
                   {anulando
                     ? 'Anulando...'

@@ -28,8 +28,7 @@ use App\Http\Controllers\Api\Visitas\VisitaController;
 use App\Http\Controllers\Api\Dashboard\DashboardController;
 use App\Http\Controllers\Api\Reportes\ReporteController;
 use App\Http\Controllers\Api\PagosInternet\LibelulaAvisoController;
-use App\Http\Controllers\RolController;
-use App\Http\Controllers\PermisoController;
+
 
 
 Route::get('/health', function () {

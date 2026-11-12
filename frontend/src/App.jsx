@@ -190,7 +190,7 @@ function App() {
           <Route
             element={
               <ProtectedRoute
-                permiso="ventas.gestionar_venta"
+                permiso="ventas.ver"
               />
             }
           >
