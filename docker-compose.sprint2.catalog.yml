@@ -1,0 +1,58 @@
+services:
+  catalog-db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: dulce_catalog
+      MYSQL_USER: dulce_catalog_user
+      MYSQL_PASSWORD: ${CATALOG_DB_PASSWORD:-dulce_catalog_local_only}
+      MYSQL_ROOT_PASSWORD: ${CATALOG_DB_ROOT_PASSWORD:-dulce_catalog_root_local_only}
+    volumes:
+      - catalog_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u dulce_catalog_user -p$$MYSQL_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+    networks:
+      - dulce_bocado_net
+
+  catalog-service:
+    build:
+      context: ./microservices/catalog-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    working_dir: /var/www/html
+    env_file:
+      - ./microservices/catalog-service/.env
+    volumes:
+      - ./microservices/catalog-service:/var/www/html
+      - catalog_vendor:/var/www/html/vendor
+    environment:
+      APP_NAME: Dulce Bocado Catalog
+      APP_ENV: local
+      APP_DEBUG: "true"
+      DB_CONNECTION: mysql
+      DB_HOST: catalog-db
+      DB_PORT: 3306
+      DB_DATABASE: dulce_catalog
+      DB_USERNAME: dulce_catalog_user
+      DB_PASSWORD: ${CATALOG_DB_PASSWORD:-dulce_catalog_local_only}
+      SESSION_DRIVER: file
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
+    depends_on:
+      catalog-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(file_get_contents('http://127.0.0.1:8000/up') === false ? 1 : 0);"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - dulce_bocado_net
+
+volumes:
+  catalog_mysql_data:
+  catalog_vendor:
