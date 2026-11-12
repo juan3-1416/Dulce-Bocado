@@ -1,11 +1,13 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from 'react'
 
 import {
   anularVenta,
+  generarIdempotencyKey,
   listarVentas,
   obtenerVenta,
 } from '../../services/ventaService'
@@ -19,6 +21,9 @@ function VentasPage() {
   const [presentaciones, setPresentaciones] = useState([])
   const [clientes, setClientes] = useState([])
   const [catalogoDisponible, setCatalogoDisponible] = useState(false)
+  const [cargandoCatalogo, setCargandoCatalogo] = useState(true)
+  const [errorCatalogo, setErrorCatalogo] = useState('')
+  const [errorClientes, setErrorClientes] = useState('')
   const [modalVentaAbierto, setModalVentaAbierto] = useState(false)
   const [ventaParaEditar, setVentaParaEditar] = useState(null)
   const [ventas, setVentas] =
@@ -47,6 +52,7 @@ function VentasPage() {
     motivoAnulacion,
     setMotivoAnulacion,
   ] = useState('')
+  const intentoAnular = useRef(null)
 
   const [cargando, setCargando] =
     useState(true)
@@ -61,6 +67,7 @@ function VentasPage() {
 
   const [error, setError] =
     useState('')
+  const [errorAnulacion, setErrorAnulacion] = useState('')
 
   const [mensaje, setMensaje] =
     useState('')
@@ -124,27 +131,45 @@ function VentasPage() {
     setPagina(1)
   }, [estado])
 
-  useEffect(() => {
-    let activo = true
-    listarPresentacionesVendibles()
-      .then((opciones) => {
-        if (activo) {
-          setPresentaciones(opciones)
-          setCatalogoDisponible(opciones.length > 0)
-        }
-      })
-      .catch(() => {
-        if (activo) setCatalogoDisponible(false)
-      })
-    return () => { activo = false }
+  const cargarCatalogo = useCallback(async () => {
+    setCargandoCatalogo(true)
+    try {
+      const opciones = await listarPresentacionesVendibles()
+      setPresentaciones(opciones)
+      setCatalogoDisponible(opciones.length > 0)
+      setErrorCatalogo(opciones.length > 0
+        ? ''
+        : 'Catálogo no tiene presentaciones disponibles para venta.')
+      return opciones
+    } catch (errorPeticion) {
+      setPresentaciones([])
+      setCatalogoDisponible(false)
+      setErrorCatalogo(errorPeticion.message || 'No se pudo consultar Catálogo.')
+      return []
+    } finally {
+      setCargandoCatalogo(false)
+    }
   }, [])
+
+  useEffect(() => {
+    cargarCatalogo()
+  }, [cargarCatalogo])
 
   const abrirFormulario = async (venta = null) => {
     if (!catalogoDisponible) return
     try {
       setError('')
-      const respuestaClientes = await listarClientes({ estado: '1' })
-      setClientes(respuestaClientes.clientes ?? [])
+      setMensaje('')
+      const opciones = await cargarCatalogo()
+      if (opciones.length === 0) return
+      try {
+        const respuestaClientes = await listarClientes({ estado: '1' })
+        setClientes(respuestaClientes.clientes ?? [])
+        setErrorClientes('')
+      } catch (errorPeticion) {
+        setClientes([])
+        setErrorClientes(errorPeticion.message || 'No se pudieron cargar los clientes registrados.')
+      }
       if (venta) {
         const respuesta = await obtenerVenta(venta.id_venta)
         setVentaParaEditar(respuesta.venta ?? respuesta)
@@ -186,7 +211,9 @@ function VentasPage() {
   const abrirModalAnular = (
     venta,
   ) => {
+    intentoAnular.current = null
     setError('')
+    setErrorAnulacion('')
     setMensaje('')
     setVentaParaAnular(venta)
     setMotivoAnulacion('')
@@ -199,28 +226,37 @@ function VentasPage() {
 
     setVentaParaAnular(null)
     setMotivoAnulacion('')
+    setErrorAnulacion('')
+    intentoAnular.current = null
   }
 
   const confirmarAnulacion =
     async () => {
+      if (anulando) return
       const motivo =
         motivoAnulacion.trim()
 
       if (motivo.length < 5) {
-        setError(
+        setErrorAnulacion(
           'El motivo de anulación debe tener al menos 5 caracteres.',
         )
 
         return
       }
 
+      const payload = `${ventaParaAnular.id_venta}:${motivo}`
+      if (intentoAnular.current?.payload !== payload) {
+        intentoAnular.current = { payload, clave: generarIdempotencyKey() }
+      }
+
       try {
         setAnulando(true)
-        setError('')
+        setErrorAnulacion('')
 
         await anularVenta(
           ventaParaAnular.id_venta,
           motivo,
+          intentoAnular.current.clave,
         )
 
         setMensaje(
@@ -229,10 +265,11 @@ function VentasPage() {
 
         setVentaParaAnular(null)
         setMotivoAnulacion('')
+        intentoAnular.current = null
 
         await cargarVentas()
       } catch (errorPeticion) {
-        setError(
+        setErrorAnulacion(
           errorPeticion.message ||
             'No se pudo anular la venta.',
         )
@@ -307,8 +344,8 @@ function VentasPage() {
         <button
           type="button"
           onClick={() => abrirFormulario()}
-          disabled={!catalogoDisponible || !tienePermiso('ventas.crear')}
-          title={!catalogoDisponible ? 'Disponible cuando Catálogo publique presentaciones compatibles.' : undefined}
+          disabled={cargandoCatalogo || !catalogoDisponible || !tienePermiso('ventas.crear')}
+          title={!catalogoDisponible ? 'Requiere presentaciones disponibles de Catálogo.' : undefined}
           className="rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold text-white hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Nueva Venta
@@ -318,7 +355,14 @@ function VentasPage() {
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
         {catalogoDisponible
           ? 'El registro y edición usan Customer y Catálogo a través del Gateway. El total definitivo lo calcula Sales.'
-          : 'El registro y edición de ventas requieren presentaciones del nuevo Catálogo. El listado, consulta y anulación utilizan Sales Service.'}
+          : cargandoCatalogo
+            ? 'Consultando presentaciones de Catálogo...'
+            : `${errorCatalogo} El listado, consulta y anulación de ventas siguen disponibles.`}
+        {!catalogoDisponible && !cargandoCatalogo && (
+          <button type="button" onClick={cargarCatalogo} className="ml-3 font-semibold underline">
+            Reintentar Catálogo
+          </button>
+        )}
       </div>
 
       {mensaje && (
@@ -478,7 +522,7 @@ function VentasPage() {
                               <button
                                 type="button"
                                 onClick={() => abrirFormulario(venta)}
-                                disabled={!catalogoDisponible || !tienePermiso('ventas.modificar')}
+                                disabled={cargandoCatalogo || !catalogoDisponible || !tienePermiso('ventas.modificar')}
                                 title={!catalogoDisponible ? 'Pendiente de Catálogo.' : undefined}
                                 className="rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
                               >
@@ -574,6 +618,7 @@ function VentasPage() {
           await cargarVentas()
         }}
         clientes={clientes}
+        errorClientes={errorClientes}
         presentaciones={presentaciones}
         venta={ventaParaEditar}
       />
@@ -735,6 +780,11 @@ function VentasPage() {
             </div>
 
             <div className="space-y-5 p-6">
+              {errorAnulacion && (
+                <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  {errorAnulacion}
+                </div>
+              )}
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
                 Solo los borradores
                 pueden anularse en

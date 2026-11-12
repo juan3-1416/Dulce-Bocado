@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { actualizarVenta, crearVenta } from '../../services/ventaService'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { actualizarVenta, crearVenta, generarIdempotencyKey } from '../../services/ventaService'
 
 const filaVacia = () => ({
   uid: typeof crypto !== 'undefined' && crypto.randomUUID
@@ -9,7 +9,7 @@ const filaVacia = () => ({
   cantidad: '1',
 })
 
-function VentaModal({ abierto, onCerrar, onGuardado, clientes, presentaciones, venta = null }) {
+function VentaModal({ abierto, onCerrar, onGuardado, clientes, presentaciones, errorClientes = '', venta = null }) {
   const [tipoCliente, setTipoCliente] = useState('registrado')
   const [idCliente, setIdCliente] = useState('')
   const [nombreOcasional, setNombreOcasional] = useState('')
@@ -17,9 +17,11 @@ function VentaModal({ abierto, onCerrar, onGuardado, clientes, presentaciones, v
   const [items, setItems] = useState([filaVacia()])
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
+  const intentoGuardar = useRef(null)
 
   useEffect(() => {
     if (!abierto) return
+    intentoGuardar.current = null
     setError('')
     setTipoCliente(venta?.id_cliente ? 'registrado' : venta ? 'ocasional' : 'registrado')
     setIdCliente(venta?.id_cliente ? String(venta.id_cliente) : '')
@@ -51,8 +53,15 @@ function VentaModal({ abierto, onCerrar, onGuardado, clientes, presentaciones, v
 
   const guardar = async (event) => {
     event.preventDefault()
+    if (guardando) return
     if (tipoCliente === 'registrado' && !idCliente) {
       setError('Selecciona un cliente registrado.')
+      return
+    }
+    if (tipoCliente === 'registrado' && !clientes.some(
+      (cliente) => cliente.estado && Number(cliente.id_cliente) === Number(idCliente),
+    )) {
+      setError('El cliente registrado ya no está disponible. Selecciona otro cliente.')
       return
     }
     if (tipoCliente === 'ocasional' && !nombreOcasional.trim()) {
@@ -60,10 +69,11 @@ function VentaModal({ abierto, onCerrar, onGuardado, clientes, presentaciones, v
       return
     }
     const ids = items.map((item) => Number(item.presentacion_id))
-    if (items.length === 0 || ids.some((id) => !Number.isInteger(id) || id < 1)
+    if (items.length === 0 || ids.some((id) => !Number.isInteger(id) || id < 1
+      || !presentaciones.some((opcion) => Number(opcion.presentacion_id) === id))
       || new Set(ids).size !== ids.length
       || items.some((item) => !Number.isInteger(Number(item.cantidad)) || Number(item.cantidad) < 1)) {
-      setError('Selecciona presentaciones distintas y cantidades enteras mayores que cero.')
+      setError('Selecciona presentaciones disponibles distintas y cantidades enteras mayores que cero.')
       return
     }
 
@@ -77,15 +87,21 @@ function VentaModal({ abierto, onCerrar, onGuardado, clientes, presentaciones, v
       })),
     }
 
+    const payload = JSON.stringify(datos)
+    if (intentoGuardar.current?.payload !== payload) {
+      intentoGuardar.current = { payload, clave: generarIdempotencyKey() }
+    }
+
     try {
       setGuardando(true)
       setError('')
       const respuesta = venta
-        ? await actualizarVenta(venta.id_venta, datos)
-        : await crearVenta(datos)
+        ? await actualizarVenta(venta.id_venta, datos, intentoGuardar.current.clave)
+        : await crearVenta(datos, intentoGuardar.current.clave)
       await onGuardado(respuesta?.message || (venta
         ? 'Venta actualizada correctamente.'
         : 'Venta registrada correctamente.'))
+      intentoGuardar.current = null
       onCerrar()
     } catch (errorPeticion) {
       const primerError = Object.values(errorPeticion.data?.errors ?? {})[0]
@@ -110,8 +126,9 @@ function VentaModal({ abierto, onCerrar, onGuardado, clientes, presentaciones, v
         <form onSubmit={guardar} className="space-y-6 p-6">
           {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
-          <fieldset className="rounded-xl border border-gray-200 p-4">
+          <fieldset disabled={guardando} className="rounded-xl border border-gray-200 p-4">
             <legend className="px-1 font-semibold text-gray-900">Cliente</legend>
+            {errorClientes && <p role="status" className="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{errorClientes} Puedes registrar un cliente ocasional.</p>}
             <div className="mb-4 flex flex-wrap gap-4">
               <label className="flex items-center gap-2 text-sm text-gray-700"><input type="radio" name="tipo_cliente" checked={tipoCliente === 'registrado'} onChange={() => setTipoCliente('registrado')} />Cliente registrado</label>
               <label className="flex items-center gap-2 text-sm text-gray-700"><input type="radio" name="tipo_cliente" checked={tipoCliente === 'ocasional'} onChange={() => setTipoCliente('ocasional')} />Cliente ocasional</label>
@@ -120,6 +137,9 @@ function VentaModal({ abierto, onCerrar, onGuardado, clientes, presentaciones, v
               <label className="block text-sm font-medium text-gray-700">Cliente
                 <select value={idCliente} onChange={(event) => setIdCliente(event.target.value)} required className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2">
                   <option value="">Seleccionar cliente</option>
+                  {idCliente && !clientes.some((cliente) => cliente.estado && Number(cliente.id_cliente) === Number(idCliente)) && (
+                    <option value={idCliente} disabled>Cliente anterior no disponible — selecciona otro</option>
+                  )}
                   {clientes.filter((cliente) => cliente.estado).map((cliente) => <option key={cliente.id_cliente} value={cliente.id_cliente}>{cliente.nombre} {cliente.apellido ?? ''}</option>)}
                 </select>
               </label>
@@ -130,14 +150,17 @@ function VentaModal({ abierto, onCerrar, onGuardado, clientes, presentaciones, v
             )}
           </fieldset>
 
-          <fieldset className="space-y-3">
+          <fieldset disabled={guardando} className="space-y-3">
             <legend className="font-semibold text-gray-900">Presentaciones</legend>
             {items.map((item) => (
               <div key={item.uid} className="grid gap-4 rounded-xl border border-gray-200 p-4 sm:grid-cols-[1fr_110px_auto]">
                 <label className="text-sm font-medium text-gray-700">Producto y presentación
                   <select value={item.presentacion_id} onChange={(event) => cambiarItem(item.uid, 'presentacion_id', event.target.value)} required className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2">
                     <option value="">Seleccionar</option>
-                    {presentaciones.map((presentacion) => <option key={presentacion.presentacion_id} value={presentacion.presentacion_id}>{presentacion.nombre} — Bs {Number(presentacion.precio).toFixed(2)}</option>)}
+                    {item.presentacion_id && !presentaciones.some((opcion) => Number(opcion.presentacion_id) === Number(item.presentacion_id)) && (
+                      <option value={item.presentacion_id} disabled>Presentación anterior no disponible — selecciona otra</option>
+                    )}
+                    {presentaciones.map((presentacion) => <option key={presentacion.presentacion_id} value={presentacion.presentacion_id}>{presentacion.etiqueta} — Bs {Number(presentacion.precio).toFixed(2)}</option>)}
                   </select>
                 </label>
                 <label className="text-sm font-medium text-gray-700">Cantidad
@@ -146,11 +169,11 @@ function VentaModal({ abierto, onCerrar, onGuardado, clientes, presentaciones, v
                 <button type="button" disabled={items.length === 1} onClick={() => setItems((actuales) => actuales.filter((actual) => actual.uid !== item.uid))} className="self-end rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-40">Quitar</button>
               </div>
             ))}
-            <button type="button" onClick={() => setItems((actuales) => [...actuales, filaVacia()])} className="rounded-lg border border-pink-200 px-3 py-2 text-sm font-semibold text-pink-600 hover:bg-pink-50">+ Agregar producto</button>
+            <button type="button" disabled={items.length >= 50 || guardando} onClick={() => setItems((actuales) => [...actuales, filaVacia()])} className="rounded-lg border border-pink-200 px-3 py-2 text-sm font-semibold text-pink-600 hover:bg-pink-50 disabled:opacity-50">+ Agregar producto</button>
           </fieldset>
 
           <label className="block text-sm font-medium text-gray-700">Observaciones
-            <textarea value={observaciones} onChange={(event) => setObservaciones(event.target.value)} maxLength={2000} rows={3} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" />
+            <textarea value={observaciones} onChange={(event) => setObservaciones(event.target.value)} disabled={guardando} maxLength={2000} rows={3} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" />
           </label>
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-4">
             <p className="text-sm text-gray-600">Estimado: <strong>Bs {totalEstimado.toFixed(2)}</strong>. El total definitivo lo calcula Sales.</p>

@@ -19,7 +19,7 @@ export async function listarPresentacionesVendibles() {
   }
 
   if (!response.ok) {
-    throw new ApiError(data.message || 'Catálogo no está disponible.', response.status, data)
+    throw new ApiError(data.error?.message || data.message || 'Catálogo no está disponible.', response.status, data)
   }
 
   const presentaciones = data.presentaciones
@@ -27,13 +27,20 @@ export async function listarPresentacionesVendibles() {
     Number.isInteger(item.presentacion_id)
     && typeof item.nombre === 'string'
     && item.nombre.trim() !== ''
-    && Number.isFinite(Number(item.precio))
-    && Number(item.precio) >= 0
+    && typeof item.precio === 'string'
+    && /^(?:0|[1-9][0-9]{0,9})\.[0-9]{2}$/.test(item.precio)
     && item.moneda === 'BOB'
     && typeof item.disponible === 'boolean'
     && typeof item.permite_personalizacion === 'boolean')) {
     throw new ApiError('El contrato de presentaciones de Catálogo no coincide con Sales.', 502, data)
   }
 
-  return presentaciones.filter((item) => item.disponible)
+  return presentaciones
+    .filter((item) => item.disponible)
+    .map((item) => ({
+      ...item,
+      etiqueta: item.producto?.nombre
+        ? `${item.producto.nombre} — ${item.nombre}`
+        : item.nombre,
+    }))
 }

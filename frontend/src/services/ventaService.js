@@ -9,7 +9,7 @@ const API_BASE =
 
 const API_URL = `${API_BASE}/api/ventas`
 
-function generarIdempotencyKey() {
+export function generarIdempotencyKey() {
   if (
     typeof crypto !== 'undefined' &&
     typeof crypto.randomUUID === 'function'
