@@ -1,0 +1,59 @@
+services:
+  customer-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dulce_customers
+      POSTGRES_USER: dulce_customers_user
+      POSTGRES_PASSWORD: ${CUSTOMER_DB_PASSWORD:-dulce_customers_local_only}
+    volumes:
+      - customer_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dulce_customers_user -d dulce_customers"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - dulce_bocado_net
+
+  customer-service:
+    build:
+      context: ./microservices/customer-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    working_dir: /var/www/html
+    env_file:
+      - ./microservices/customer-service/.env
+    volumes:
+      - ./microservices/customer-service:/var/www/html
+      - customer_vendor:/var/www/html/vendor
+    environment:
+      APP_NAME: Dulce Bocado Customer
+      APP_ENV: local
+      APP_DEBUG: "true"
+
+      DB_CONNECTION: pgsql
+      DB_HOST: customer-db
+      DB_PORT: 5432
+      DB_DATABASE: dulce_customers
+      DB_USERNAME: dulce_customers_user
+      DB_PASSWORD: ${CUSTOMER_DB_PASSWORD:-dulce_customers_local_only}
+
+      SESSION_DRIVER: file
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
+    depends_on:
+      customer-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(file_get_contents('http://127.0.0.1:8000/up') === false ? 1 : 0);"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - dulce_bocado_net
+
+volumes:
+  customer_postgres_data:
+  customer_vendor:

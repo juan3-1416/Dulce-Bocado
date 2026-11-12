@@ -22,6 +22,7 @@ import ClientesPage from './pages/clientes/ClientesPage'
 
 import RecetasPage from './pages/recetas/RecetasPage'
 import MateriasPrimasPage from './pages/recetas/MateriasPrimasPage'
+import VentasPage from './pages/ventas/VentasPage'
 
 import PagosPage from './pages/pagos/PagosPage'
 import PagosInternetPage from './pages/pagosInternet/PagosInternetPage'
@@ -195,7 +196,7 @@ function App() {
           >
             <Route
               path="ventas"
-              element={<div />}
+              element={<VentasPage />}
             />
           </Route>
 

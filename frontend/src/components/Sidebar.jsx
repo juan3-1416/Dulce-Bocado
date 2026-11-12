@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
@@ -78,15 +78,15 @@ function IconoReportes({ className = 'h-4 w-4' }) {
 }
 
 /**
- * Configuración modular de los módulos y opciones de navegación.
- * Estructurado según los 27 Casos de Uso (CU) oficiales del sistema.
+ * ConfiguraciÃ³n modular de los mÃ³dulos y opciones de navegaciÃ³n.
+ * Estructurado segÃºn los 27 Casos de Uso (CU) oficiales del sistema.
  */
 const SECCIONES_MENU = [
 {
   id: 'seguridad',
   titulo: 'Seguridad',
   iconoComponente: IconoSeguridad,
-  iconoNinos: '🛡️',
+  iconoNinos: 'ðŸ›¡ï¸',
   opciones: [
     {
       nombre: 'Usuarios',
@@ -117,9 +117,9 @@ const SECCIONES_MENU = [
 },
   {
     id: 'catalogo',
-    titulo: 'Catálogo y Recetas',
+    titulo: 'CatÃ¡logo y Recetas',
     iconoComponente: IconoCatalogo,
-    iconoNinos: '🧁',
+    iconoNinos: 'ðŸ§',
     opciones: [
       {
         nombre: 'Productos y Presentaciones',
@@ -140,12 +140,12 @@ const SECCIONES_MENU = [
   },
   {
     id: 'produccion',
-    titulo: 'Producción',
+    titulo: 'ProducciÃ³n',
     iconoComponente: IconoProduccion,
-    iconoNinos: '⚙️',
+    iconoNinos: 'âš™ï¸',
     opciones: [
       {
-        nombre: 'Producción',
+        nombre: 'ProducciÃ³n',
         ruta: '/produccion',
         permiso: 'produccion.listar',
       },
@@ -156,7 +156,7 @@ const SECCIONES_MENU = [
     id: 'inventario',
     titulo: 'Inventario',
     iconoComponente: IconoInventario,
-    iconoNinos: '📦',
+    iconoNinos: 'ðŸ“¦',
     opciones: [
       {
         nombre: 'Almacenes y Stock',
@@ -179,7 +179,7 @@ const SECCIONES_MENU = [
     id: 'ventas',
     titulo: 'Ventas y Comercial',
     iconoComponente: IconoVentas,
-    iconoNinos: '💳',
+    iconoNinos: 'ðŸ’³',
     opciones: [
       {
         nombre: 'Ventas',
@@ -189,13 +189,13 @@ const SECCIONES_MENU = [
 
 
       {
-        nombre: 'Gestión de Pedidos',
+        nombre: 'GestiÃ³n de Pedidos',
         ruta: '/pedidos',
         permiso: 'pedidos.gestionar_pedido',
       },
       
       {
-        nombre: 'Gestión de Pagos',
+        nombre: 'GestiÃ³n de Pagos',
         ruta: '/pagos',
         permiso: 'pagos.gestionar_pago',
       },
@@ -205,7 +205,7 @@ const SECCIONES_MENU = [
     id: 'clientes',
     titulo: 'Clientes',
     iconoComponente: IconoClientes,
-    iconoNinos: '👥',
+    iconoNinos: 'ðŸ‘¥',
     opciones: [
       {
         nombre: 'Directorio de Clientes',
@@ -218,7 +218,7 @@ const SECCIONES_MENU = [
     id: 'compras',
     titulo: 'Compras',
     iconoComponente: IconoCompras,
-    iconoNinos: '🛒',
+    iconoNinos: 'ðŸ›’',
     opciones: [
       {
         nombre: 'Proveedores y Compras',
@@ -231,7 +231,7 @@ const SECCIONES_MENU = [
     id: 'reportes',
     titulo: 'Reportes',
     iconoComponente: IconoReportes,
-    iconoNinos: '📊',
+    iconoNinos: 'ðŸ“Š',
     opciones: [
       {
         nombre: 'Dashboard',
@@ -257,7 +257,7 @@ function Sidebar() {
   // Estado del buscador interactivo
   const [busqueda, setBusqueda] = useState('')
 
-  // Control de apertura/cierre de cada sección por su ID
+  // Control de apertura/cierre de cada secciÃ³n por su ID
   const [seccionesAbiertas, setSeccionesAbiertas] = useState(() => {
     const inicial = { seguridad: true }
     SECCIONES_MENU.forEach((seccion) => {
@@ -278,7 +278,7 @@ function Sidebar() {
     }))
   }
 
-  // Filtrado reactivo de módulos según permisos RBAC y texto de búsqueda
+  // Filtrado reactivo de mÃ³dulos segÃºn permisos RBAC y texto de bÃºsqueda
   const seccionesFiltradas = useMemo(() => {
     const termino = busqueda.trim().toLowerCase()
 
@@ -339,11 +339,11 @@ function Sidebar() {
 
   return (
     <aside className="h-fit rounded-2xl bg-white p-4 shadow-sm">
-      {/* Cabecera del Menú Interactivo */}
+      {/* Cabecera del MenÃº Interactivo */}
       <div className="mb-3 space-y-2">
         <div className="flex items-center justify-between px-1">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-            Navegación
+            NavegaciÃ³n
           </span>
           <button
             type="button"
@@ -363,7 +363,7 @@ function Sidebar() {
             type="text"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar módulo..."
+            placeholder="Buscar mÃ³dulo..."
             className="w-full rounded-xl border border-slate-200 bg-slate-50 py-1.5 pl-8 pr-3 text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-pink-500 focus:bg-white focus:ring-1 focus:ring-pink-500 transition"
           />
           <svg
@@ -384,9 +384,9 @@ function Sidebar() {
               type="button"
               onClick={() => setBusqueda('')}
               className="absolute right-2.5 top-2 text-xs text-slate-400 hover:text-slate-600"
-              title="Limpiar búsqueda"
+              title="Limpiar bÃºsqueda"
             >
-              ✕
+              âœ•
             </button>
           )}
         </div>
@@ -400,11 +400,11 @@ function Sidebar() {
       </div>
 
       <nav className="space-y-1.5">
-        {/* Enlace estático Inicio */}
+        {/* Enlace estÃ¡tico Inicio */}
         <NavLink to="/" end className={claseEnlace}>
           <span className="flex items-center gap-2.5">
             {esTemaNinos ? (
-              <span className="text-sm">🏠</span>
+              <span className="text-sm">ðŸ </span>
             ) : (
               <IconoInicio className="h-4 w-4 shrink-0 text-slate-500" />
             )}
@@ -412,7 +412,7 @@ function Sidebar() {
           </span>
         </NavLink>
 
-        {/* Secciones dinámicas */}
+        {/* Secciones dinÃ¡micas */}
         {seccionesFiltradas.map((seccion) => {
           const estaAbierta = busqueda
             ? true
@@ -426,7 +426,7 @@ function Sidebar() {
                 type="button"
                 onClick={() => toggleSeccion(seccion.id)}
                 className="flex w-full items-center justify-between rounded-lg px-2.5 pb-1 pt-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition"
-                title={`Alternar módulo ${seccion.titulo}`}
+                title={`Alternar mÃ³dulo ${seccion.titulo}`}
               >
                 <span className="flex items-center gap-2">
                   {esTemaNinos ? (
@@ -477,7 +477,7 @@ function Sidebar() {
 
         {seccionesFiltradas.length === 0 && (
           <div className="p-3 text-center text-xs text-slate-500">
-            No se encontraron módulos para "{busqueda}".
+            No se encontraron mÃ³dulos para "{busqueda}".
           </div>
         )}
       </nav>
@@ -486,3 +486,4 @@ function Sidebar() {
 }
 
 export default Sidebar
+
