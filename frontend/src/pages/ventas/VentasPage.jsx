@@ -9,8 +9,18 @@ import {
   listarVentas,
   obtenerVenta,
 } from '../../services/ventaService'
+import { listarClientes } from '../../services/clienteService'
+import { listarPresentacionesVendibles } from '../../services/catalogoVentasService'
+import { useAuth } from '../../context/AuthContext'
+import VentaModal from './VentaModal'
 
 function VentasPage() {
+  const { tienePermiso } = useAuth()
+  const [presentaciones, setPresentaciones] = useState([])
+  const [clientes, setClientes] = useState([])
+  const [catalogoDisponible, setCatalogoDisponible] = useState(false)
+  const [modalVentaAbierto, setModalVentaAbierto] = useState(false)
+  const [ventaParaEditar, setVentaParaEditar] = useState(null)
   const [ventas, setVentas] =
     useState([])
 
@@ -113,6 +123,39 @@ function VentasPage() {
   useEffect(() => {
     setPagina(1)
   }, [estado])
+
+  useEffect(() => {
+    let activo = true
+    listarPresentacionesVendibles()
+      .then((opciones) => {
+        if (activo) {
+          setPresentaciones(opciones)
+          setCatalogoDisponible(opciones.length > 0)
+        }
+      })
+      .catch(() => {
+        if (activo) setCatalogoDisponible(false)
+      })
+    return () => { activo = false }
+  }, [])
+
+  const abrirFormulario = async (venta = null) => {
+    if (!catalogoDisponible) return
+    try {
+      setError('')
+      const respuestaClientes = await listarClientes({ estado: '1' })
+      setClientes(respuestaClientes.clientes ?? [])
+      if (venta) {
+        const respuesta = await obtenerVenta(venta.id_venta)
+        setVentaParaEditar(respuesta.venta ?? respuesta)
+      } else {
+        setVentaParaEditar(null)
+      }
+      setModalVentaAbierto(true)
+    } catch (errorPeticion) {
+      setError(errorPeticion.message || 'No se pudieron cargar los datos de la venta.')
+    }
+  }
 
   const abrirDetalle = async (
     venta,
@@ -263,22 +306,19 @@ function VentasPage() {
 
         <button
           type="button"
-          disabled
-          title="Disponible cuando Customer Service y Catalog Service estén integrados."
-          className="cursor-not-allowed rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold text-white opacity-50"
+          onClick={() => abrirFormulario()}
+          disabled={!catalogoDisponible || !tienePermiso('ventas.crear')}
+          title={!catalogoDisponible ? 'Disponible cuando Catálogo publique presentaciones compatibles.' : undefined}
+          className="rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold text-white hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Nueva Venta
         </button>
       </div>
 
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-        El registro y edición de
-        ventas se habilitarán cuando
-        Customer Service y Catalog
-        Service estén disponibles.
-        El listado, consulta y
-        anulación utilizan el nuevo
-        Sales Service.
+        {catalogoDisponible
+          ? 'El registro y edición usan Customer y Catálogo a través del Gateway. El total definitivo lo calcula Sales.'
+          : 'El registro y edición de ventas requieren presentaciones del nuevo Catálogo. El listado, consulta y anulación utilizan Sales Service.'}
       </div>
 
       {mensaje && (
@@ -437,14 +477,15 @@ function VentasPage() {
                             <>
                               <button
                                 type="button"
-                                disabled
-                                title="Pendiente de integración con Customer y Catalog."
-                                className="cursor-not-allowed rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-500 opacity-50"
+                                onClick={() => abrirFormulario(venta)}
+                                disabled={!catalogoDisponible || !tienePermiso('ventas.modificar')}
+                                title={!catalogoDisponible ? 'Pendiente de Catálogo.' : undefined}
+                                className="rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 Editar
                               </button>
 
-                              <button
+                              {tienePermiso('ventas.anular') && <button
                                 type="button"
                                 onClick={() =>
                                   abrirModalAnular(
@@ -454,7 +495,7 @@ function VentasPage() {
                                 className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
                               >
                                 Anular
-                              </button>
+                              </button>}
                             </>
                           )}
                         </div>
@@ -524,6 +565,18 @@ function VentasPage() {
           </div>
         </div>
       )}
+
+      <VentaModal
+        abierto={modalVentaAbierto}
+        onCerrar={() => setModalVentaAbierto(false)}
+        onGuardado={async (mensajeGuardado) => {
+          setMensaje(mensajeGuardado)
+          await cargarVentas()
+        }}
+        clientes={clientes}
+        presentaciones={presentaciones}
+        venta={ventaParaEditar}
+      />
 
       {ventaSeleccionada && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
