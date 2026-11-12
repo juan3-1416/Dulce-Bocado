@@ -9,7 +9,7 @@ Este es el registro único de avances y de pruebas pendientes del Sprint 2. Actu
 | T201–T202 | Código aportado por `dev-jp` | `customer-service`, PostgreSQL, API y autorización de Clientes. | Validación conjunta al cierre. |
 | T203 | Código implementado | Vista del monolito conectada a Customer por Gateway/Bearer; permisos y filtro de estado ajustados. | Compilación y flujo funcional. |
 | T204 | En desarrollo | Base independiente de `catalog-service` con MySQL, Compose, Laravel, modelos y migración inicial de categorías, productos y presentaciones. | Configurar entorno local, migrar, completar API y autorización. |
-| T205 | Pendiente | El esquema inicial separa producto y presentación, con precio y disponibilidad comercial. | CRUD, contrato interno para Sales, validaciones y permisos. |
+| T205 | En desarrollo | API protegida de categorías, productos y presentaciones; validaciones de datos y detalle interno de presentación para Sales. El esquema separa producto y presentación, con precio y disponibilidad comercial. | Registrar permisos en Security, enrutar Gateway, migrar vista monolítica y comprobar contratos al cierre. |
 | T206 | Pendiente | Las vistas de catálogo del monolito son la referencia visual. | Adaptarlas al contrato real de Catalog después de T205. |
 | T214–T215 | Código aportado por `devFabian` | Base/API de Sales y conexión real con Customer. | Integración con Catalog y pruebas conjuntas. |
 | T216 | En desarrollo | Formulario existente de Ventas adaptado a `sales-service`; envía cliente, `presentacion_id` y cantidad. Alta/edición cerradas hasta obtener presentaciones compatibles. | Confirmar lista de Catalog y probar alta/edición completa. |
@@ -18,6 +18,7 @@ Este es el registro único de avances y de pruebas pendientes del Sprint 2. Actu
 
 - Customer: `GET /api/clientes?estado=1` y operaciones CRUD por Gateway con Bearer. Permisos `clientes.ver`, `clientes.crear`, `clientes.modificar`, `clientes.cambiar_estado`.
 - Catalog para la vista de Ventas: `GET /api/presentaciones` debe devolver `{ "presentaciones": [...] }` con `presentacion_id` entero, `nombre`, `precio` decimal, `moneda: "BOB"`, `disponible` y `permite_personalizacion` booleanos. El contrato interno `GET /api/presentaciones/{id}` debe devolver `{ "presentacion": {...} }` con esos mismos campos, protegido por clave interna y actor validado.
+- Catalog usa `catalogo.ver` para lectura y `catalogo.gestionar` para escritura. Esos permisos aún deben darse de alta en Security. `CATALOG_INTERNAL_KEY` debe coincidir con la clave configurada por Sales para consultar el detalle interno.
 - Sales: `POST /api/ventas` y `PUT /api/ventas/{id}` reciben cliente, observaciones e `items: [{ presentacion_id, cantidad }]`; Sales calcula total, precio y snapshot. No enviar costo, precio ni personalización desde React.
 - La vista de catálogo monolítica modela presentaciones globales que se vinculan a productos. El nuevo esquema hace que cada presentación pertenezca a un producto. T206 debe adaptar la interacción existente a esa relación, sin copiar las rutas de vinculación del monolito.
 
@@ -62,4 +63,4 @@ Este es el registro único de avances y de pruebas pendientes del Sprint 2. Actu
 
 ## Límites actuales
 
-No se ejecutan aún las pruebas funcionales por decisión del equipo. Los pasos T203 y T216 conservan ese estado pendiente. La interfaz de Ventas mantiene alta/edición deshabilitadas mientras Catalog no publique un listado compatible. T204 todavía no expone API de negocio ni está conectado al Gateway.
+No se ejecutan aún las pruebas funcionales por decisión del equipo. Los pasos T203 y T216 conservan ese estado pendiente. La interfaz de Ventas mantiene alta/edición deshabilitadas mientras Catalog no publique un listado compatible. Catalog ya define API de negocio en código, pero aún no tiene permisos registrados en Security ni rutas públicas de Gateway. Se mantiene así para no interrumpir las vistas monolíticas de Catálogo mientras se migra T206.
