@@ -92,6 +92,13 @@ function VentasPage() {
 
         if (solicitudActual !== solicitudVentas.current) return
 
+        const ultimaPagina = Math.max(1, respuesta.last_page ?? 1)
+        if (pagina > ultimaPagina) {
+          solicitudVentas.current += 1
+          setPagina(ultimaPagina)
+          return
+        }
+
         setVentas(
           respuesta.data ?? [],
         )
@@ -100,7 +107,7 @@ function VentasPage() {
           currentPage:
             respuesta.current_page ?? 1,
           lastPage:
-            respuesta.last_page ?? 1,
+            ultimaPagina,
           total:
             respuesta.total ?? 0,
         })
@@ -629,9 +636,17 @@ function VentasPage() {
       <VentaModal
         abierto={modalVentaAbierto}
         onCerrar={() => setModalVentaAbierto(false)}
-        onGuardado={async (mensajeGuardado) => {
+        onGuardado={async (mensajeGuardado, esNueva) => {
           setMensaje(mensajeGuardado)
-          await cargarVentas()
+          if (esNueva && (estado !== '' || pagina !== 1)) {
+            setCargando(true)
+            setVentas([])
+            setPaginacion(null)
+            setEstado('')
+            setPagina(1)
+          } else {
+            await cargarVentas()
+          }
         }}
         clientes={clientes}
         errorClientes={errorClientes}

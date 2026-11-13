@@ -100,7 +100,7 @@ function VentaModal({ abierto, onCerrar, onGuardado, clientes, presentaciones, e
         : await crearVenta(datos, intentoGuardar.current.clave)
       await onGuardado(respuesta?.message || (venta
         ? 'Venta actualizada correctamente.'
-        : 'Venta registrada correctamente.'))
+        : 'Venta registrada correctamente.'), !venta)
       intentoGuardar.current = null
       onCerrar()
     } catch (errorPeticion) {
