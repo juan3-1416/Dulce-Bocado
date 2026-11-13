@@ -194,6 +194,21 @@ class VentaApiTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_identificadores_invalidos_no_llegan_a_consultar_ventas(): void
+    {
+        $this->simularDependencias();
+
+        foreach (['abc', '9223372036854775808'] as $id) {
+            $this->getJson('/api/ventas/'.$id)->assertNotFound();
+            $this->putJson('/api/ventas/'.$id, $this->datos(), $this->clave('b'))->assertNotFound();
+            $this->postJson('/api/ventas/'.$id.'/anular', ['motivo' => 'Error de captura'], $this->clave('c'))
+                ->assertNotFound();
+        }
+
+        $this->assertDatabaseCount('venta', 0);
+        $this->assertDatabaseCount('venta_idempotencia', 0);
+    }
+
     public function test_cliente_inactivo_impide_crear(): void
     {
         $this->simularDependencias(clienteActivo: false);

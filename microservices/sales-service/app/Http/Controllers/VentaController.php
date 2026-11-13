@@ -26,7 +26,7 @@ class VentaController extends Controller
 
     public function show(string $venta): JsonResponse
     {
-        return response()->json(['venta' => Venta::findOrFail($venta)->load('detalles')]);
+        return response()->json(['venta' => $this->buscarVenta($venta)->load('detalles')]);
     }
 
     public function store(GuardarVentaRequest $request, VentaService $service): JsonResponse
@@ -37,14 +37,24 @@ class VentaController extends Controller
 
     public function update(GuardarVentaRequest $request, string $venta, VentaService $service): JsonResponse
     {
-        $resultado = $service->modificar(Venta::findOrFail($venta), $request->validated(), $this->actor($request), $this->clave($request));
+        $resultado = $service->modificar($this->buscarVenta($venta), $request->validated(), $this->actor($request), $this->clave($request));
         return response()->json($resultado['body'], $resultado['status']);
     }
 
     public function cancel(AnularVentaRequest $request, string $venta, VentaService $service): JsonResponse
     {
-        $resultado = $service->anular(Venta::findOrFail($venta), $request->validated('motivo'), $this->actor($request), $this->clave($request));
+        $resultado = $service->anular($this->buscarVenta($venta), $request->validated('motivo'), $this->actor($request), $this->clave($request));
         return response()->json($resultado['body'], $resultado['status']);
+    }
+
+    private function buscarVenta(string $id): Venta
+    {
+        $idValido = filter_var($id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($idValido === false) {
+            abort(404);
+        }
+
+        return Venta::findOrFail($idValido);
     }
 
     private function actor(Request $request): int
