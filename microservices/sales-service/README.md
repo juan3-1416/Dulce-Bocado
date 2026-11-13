@@ -52,14 +52,24 @@ Ejemplo de creación sin personalización:
 
 También puede enviarse `nombre_cliente_ocasional` en vez de `id_cliente`. El cliente no envía `id_usuario`, precio, subtotal, total ni estado. La personalización se rechaza hasta acordar su costo y contrato. La anulación recibe `{"motivo":"Motivo de al menos tres caracteres"}`. Los errores de reglas de negocio usan `{"error":{"code":"...","message":"...","details":{}}}`; los errores de validación usan el formato JSON estándar de Laravel (`message`, `errors`). Solo `BORRADOR` se puede editar o cancelar.
 
-Para comprobar el código con PostgreSQL sin tocar datos de desarrollo, crear la base `dulce_sales_test` y ejecutar:
+Para ejecutar las pruebas automatizadas sin tocar `dulce_sales`, usar SQLite en memoria:
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.sprint1.yml -f docker-compose.sprint2.sales.yml exec -T -e DB_CONNECTION=pgsql -e DB_DATABASE=dulce_sales_test sales-service php artisan test --compact
+docker compose -f docker-compose.yml -f docker-compose.sprint1.yml -f docker-compose.sprint2.sales.yml exec -T sales-service php artisan test --compact
 ```
+
+`phpunit.xml` y `tests/TestCase.php` fijan SQLite en memoria, y `VentaApiTest` exige esa conexión antes de migrar y pasa `--database=sqlite` a `migrate:fresh`. No ejecutar una copia antigua de la suite dentro del contenedor de desarrollo: sus variables de Docker apuntan a PostgreSQL. Antes de modificar el esquema o recuperar datos, guardar una copia de `dulce_sales` y verificarla con `pg_restore -l`. El estado y la auditoría del incidente local están en `Docs/SPRINT_2_AVANCE_Y_PRUEBAS.md`.
 
 ## Propiedad de datos
 
 Sales usa exclusivamente `dulce_sales`. `id_cliente`, `id_usuario` y `presentacion_id` son referencias externas sin claves foráneas. La única FK de negocio local une `detalle_venta.id_venta` con `venta.id_venta`. Los precios y nombres históricos se almacenan en `detalle_venta`; no se recalculan a partir del catálogo actual.
+
+Antes de continuar un cambio de Sprint 2 o después de una recuperación, ejecutar la auditoría local de solo lectura:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.sprint1.yml -f docker-compose.sprint2.sales.yml exec -T sales-service php artisan ventas:auditar
+```
+
+La orden devuelve código distinto de cero si encuentra detalles huérfanos, subtotales o totales discordantes o claves idempotentes que apuntan a ventas ausentes. No exige que el precio actual de Catalog coincida con el snapshot histórico. Las referencias externas deben verificarse por las API de Customer y Catalog cuando se restaure una copia; no establecer FK ni consultas SQL entre servicios.
 
 No usar `migrate:fresh` ni borrar el volumen para actualizar el esquema. Todo cambio posterior requiere una migración nueva. Consultar `Docs/ROADMAP_SPRINT_2_SALES_SERVICE.md` antes de avanzar.

@@ -15,6 +15,9 @@ frontend/dist/
 # Logs
 *.log
 
+# Respaldos locales de bases de datos
+local-backups/
+
 # Editores
 .vscode/
 .idea/
