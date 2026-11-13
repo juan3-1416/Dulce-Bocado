@@ -53,6 +53,7 @@ function VentasPage() {
     setMotivoAnulacion,
   ] = useState('')
   const intentoAnular = useRef(null)
+  const solicitudVentas = useRef(0)
 
   const [cargando, setCargando] =
     useState(true)
@@ -74,6 +75,7 @@ function VentasPage() {
 
   const cargarVentas =
     useCallback(async () => {
+      const solicitudActual = ++solicitudVentas.current
       try {
         setCargando(true)
         setError('')
@@ -85,6 +87,8 @@ function VentasPage() {
             page: pagina,
             per_page: 15,
           })
+
+        if (solicitudActual !== solicitudVentas.current) return
 
         setVentas(
           respuesta.data ?? [],
@@ -99,6 +103,8 @@ function VentasPage() {
             respuesta.total ?? 0,
         })
       } catch (errorPeticion) {
+        if (solicitudActual !== solicitudVentas.current) return
+
         if (
           errorPeticion.status === 401
         ) {
@@ -120,17 +126,18 @@ function VentasPage() {
 
         setVentas([])
       } finally {
-        setCargando(false)
+        if (solicitudActual === solicitudVentas.current) {
+          setCargando(false)
+        }
       }
     }, [estado, pagina])
 
   useEffect(() => {
     cargarVentas()
+    return () => {
+      solicitudVentas.current += 1
+    }
   }, [cargarVentas])
-
-  useEffect(() => {
-    setPagina(1)
-  }, [estado])
 
   const cargarCatalogo = useCallback(async () => {
     setCargandoCatalogo(true)
@@ -386,11 +393,10 @@ function VentasPage() {
         <select
           id="estado_venta"
           value={estado}
-          onChange={(event) =>
-            setEstado(
-              event.target.value,
-            )
-          }
+          onChange={(event) => {
+            setPagina(1)
+            setEstado(event.target.value)
+          }}
           className="w-full rounded-lg border border-gray-300 px-3 py-2 md:max-w-sm"
         >
           <option value="">
