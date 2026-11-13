@@ -1,6 +1,6 @@
 # Sprint 2 — Avance y pruebas de cierre
 
-Este es el registro único de avances y de pruebas pendientes del Sprint 2. Actualizar este archivo con cada cambio, sin crear un informe nuevo por tarea. Las pruebas funcionales e integrales se ejecutarán al terminar el sprint; ninguna tarea se marca como validada antes de observar el resultado.
+Este es el registro único de avances y pruebas del Sprint 2. Actualizar este archivo con cada cambio, sin crear un informe nuevo por tarea. El 13-11-2026 se inició una validación parcial de Ventas con servicios reales; las pruebas restantes siguen abiertas hasta el cierre del sprint.
 
 ## Estado del desarrollo
 
@@ -13,14 +13,14 @@ Este es el registro único de avances y de pruebas pendientes del Sprint 2. Actu
 | T206 | En desarrollo | Vista de productos, categorías y presentaciones del monolito adaptada al contrato de Catalog; servicios React usan Gateway/Bearer y permisos `catalogo.ver`/`catalogo.gestionar`. La presentación ahora pertenece directamente al producto. | Registrar permisos, compilar y comprobar el flujo al cierre. |
 | T207 | En desarrollo | Catalog posee tablas de materias primas, recetas y detalles; API para listado, alta, edición y cambio de estado, con validación de ingredientes y cantidades. | Registrar permisos `recetas.ver`/`recetas.gestionar`, aplicar migración y comprobar el contrato al cierre. |
 | T208 | En desarrollo | Vistas existentes de Recetas y Materias Primas usan adaptadores Bearer hacia Catalog. Producción e Inventario conservan sus servicios legados. | Compilar, comprobar flujos completos y permisos al cierre. |
-| T214–T215 | Código aportado por `devFabian` | Base/API de Sales y conexión real con Customer. | Integración con Catalog y pruebas conjuntas. |
-| T216 | En desarrollo | Formulario existente de Ventas adaptado a `sales-service`; usa el listado de presentaciones de Catalog por Gateway, distingue producto y presentación, permite reintentar la consulta y refresca precios al abrir. El formulario conserva la clave idempotente al reintentar el mismo envío; la venta ocasional no depende del listado de Customer. | Configurar permisos y credenciales, levantar Catalog real y comprobar alta/edición completa. |
+| T214–T215 | Integración API validada parcialmente | Sales operó con Customer, Catalog y Security reales por Gateway: alta, consulta, edición, anulación, cálculo e idempotencia. Suite aislada: 48 pruebas/138 aserciones. | Completar casos negativos entre contenedores y persistencia tras reinicio. |
+| T216 | En desarrollo | Formulario existente de Ventas adaptado a `sales-service`; usa el listado de presentaciones de Catalog por Gateway, distingue producto y presentación, permite reintentar la consulta y refresca precios al abrir. El formulario conserva la clave idempotente al reintentar el mismo envío; la venta ocasional no depende del listado de Customer. Build React aprobado y API real comprobada; la pantalla solo se abrió hasta el inicio de sesión. | Recorrer listado, alta, edición, detalle, anulación, errores y permisos desde la interfaz React. |
 
 ## Contratos que deben coincidir
 
 - Customer: `GET /api/clientes?estado=1` y operaciones CRUD por Gateway con Bearer. Permisos `clientes.ver`, `clientes.crear`, `clientes.modificar`, `clientes.cambiar_estado`.
 - Catalog para la vista de Ventas: `GET /api/presentaciones` debe devolver `{ "presentaciones": [...] }` con `presentacion_id` entero, `nombre`, `precio` decimal, `moneda: "BOB"`, `disponible` y `permite_personalizacion` booleanos. El contrato interno `GET /api/presentaciones/{id}` debe devolver `{ "presentacion": {...} }` con esos mismos campos, protegido por clave interna y actor validado.
-- Catalog usa `catalogo.ver` para lectura y `catalogo.gestionar` para escritura. Esos permisos aún deben darse de alta en Security. `CATALOG_INTERNAL_KEY` debe coincidir con la clave configurada por Sales para consultar el detalle interno.
+- Catalog usa `catalogo.ver` para lectura y `catalogo.gestionar` para escritura. `CATALOG_INTERNAL_KEY` debe coincidir con la clave configurada por Sales para consultar el detalle interno. En la validación local los permisos de Catalog y Clientes se sembraron explícitamente en Security; comprobar que la preparación de un entorno nuevo los incluya.
 - Sales: `POST /api/ventas` y `PUT /api/ventas/{id}` reciben cliente, observaciones e `items: [{ presentacion_id, cantidad }]`; Sales calcula total, precio y snapshot. No enviar costo, precio ni personalización desde React.
 - La vista de Ventas valida el formato decimal de Catalog como lo exige Sales, muestra el nombre de producto junto a la presentación y vuelve a consultar el listado antes de abrir el formulario. Si Catalog falla o no hay presentaciones disponibles, el alta y la edición siguen cerradas y se ofrece reintentar. Una venta antigua con cliente o presentación desactivados exige elegir una opción vigente antes de guardar. Si Customer falla al listar clientes, se informa y queda disponible la venta ocasional; Sales mantiene su validación del cliente registrado en el servidor.
 - La clave `Idempotency-Key` se conserva en el formulario mientras se reintenta exactamente el mismo contenido; un cambio de contenido genera una clave nueva. La anulación aplica la misma regla mientras su diálogo permanezca abierto y muestra los errores dentro del diálogo. Esto evita duplicar una operación cuando se pierde la respuesta y el usuario reintenta sin cerrar el diálogo.
@@ -33,9 +33,9 @@ Este es el registro único de avances y de pruebas pendientes del Sprint 2. Actu
 
 ### Entorno y compilación
 
-- [ ] Instalar dependencias del frontend y ejecutar `npm run build`.
-- [ ] Preparar los `.env` locales sin registrar secretos; generar `APP_KEY` de cada servicio.
-- [ ] Validar Compose conjunto con Security, Customer, Catalog y Sales; levantar contenedores y comprobar salud.
+- [x] Ejecutar `npm run build` del frontend con las dependencias instaladas.
+- [x] Preparar los `.env` locales sin registrar secretos; generar `APP_KEY` de Customer y Catalog.
+- [x] Validar Compose conjunto con Security, Customer, Catalog y Sales; levantar contenedores y comprobar salud.
 - [ ] Aplicar migraciones sin borrar datos y verificar persistencia tras reinicio.
 
 ### Clientes — T201–T203 / PS2-01–02
@@ -68,12 +68,28 @@ Este es el registro único de avances y de pruebas pendientes del Sprint 2. Actu
 - [ ] Abrir un borrador con cliente o presentación ahora inactivos y exigir una opción vigente antes de guardar.
 - [ ] Reintentar el mismo alta/edición/anulación tras perder la respuesta: verificar que la clave idempotente y el registro no cambien; cambiar el contenido y comprobar que se usa otra clave.
 - [ ] Registrar una venta ocasional cuando el listado de Customer no responda; mantener bloqueado el registro con cliente registrado sin datos válidos.
-- [ ] Comprobar total y snapshot histórico tras cambiar el precio en Catalog.
+- [x] Comprobar por API el total y snapshot histórico tras cambiar el precio en Catalog; repetir también desde React al cierre.
 - [ ] Probar venta con cliente registrado activo y ocasional; rechazar inactivo.
 - [ ] Simular caída de Customer/Catalog/Security y confirmar error controlado sin venta parcial.
 - [ ] Verificar `401`, `403`, idempotencia, permisos de UI y persistencia PostgreSQL.
 - [ ] Confirmar que React no usa puertos internos ni CSRF/cookies del monolito para estos flujos.
 
+## Validación parcial de Ventas — 13-11-2026
+
+Entorno local: `docker compose` con los archivos base, Sprint 1, Sprint 2 Sales, Customer y Catalog. Se prepararon `.env` ignorados por Git para Customer y Catalog y se alinearon las claves internas de Sales, Customer, Catalog y Security sin registrar sus valores. Las migraciones de Customer y Catalog se aplicaron sin borrar datos. En Security se ejecutaron explícitamente `CatalogoPermisosSeeder`, `ClientesPermisosSeeder` y `AdministradorInicialSeeder`; el seeder principal todavía no los reúne para una instalación nueva.
+
+| Comprobación | Resultado observado | Estado |
+|---|---|---|
+| Gateway `/health`, frontend y rutas de Sales/Catalog sin token | Gateway y frontend `200`; `/api/ventas` y `/api/presentaciones` `401` sin Bearer. | Aprobado |
+| Autenticación y permisos de administrador | Login y `/api/auth/me` `200`; permisos `ventas.crear`, `catalogo.ver` y `clientes.ver` presentes tras los seeders explícitos. | Aprobado localmente |
+| Contrato Customer/Catalog/Sales real por Gateway | Cliente, categoría, producto y presentación ficticios creados con `201`; listado de presentaciones `200`; venta registrada con `201`, total `25.00` para 2 unidades a `12.50`. | Aprobado por API |
+| Idempotencia, edición y anulación | Repetición exacta del POST con la misma clave devolvió el mismo ID; PUT cambió cantidad a 3 y total a `37.50`; GET conservó precio unitario `12.50`; anulación devolvió `CANCELADA`. | Aprobado por API |
+| Snapshot tras cambio de precio | Presentación ficticia #1: PUT `200`, precio vigente `13.50`; venta ficticia #6 conservó precio `12.50` y total `25.00`. | Aprobado por API |
+| Suite Sales y persistencia durante pruebas | `php artisan test --compact`: 48 aprobadas, 138 aserciones. Después de fijar `--database=sqlite` y la barrera de conexión, la venta ficticia #6 siguió en PostgreSQL (`count=1`). | Aprobado |
+| Compilación e interfaz | Vite compiló 118 módulos; la página local de inicio de sesión cargó. No se recorrió el formulario de Ventas desde React. | Parcial |
+
+**Incidente de datos local:** las primeras ejecuciones de PHPUnit se conectaron a `dulce_sales` de desarrollo a pesar de declarar SQLite en `phpunit.xml`; `RefreshDatabase` vació la tabla `venta`. Se observó que la venta ficticia previa dejó de existir. No hay un respaldo de esos registros en este trabajo y no se afirma que se hayan recuperado. El aislamiento quedó corregido en `tests/TestCase.php`, `tests/Feature/VentaApiTest.php` y `phpunit.xml`, y se comprobó con una venta ficticia persistente antes y después de la suite. No ejecutar copias antiguas de la suite dentro del contenedor con `DB_CONNECTION=pgsql`.
+
 ## Límites actuales
 
-No se ejecutan aún las pruebas funcionales por decisión del equipo. Los pasos T203, T205–T208 y T216 conservan ese estado pendiente. Catalog ya define API de negocio, rutas específicas de Gateway y vistas React migradas en código; faltan los permisos `catalogo.ver`, `catalogo.gestionar`, `recetas.ver` y `recetas.gestionar` en Security y la configuración local de los servicios. El Gateway usa resolución DNS dinámica para poder iniciar aunque el archivo Compose de Catalog no esté incluido; las solicitudes a Catalog requieren ese contenedor. Las rutas anidadas del monolito siguen en su fallback. La interfaz de Ventas habilita alta/edición cuando Catalog devuelve presentaciones compatibles, pero la integración real requiere configurar `CATALOGO_SERVICE_KEY` en Sales con el mismo valor de `CATALOG_INTERNAL_KEY` en Catalog, además del permiso de lectura para el usuario. En el entorno local actual falta el `.env` de Catalog y la clave de Catalog en Sales; no se afirma que el flujo completo funcione hasta la prueba de cierre.
+T216 sigue pendiente de validación funcional completa en React. Faltan los casos de permisos sin rol en contenedores reales, caídas de dependencias, cliente/presentación inactivos en la pantalla y persistencia tras reiniciar PostgreSQL/Sales. La venta de Sprint 2 continúa siendo un borrador: no incorpora pagos, inventario ni Pedidos. El Gateway usa resolución DNS dinámica para arrancar sin Catalog, pero las solicitudes de Catalog requieren su contenedor. Las rutas anidadas del monolito siguen en su fallback.

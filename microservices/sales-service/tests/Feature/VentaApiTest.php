@@ -13,6 +13,18 @@ class VentaApiTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function beforeRefreshingDatabase()
+    {
+        if (config('database.default') !== 'sqlite' || config('database.connections.sqlite.database') !== ':memory:') {
+            throw new \RuntimeException('La suite de Sales intentó migrar una base distinta de SQLite en memoria.');
+        }
+    }
+
+    protected function migrateFreshUsing()
+    {
+        return ['--database' => 'sqlite'];
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
