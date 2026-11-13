@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CambiarEstadoPedidoRequest;
 use App\Http\Requests\GuardarPedidoRequest;
 use App\Models\Pedido;
 use App\Services\Pedidos\PedidoService;
@@ -101,6 +102,26 @@ class PedidoController extends Controller
         return response()->json([
             'message' =>
                 'Pedido actualizado correctamente.',
+            'pedido' => $pedido,
+        ]);
+    }
+
+    public function cambiarEstado(
+        CambiarEstadoPedidoRequest $request,
+        Pedido $pedido,
+        PedidoService $service
+    ): JsonResponse {
+        $pedido = $service->cambiarEstado(
+            $pedido,
+            $request->validated(),
+            (int) $request->attributes->get(
+                'id_usuario_autenticado'
+            )
+        );
+
+        return response()->json([
+            'message' =>
+                'Estado del pedido actualizado correctamente.',
             'pedido' => $pedido,
         ]);
     }

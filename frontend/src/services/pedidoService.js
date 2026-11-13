@@ -1,68 +1,237 @@
-const API_URL = '/api/pedidos';
+﻿import {
+    ApiError,
+    obtenerToken,
+} from './authService'
 
-function obtenerCookie(nombre) {
-    const cookies = document.cookie.split(';');
+import {
+    listarClientes,
+} from './clienteService'
 
-    for (const cookie of cookies) {
-        const [clave, ...valor] = cookie.trim().split('=');
+import {
+    listarPresentacionesVendibles,
+} from './catalogoVentasService'
 
-        if (clave === nombre) {
-            return valor.join('=');
-        }
+const API_BASE =
+    import.meta.env.VITE_API_URL ||
+    'http://localhost:8080'
+
+const API_URL =
+    `${API_BASE}/api/pedidos`
+
+function obtenerHeaders(
+    json = false
+) {
+    const token = obtenerToken()
+
+    const headers = {
+        Accept: 'application/json',
     }
 
-    return null;
-}
-
-function obtenerTokenCsrf() {
-    const token = obtenerCookie('XSRF-TOKEN');
-
-    return token
-        ? decodeURIComponent(token)
-        : null;
-}
-
-async function prepararCsrf() {
-    const response = await fetch(
-        '/sanctum/csrf-cookie',
-        {
-            method: 'GET',
-            credentials: 'include',
-            headers: {
-                Accept: 'application/json',
-            },
-        }
-    );
-
-    if (!response.ok) {
-        throw new Error(
-            'No se pudo preparar la protección CSRF.'
-        );
+    if (token) {
+        headers.Authorization =
+            `Bearer ${token}`
     }
+
+    if (json) {
+        headers['Content-Type'] =
+            'application/json'
+    }
+
+    return headers
 }
 
-async function procesarRespuesta(response) {
-    let data = {};
+async function procesarRespuesta(
+    response
+) {
+    let data = {}
 
     try {
-        data = await response.json();
+        data = await response.json()
     } catch {
-        data = {};
+        data = {}
     }
 
     if (!response.ok) {
-        const error = new Error(
-            data.message ||
+        const mensaje =
+            data?.error?.message ||
+            data?.message ||
             'Ocurrió un error al procesar la solicitud.'
-        );
 
-        error.status = response.status;
-        error.data = data;
-
-        throw error;
+        throw new ApiError(
+            mensaje,
+            response.status,
+            data,
+        )
     }
 
-    return data;
+    return data
+}
+
+async function solicitarPedido(
+    url,
+    {
+        method = 'GET',
+        body = null,
+    } = {}
+) {
+    let response
+
+    try {
+        response = await fetch(
+            url,
+            {
+                method,
+                headers:
+                    obtenerHeaders(
+                        body !== null
+                    ),
+                ...(body !== null
+                    ? {
+                        body:
+                            JSON.stringify(
+                                body
+                            ),
+                    }
+                    : {}),
+            }
+        )
+    } catch {
+        throw new ApiError(
+            'No se pudo conectar con Pedidos. Reintenta la operación.',
+            503,
+        )
+    }
+
+    return procesarRespuesta(
+        response
+    )
+}
+
+/*
+|--------------------------------------------------------------------------
+| Compatibilidad temporal con la UI existente
+|--------------------------------------------------------------------------
+|
+| El nuevo order-service guarda presentacion_id y snapshots.
+| La interfaz antigua todavía usa id_producto_presentacion,
+| producto_presentacion y cliente.
+|
+| Esta capa permite migrar el servicio sin rehacer todo el modal.
+|
+*/
+
+function normalizarDetalle(
+    detalle
+) {
+    if (!detalle) {
+        return detalle
+    }
+
+    return {
+        ...detalle,
+
+        id_producto_presentacion:
+            detalle
+                .id_producto_presentacion ??
+            detalle.presentacion_id,
+
+        precio_unitario:
+            detalle.precio_unitario ??
+            detalle
+                .precio_unitario_snapshot,
+
+        producto_presentacion:
+            detalle
+                .producto_presentacion ??
+            {
+                producto: {
+                    nombre:
+                        detalle
+                            .nombre_producto_snapshot ??
+                        'Producto',
+                },
+
+                presentacion: {
+                    nombre:
+                        detalle
+                            .nombre_presentacion_snapshot ??
+                        'Presentación',
+                },
+            },
+    }
+}
+
+function normalizarPedido(
+    pedido
+) {
+    if (!pedido) {
+        return pedido
+    }
+
+    const cliente =
+        pedido.cliente ??
+        (
+            pedido.id_cliente
+                ? {
+                    id_cliente:
+                        pedido.id_cliente,
+
+                    nombre:
+                        pedido
+                            .nombre_cliente_snapshot ??
+                        'Cliente registrado',
+
+                    apellido: '',
+                }
+                : null
+        )
+
+    return {
+        ...pedido,
+
+        cliente,
+
+        detalles:
+            Array.isArray(
+                pedido.detalles
+            )
+                ? pedido.detalles.map(
+                    normalizarDetalle
+                )
+                : [],
+    }
+}
+
+function normalizarRespuesta(
+    data
+) {
+    if (
+        Array.isArray(
+            data?.pedidos
+        )
+    ) {
+        return {
+            ...data,
+
+            pedidos:
+                data.pedidos.map(
+                    normalizarPedido
+                ),
+        }
+    }
+
+    if (data?.pedido) {
+        return {
+            ...data,
+
+            pedido:
+                normalizarPedido(
+                    data.pedido
+                ),
+        }
+    }
+
+    return data
 }
 
 /*
@@ -74,44 +243,43 @@ async function procesarRespuesta(response) {
 export async function listarPedidos(
     filtros = {}
 ) {
-    const url = new URL(
-        API_URL,
-        window.location.origin
-    );
+    const query =
+        new URLSearchParams()
 
-    if (filtros.buscar) {
-        url.searchParams.append(
+    if (filtros.buscar?.trim()) {
+        query.set(
             'buscar',
-            filtros.buscar
-        );
+            filtros.buscar.trim()
+        )
     }
 
     if (filtros.estado) {
-        url.searchParams.append(
+        query.set(
             'estado',
             filtros.estado
-        );
+        )
     }
 
     if (filtros.fecha_entrega) {
-        url.searchParams.append(
+        query.set(
             'fecha_entrega',
             filtros.fecha_entrega
-        );
+        )
     }
 
-    const response = await fetch(
-        url,
-        {
-            method: 'GET',
-            credentials: 'include',
-            headers: {
-                Accept: 'application/json',
-            },
-        }
-    );
+    const url =
+        query.toString()
+            ? `${API_URL}?${query.toString()}`
+            : API_URL
 
-    return procesarRespuesta(response);
+    const data =
+        await solicitarPedido(
+            url
+        )
+
+    return normalizarRespuesta(
+        data
+    )
 }
 
 /*
@@ -120,40 +288,81 @@ export async function listarPedidos(
 |--------------------------------------------------------------------------
 */
 
-export async function obtenerPedido(id) {
-    const response = await fetch(
-        `${API_URL}/${id}`,
-        {
-            method: 'GET',
-            credentials: 'include',
-            headers: {
-                Accept: 'application/json',
-            },
-        }
-    );
+export async function obtenerPedido(
+    id
+) {
+    const data =
+        await solicitarPedido(
+            `${API_URL}/${id}`
+        )
 
-    return procesarRespuesta(response);
+    return normalizarRespuesta(
+        data
+    )
 }
 
 /*
 |--------------------------------------------------------------------------
-| Obtener catálogos
+| Obtener catálogos para el modal
 |--------------------------------------------------------------------------
+|
+| Ya no existe /api/pedidos/catalogos.
+|
+| React consulta Customer y Catalog por sus APIs públicas
+| y adapta las respuestas al formato esperado por PedidoModal.
+|
 */
 
 export async function obtenerCatalogosPedido() {
-    const response = await fetch(
-        `${API_URL}/catalogos`,
-        {
-            method: 'GET',
-            credentials: 'include',
-            headers: {
-                Accept: 'application/json',
-            },
-        }
-    );
+    const [
+        respuestaClientes,
+        presentaciones,
+    ] = await Promise.all([
+        listarClientes({
+            estado: 1,
+        }),
 
-    return procesarRespuesta(response);
+        listarPresentacionesVendibles(),
+    ])
+
+    return {
+        clientes:
+            respuestaClientes
+                .clientes ??
+            [],
+
+        presentaciones:
+            presentaciones.map(
+                (item) => ({
+                    id_producto_presentacion:
+                        item.presentacion_id,
+
+                    precio:
+                        item.precio,
+
+                    permite_personalizacion:
+                        item
+                            .permite_personalizacion,
+
+                    producto:
+                        item.producto ??
+                        null,
+
+                    presentacion: {
+                        presentacion_id:
+                            item.presentacion_id,
+
+                        nombre:
+                            item.nombre,
+                    },
+                })
+            ),
+
+        tipos_cliente: [
+            'REGISTRADO',
+            'OCASIONAL',
+        ],
+    }
 }
 
 /*
@@ -162,29 +371,21 @@ export async function obtenerCatalogosPedido() {
 |--------------------------------------------------------------------------
 */
 
-export async function crearPedido(datos) {
-    await prepararCsrf();
+export async function crearPedido(
+    datos
+) {
+    const data =
+        await solicitarPedido(
+            API_URL,
+            {
+                method: 'POST',
+                body: datos,
+            }
+        )
 
-    const token =
-        obtenerTokenCsrf();
-
-    const response = await fetch(
-        API_URL,
-        {
-            method: 'POST',
-            credentials: 'include',
-            headers: {
-                Accept: 'application/json',
-                'Content-Type':
-                    'application/json',
-                'X-XSRF-TOKEN':
-                    token ?? '',
-            },
-            body: JSON.stringify(datos),
-        }
-    );
-
-    return procesarRespuesta(response);
+    return normalizarRespuesta(
+        data
+    )
 }
 
 /*
@@ -197,54 +398,40 @@ export async function actualizarPedido(
     id,
     datos
 ) {
-    await prepararCsrf();
+    const data =
+        await solicitarPedido(
+            `${API_URL}/${id}`,
+            {
+                method: 'PUT',
+                body: datos,
+            }
+        )
 
-    const token =
-        obtenerTokenCsrf();
-
-    const response = await fetch(
-        `${API_URL}/${id}`,
-        {
-            method: 'PUT',
-            credentials: 'include',
-            headers: {
-                Accept: 'application/json',
-                'Content-Type':
-                    'application/json',
-                'X-XSRF-TOKEN':
-                    token ?? '',
-            },
-            body: JSON.stringify(datos),
-        }
-    );
-
-    return procesarRespuesta(response);
+    return normalizarRespuesta(
+        data
+    )
 }
 
 /*
 |--------------------------------------------------------------------------
-| Cambiar estado pedido
+| Cambiar estado
 |--------------------------------------------------------------------------
 */
 
-export async function cambiarEstadoPedido(id, datos) {
-    await prepararCsrf();
+export async function cambiarEstadoPedido(
+    id,
+    datos
+) {
+    const data =
+        await solicitarPedido(
+            `${API_URL}/${id}/estado`,
+            {
+                method: 'PATCH',
+                body: datos,
+            }
+        )
 
-    const token = obtenerTokenCsrf();
-
-    const response = await fetch(
-        `${API_URL}/${id}/estado`,
-        {
-            method: 'PATCH',
-            credentials: 'include',
-            headers: {
-                Accept: 'application/json',
-                'Content-Type': 'application/json',
-                'X-XSRF-TOKEN': token ?? '',
-            },
-            body: JSON.stringify(datos),
-        }
-    );
-
-    return procesarRespuesta(response);
+    return normalizarRespuesta(
+        data
+    )
 }

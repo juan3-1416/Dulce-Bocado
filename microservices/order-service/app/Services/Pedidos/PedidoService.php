@@ -19,7 +19,9 @@ class PedidoService
     {
         $cliente = $this->clientes->validarParaPedido(
             $datos['tipo_cliente'],
-            isset($datos['id_cliente']) ? (int) $datos['id_cliente'] : null,
+            isset($datos['id_cliente'])
+                ? (int) $datos['id_cliente']
+                : null,
             $datos['nombre_cliente_ocasional'] ?? null,
             $actorId
         );
@@ -71,7 +73,9 @@ class PedidoService
 
         $cliente = $this->clientes->validarParaPedido(
             $datos['tipo_cliente'],
-            isset($datos['id_cliente']) ? (int) $datos['id_cliente'] : null,
+            isset($datos['id_cliente'])
+                ? (int) $datos['id_cliente']
+                : null,
             $datos['nombre_cliente_ocasional'] ?? null,
             $actorId
         );
@@ -125,6 +129,119 @@ class PedidoService
         });
     }
 
+    public function cambiarEstado(
+        Pedido $pedido,
+        array $datos,
+        int $actorId
+    ): Pedido {
+        if ($actorId < 1) {
+            throw new PedidoException(
+                401,
+                'ACTOR_INVALIDO',
+                'No se pudo identificar al usuario autenticado.'
+            );
+        }
+
+        return DB::transaction(function () use (
+            $pedido,
+            $datos,
+            $actorId
+        ) {
+            $bloqueado = Pedido::query()
+                ->lockForUpdate()
+                ->find($pedido->id_pedido);
+
+            if (!$bloqueado) {
+                throw new PedidoException(
+                    404,
+                    'PEDIDO_NO_ENCONTRADO',
+                    'Pedido no encontrado.'
+                );
+            }
+
+            if (
+                in_array(
+                    $bloqueado->estado,
+                    ['ENTREGADO', 'CANCELADO'],
+                    true
+                )
+            ) {
+                throw new PedidoException(
+                    409,
+                    'PEDIDO_ESTADO_FINAL',
+                    'El pedido ya se encuentra en un estado final.'
+                );
+            }
+
+            $nuevoEstado = $datos['estado'];
+
+            $transiciones = [
+                'PROGRAMADO' => [
+                    'EN_PROCESO',
+                    'ENTREGADO',
+                    'CANCELADO',
+                ],
+                'EN_PROCESO' => [
+                    'ENTREGADO',
+                    'CANCELADO',
+                ],
+            ];
+
+            $permitidas = $transiciones[$bloqueado->estado] ?? [];
+
+            if (!in_array($nuevoEstado, $permitidas, true)) {
+                throw new PedidoException(
+                    409,
+                    'TRANSICION_PEDIDO_INVALIDA',
+                    sprintf(
+                        'No se puede cambiar el pedido de %s a %s.',
+                        $bloqueado->estado,
+                        $nuevoEstado
+                    )
+                );
+            }
+
+            if ($nuevoEstado === 'EN_PROCESO') {
+                $bloqueado->update([
+                    'estado' => 'EN_PROCESO',
+                ]);
+            }
+
+            if ($nuevoEstado === 'ENTREGADO') {
+                $bloqueado->update([
+                    'estado' => 'ENTREGADO',
+                    'id_usuario_entrega' => $actorId,
+                    'fecha_entrega_efectiva' => now(),
+                ]);
+            }
+
+            if ($nuevoEstado === 'CANCELADO') {
+                $motivo = trim(
+                    (string) ($datos['motivo_cancelacion'] ?? '')
+                );
+
+                if ($motivo === '') {
+                    throw new PedidoException(
+                        422,
+                        'MOTIVO_CANCELACION_REQUERIDO',
+                        'Debe indicar el motivo de cancelación.'
+                    );
+                }
+
+                $bloqueado->update([
+                    'estado' => 'CANCELADO',
+                    'id_usuario_cancelacion' => $actorId,
+                    'motivo_cancelacion' => $motivo,
+                    'fecha_cancelacion' => now(),
+                ]);
+            }
+
+            return $bloqueado
+                ->fresh()
+                ->load('detalles');
+        });
+    }
+
     private function prepararDetalles(
         array $detalles,
         int $actorId
@@ -139,26 +256,40 @@ class PedidoService
                 );
 
             $personalizacion = trim(
-                (string) ($detalle['detalle_personalizacion'] ?? '')
+                (string) (
+                    $detalle['detalle_personalizacion']
+                    ?? ''
+                )
             );
 
             $costo = round(
-                (float) ($detalle['costo_personalizacion'] ?? 0),
+                (float) (
+                    $detalle['costo_personalizacion']
+                    ?? 0
+                ),
                 2
             );
 
             if (
-                !$catalogo['permite_personalizacion'] &&
-                ($personalizacion !== '' || $costo > 0)
+                !$catalogo['permite_personalizacion']
+                && (
+                    $personalizacion !== ''
+                    || $costo > 0
+                )
             ) {
                 throw new PedidoException(
                     409,
                     'PERSONALIZACION_NO_PERMITIDA',
-                    "La presentación del detalle ".($indice + 1)." no permite personalización."
+                    'La presentación del detalle '
+                        .($indice + 1)
+                        .' no permite personalización.'
                 );
             }
 
-            if ($costo > 0 && $personalizacion === '') {
+            if (
+                $costo > 0
+                && $personalizacion === ''
+            ) {
                 throw new PedidoException(
                     422,
                     'DETALLE_PERSONALIZACION_REQUERIDO',
@@ -167,8 +298,11 @@ class PedidoService
             }
 
             $cantidad = (int) $detalle['cantidad'];
+
             $precio = round(
-                (float) $catalogo['precio_unitario_snapshot'],
+                (float) $catalogo[
+                    'precio_unitario_snapshot'
+                ],
                 2
             );
 
@@ -182,23 +316,31 @@ class PedidoService
                     $catalogo['presentacion_id'],
 
                 'nombre_producto_snapshot' =>
-                    $catalogo['nombre_producto_snapshot'],
+                    $catalogo[
+                        'nombre_producto_snapshot'
+                    ],
 
                 'nombre_presentacion_snapshot' =>
-                    $catalogo['nombre_presentacion_snapshot'],
+                    $catalogo[
+                        'nombre_presentacion_snapshot'
+                    ],
 
-                'precio_unitario_snapshot' => $precio,
+                'precio_unitario_snapshot' =>
+                    $precio,
 
-                'cantidad' => $cantidad,
+                'cantidad' =>
+                    $cantidad,
 
                 'detalle_personalizacion' =>
                     $personalizacion !== ''
                         ? $personalizacion
                         : null,
 
-                'costo_personalizacion' => $costo,
+                'costo_personalizacion' =>
+                    $costo,
 
-                'subtotal' => $subtotal,
+                'subtotal' =>
+                    $subtotal,
             ];
         }
 

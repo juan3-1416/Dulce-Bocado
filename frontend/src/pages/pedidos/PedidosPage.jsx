@@ -10,16 +10,18 @@ import {
     cambiarEstadoPedido
 } from '../../services/pedidoService.js';
 
-import {
-    obtenerCatalogosPago
-} from '../../services/pagoService.js';
-
 import PedidoModal from './PedidoModal.jsx';
 import PedidoDetalleModal from './PedidoDetalleModal.jsx';
 import CancelarPedidoModal from './CancelarPedidoModal.jsx';
-import PagoModal from '../pagos/PagoModal.jsx';
+import { useAuth } from '../../context/AuthContext';
 
 function PedidosPage() {
+    const { tienePermiso } = useAuth();
+
+    const puedeGestionarEstado =
+        tienePermiso(
+            'pedidos.gestionar_estado_entrega'
+        );
     const [pedidos, setPedidos] =
         useState([]);
 
@@ -87,32 +89,6 @@ function PedidosPage() {
     const [
         pedidoParaCancelar,
         setPedidoParaCancelar
-    ] = useState(null);
-
-    /*
-    |--------------------------------------------------------------------------
-    | Modal pago
-    |--------------------------------------------------------------------------
-    */
-
-    const [
-        modalPagoAbierto,
-        setModalPagoAbierto
-    ] = useState(false);
-
-    const [
-        metodosPago,
-        setMetodosPago
-    ] = useState([]);
-
-    const [
-        cargandoPago,
-        setCargandoPago
-    ] = useState(false);
-
-    const [
-        pedidoParaPago,
-        setPedidoParaPago
     ] = useState(null);
 
     /*
@@ -411,21 +387,27 @@ function PedidosPage() {
     */
 
     const manejarCambioEstado = async (pedido, nuevoEstado) => {
-        const id_pedido = typeof pedido === 'object' ? pedido.id_pedido : pedido;
-        const pedidoObj = typeof pedido === 'object' ? pedido : pedidos.find(p => p.id_pedido === id_pedido);
-
-        if (nuevoEstado === 'ENTREGADO' && pedidoObj && Number(pedidoObj.saldo) > 0) {
-            setError(`El pedido #${id_pedido} tiene un saldo pendiente de Bs. ${Number(pedidoObj.saldo).toFixed(2)}. Registre el pago completo antes de entregarlo.`);
-            return;
-        }
+        const id_pedido =
+            typeof pedido === 'object'
+                ? pedido.id_pedido
+                : pedido;
 
         try {
             setError('');
             setCargando(true);
-            await cambiarEstadoPedido(id_pedido, { estado: nuevoEstado });
+
+            await cambiarEstadoPedido(
+                id_pedido,
+                { estado: nuevoEstado }
+            );
+
             await cargarPedidos();
         } catch (err) {
-            setError(err.message || 'Error al cambiar el estado del pedido.');
+            setError(
+                err.message ||
+                'Error al cambiar el estado del pedido.'
+            );
+        } finally {
             setCargando(false);
         }
     };
@@ -441,27 +423,6 @@ function PedidosPage() {
             motivo_cancelacion
         });
         await cargarPedidos();
-    };
-
-    /*
-    |--------------------------------------------------------------------------
-    | Abrir Pago
-    |--------------------------------------------------------------------------
-    */
-
-    const abrirModalPago = async (pedido = null) => {
-        try {
-            setCargandoPago(true);
-            setError('');
-            const respuesta = await obtenerCatalogosPago();
-            setMetodosPago(respuesta.metodos_pago ?? ['EFECTIVO', 'QR']);
-            setPedidoParaPago(pedido);
-            setModalPagoAbierto(true);
-        } catch (err) {
-            setError(err.message || 'No se pudieron cargar los métodos de pago.');
-        } finally {
-            setCargandoPago(false);
-        }
     };
 
     /*
@@ -835,7 +796,7 @@ function PedidosPage() {
                                                             Ver detalle
                                                         </button>
 
-                                                        {pedido.estado === 'PROGRAMADO' && (
+                                                        {puedeGestionarEstado && pedido.estado === 'PROGRAMADO' && (
                                                             <button
                                                                 type="button"
                                                                 onClick={() =>
@@ -851,7 +812,7 @@ function PedidosPage() {
                                                     </div>
 
                                                     <div className="flex max-w-[260px] flex-wrap justify-end gap-2 mt-1">
-                                                        {pedido.estado === 'PROGRAMADO' && (
+                                                        {puedeGestionarEstado && pedido.estado === 'PROGRAMADO' && (
                                                             <>
                                                                 <button
                                                                     type="button"
@@ -874,20 +835,10 @@ function PedidosPage() {
                                                                 >
                                                                     Cancelar
                                                                 </button>
-                                                                {pedido.saldo > 0 && (
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => abrirModalPago(pedido)}
-                                                                        disabled={cargandoPago}
-                                                                        className="rounded bg-pink-50 border border-pink-200 px-2 py-1 text-[10px] font-bold text-pink-700 hover:bg-pink-100 uppercase tracking-wider"
-                                                                    >
-                                                                        Registrar Pago
-                                                                    </button>
-                                                                )}
                                                             </>
                                                         )}
 
-                                                        {pedido.estado === 'EN_PROCESO' && (
+                                                        {puedeGestionarEstado && pedido.estado === 'EN_PROCESO' && (
                                                             <>
                                                                 <button
                                                                     type="button"
@@ -903,16 +854,6 @@ function PedidosPage() {
                                                                 >
                                                                     Cancelar
                                                                 </button>
-                                                                {pedido.saldo > 0 && (
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => abrirModalPago(pedido)}
-                                                                        disabled={cargandoPago}
-                                                                        className="rounded bg-pink-50 border border-pink-200 px-2 py-1 text-[10px] font-bold text-pink-700 hover:bg-pink-100 uppercase tracking-wider"
-                                                                    >
-                                                                        Registrar Pago
-                                                                    </button>
-                                                                )}
                                                             </>
                                                         )}
                                                     </div>
@@ -983,7 +924,7 @@ function PedidosPage() {
                 }
             />
 
-            {/* Modales de Cancelación y Pagos */}
+            {/* Modal de cancelación */}
             <CancelarPedidoModal
                 isOpen={modalCancelarAbierto}
                 onClose={() => {
@@ -992,21 +933,6 @@ function PedidosPage() {
                 }}
                 pedido={pedidoParaCancelar}
                 onConfirm={confirmarCancelacion}
-            />
-
-            <PagoModal
-                abierto={modalPagoAbierto}
-                onCerrar={() => {
-                    setModalPagoAbierto(false);
-                    setPedidoParaPago(null);
-                }}
-                onGuardado={async (msg) => {
-                    await cargarPedidos();
-                }}
-                ventas={[]}
-                pedidos={pedidos.filter((p) => p.saldo > 0)}
-                metodosPago={metodosPago}
-                pedidoSeleccionadoInicial={pedidoParaPago}
             />
         </section>
     );
