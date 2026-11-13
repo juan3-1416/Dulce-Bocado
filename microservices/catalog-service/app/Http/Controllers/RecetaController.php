@@ -49,8 +49,13 @@ class RecetaController extends Controller
             ->orderByDesc('id_receta');
         if ($request->filled('buscar')) {
             $buscar = trim((string) $request->query('buscar'));
-            $query->whereHas('presentacion', fn ($presentacion) =>
-                $presentacion->where('nombre', 'like', '%'.$buscar.'%'));
+
+            $query->whereHas('presentacion', function ($presentacion) use ($buscar) {
+                $presentacion
+                    ->where('nombre', 'like', '%'.$buscar.'%')
+                    ->orWhereHas('producto', fn ($producto) =>
+                        $producto->where('nombre', 'like', '%'.$buscar.'%'));
+            });
         }
         if (in_array($request->query('estado'), ['0', '1'], true)) {
             $query->where('estado', $request->query('estado') === '1');

@@ -1,0 +1,1 @@
+{"tipo_cliente":"REGISTRADO","id_cliente":1,"fecha_entrega":"2026-11-16","hora_entrega":"18:00","observaciones":"Prueba atomicidad T210","detalles":[{"id_producto_presentacion":999999,"cantidad":1,"detalle_personalizacion":null,"costo_personalizacion":0}]}
