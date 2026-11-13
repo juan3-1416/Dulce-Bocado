@@ -4,6 +4,8 @@ Este es el registro único de avances y pruebas del Sprint 2. Actualizar este ar
 
 ## Estado del desarrollo
 
+**Estimación del alcance de Ventas: ~80 %** (no representa el Sprint 2 completo). Base de datos y API de Sales están implementadas; Gateway y flujo principal React funcionan; faltan escenarios negativos entre contenedores y validaciones finales de interfaz. Es una estimación de trabajo pendiente, no una métrica oficial de Jira.
+
 | Tarea | Estado | Avance | Pendiente |
 |---|---|---|---|
 | T201–T202 | Código aportado por `dev-jp` | `customer-service`, PostgreSQL, API y autorización de Clientes. | Validación conjunta al cierre. |
@@ -13,7 +15,7 @@ Este es el registro único de avances y pruebas del Sprint 2. Actualizar este ar
 | T206 | En desarrollo | Vista de productos, categorías y presentaciones del monolito adaptada al contrato de Catalog; servicios React usan Gateway/Bearer y permisos `catalogo.ver`/`catalogo.gestionar`. La presentación ahora pertenece directamente al producto. | Registrar permisos, compilar y comprobar el flujo al cierre. |
 | T207 | En desarrollo | Catalog posee tablas de materias primas, recetas y detalles; API para listado, alta, edición y cambio de estado, con validación de ingredientes y cantidades. | Registrar permisos `recetas.ver`/`recetas.gestionar`, aplicar migración y comprobar el contrato al cierre. |
 | T208 | En desarrollo | Vistas existentes de Recetas y Materias Primas usan adaptadores Bearer hacia Catalog. Producción e Inventario conservan sus servicios legados. | Compilar, comprobar flujos completos y permisos al cierre. |
-| T214–T215 | Integración API validada parcialmente | Sales operó con Customer, Catalog y Security reales por Gateway: alta, consulta, edición, anulación, cálculo e idempotencia. Suite aislada: 48 pruebas/138 aserciones. Persistencia comprobada tras reiniciar Sales y PostgreSQL. | Completar casos negativos entre contenedores. |
+| T214–T215 | Integración API validada parcialmente | Sales operó con Customer, Catalog y Security reales por Gateway: alta, consulta, edición, anulación, cálculo e idempotencia. Suite aislada: 50 pruebas/159 aserciones. Persistencia comprobada tras reiniciar Sales y PostgreSQL. | Completar casos negativos entre contenedores. |
 | T216 | Flujo principal y fallos parciales validados | Formulario existente de Ventas adaptado a `sales-service`; usa presentaciones de Catalog, distingue producto y presentación y conserva claves idempotentes para reintentos. Desde React se comprobó listado, alta, detalle, edición, anulación, filtro `CANCELADA`, recuperación de Catalog y venta ocasional sin Customer por Gateway. Se corrigió una carrera entre consultas al cambiar filtros y página. | Probar reintentos idempotentes ante respuesta perdida, clientes/presentaciones inactivos, permisos por rol y cambios rápidos de filtro desde la interfaz al cierre. |
 
 ## Contratos que deben coincidir
@@ -73,6 +75,7 @@ Este es el registro único de avances y pruebas del Sprint 2. Actualizar este ar
 - [ ] Probar venta con cliente registrado activo y ocasional; rechazar inactivo.
 - [ ] Simular caída de Customer/Catalog/Security y confirmar error controlado sin venta parcial.
 - [x] Verificar `401`, `403` e idempotencia en la suite aislada de Sales; conservar datos locales al ejecutarla.
+- [x] Reintentar con la misma clave tras una caída simulada de Catalog; conservar el borrador cuando Customer rechaza una edición y completarla al reactivarlo.
 - [x] Reiniciar PostgreSQL y Sales sin borrar el volumen; conservar ventas, detalles, precios históricos y claves idempotentes.
 - [ ] Verificar los controles de la interfaz con un usuario sin permisos de Ventas.
 - [ ] Cambiar rápidamente el filtro de estado desde una página posterior; confirmar que solo se muestran el listado y la paginación de la consulta más reciente.
@@ -121,6 +124,7 @@ Entorno local: `docker compose` con los archivos base, Sprint 1, Sprint 2 Sales,
 - Se reiniciaron `sales-db` y `sales-service` sin borrar el volumen. Ambos quedaron saludables. Antes y después se observaron #6 `BORRADOR` por `25.00`, #7 `CANCELADA` por `40.50` y #8 `BORRADOR` por `13.50`; detalles con snapshots `12.50`, `13.50` y `13.50` respectivamente. Los conteos siguieron en `3/3/5`. `ventas:auditar` devolvió cuatro contadores en cero.
 - Permanecen pendientes los casos que dependen del comportamiento de la interfaz, como permisos de usuario sin rol, selecciones inactivas y reintento tras perder una respuesta. No se ejecutó navegador para esta verificación.
 - La vista reutilizada de Ventas ahora invalida respuestas antiguas del listado y reinicia la página en el mismo cambio de filtro. Se evita que una consulta tardía sobrescriba la lista o paginación más reciente. `npm run build` compiló 118 módulos; `oxlint` del archivo informó cero errores y dos advertencias existentes por cargas iniciales en efectos. La interacción rápida queda pendiente de la validación final de interfaz; no se usó navegador para este ajuste.
+- Se añadieron dos casos a `VentaApiTest` sin crear otro archivo: tras una caída simulada de Catalog, un reintento con la misma clave crea una sola venta; con Customer inactivo, una edición rechazada conserva el total y detalles previos y la misma clave sirve después de reactivar el cliente. La suite de Sales pasó con **50 pruebas y 159 aserciones** sobre SQLite en memoria. En PostgreSQL local, antes y después siguieron `3` ventas, `3` detalles y `5` respuestas idempotentes; `ventas:auditar` volvió a informar cuatro contadores en cero. Son pruebas de contrato con dependencias simuladas, no sustituyen la caída real entre contenedores ni la comprobación de la vista.
 
 ## Límites actuales
 

@@ -211,6 +211,22 @@ class VentaApiTest extends TestCase
         $this->assertDatabaseCount('venta_idempotencia', 0);
     }
 
+    public function test_reintento_tras_recuperar_catalogo_conserva_clave_y_crea_una_sola_venta(): void
+    {
+        $this->simularDependencias(catalogDisponible: false);
+        $this->postJson('/api/ventas', $this->datos(), $this->clave())->assertStatus(503);
+        $this->assertDatabaseCount('venta', 0);
+        $this->assertDatabaseCount('venta_idempotencia', 0);
+
+        $this->simularDependencias();
+        $primera = $this->postJson('/api/ventas', $this->datos(), $this->clave())->assertCreated();
+        $this->postJson('/api/ventas', $this->datos(), $this->clave())->assertCreated()
+            ->assertJsonPath('venta.id_venta', $primera->json('venta.id_venta'));
+        $this->assertDatabaseCount('venta', 1);
+        $this->assertDatabaseCount('detalle_venta', 2);
+        $this->assertDatabaseCount('venta_idempotencia', 1);
+    }
+
     public function test_cambio_fallido_no_modifica_venta_previa(): void
     {
         $this->simularDependencias();
@@ -219,6 +235,30 @@ class VentaApiTest extends TestCase
         $this->putJson('/api/ventas/'.$id, $this->datos(), $this->clave('b'))->assertStatus(503);
         $this->assertSame('30.75', Venta::find($id)->total);
         $this->assertDatabaseCount('detalle_venta', 2);
+    }
+
+    public function test_cliente_inactivo_no_modifica_borrador_y_admite_reintento_al_reactivarse(): void
+    {
+        $this->simularDependencias();
+        $id = $this->postJson('/api/ventas', $this->datos(), $this->clave())->json('venta.id_venta');
+        $nuevos = $this->datos();
+        $nuevos['items'][0]['cantidad'] = 3;
+
+        $this->simularDependencias(clienteActivo: false);
+        $this->putJson('/api/ventas/'.$id, $nuevos, $this->clave('b'))->assertStatus(409)
+            ->assertJsonPath('error.code', 'CLIENTE_INACTIVO');
+        $this->assertSame('30.75', Venta::find($id)->total);
+        $this->assertDatabaseCount('detalle_venta', 2);
+        $this->assertDatabaseCount('venta_idempotencia', 1);
+
+        $this->simularDependencias();
+        $primera = $this->putJson('/api/ventas/'.$id, $nuevos, $this->clave('b'))->assertOk()
+            ->assertJsonPath('venta.total', '41.00');
+        $this->putJson('/api/ventas/'.$id, $nuevos, $this->clave('b'))->assertOk()
+            ->assertJsonPath('venta.id_venta', $primera->json('venta.id_venta'));
+        $this->assertSame('41.00', Venta::find($id)->total);
+        $this->assertDatabaseCount('detalle_venta', 2);
+        $this->assertDatabaseCount('venta_idempotencia', 2);
     }
 
     public function test_total_fuera_del_limite_de_bd_se_rechaza_sin_escritura(): void
