@@ -16,6 +16,8 @@ import { listarPresentacionesVendibles } from '../../services/catalogoVentasServ
 import { useAuth } from '../../context/AuthContext'
 import VentaModal from './VentaModal'
 
+const MIN_MOTIVO_ANULACION = 3
+
 function VentasPage() {
   const { tienePermiso } = useAuth()
   const [presentaciones, setPresentaciones] = useState([])
@@ -244,9 +246,9 @@ function VentasPage() {
       const motivo =
         motivoAnulacion.trim()
 
-      if (motivo.length < 5) {
+      if (motivo.length < MIN_MOTIVO_ANULACION) {
         setErrorAnulacion(
-          'El motivo de anulación debe tener al menos 5 caracteres.',
+          `El motivo de anulación debe tener al menos ${MIN_MOTIVO_ANULACION} caracteres.`,
         )
 
         return
@@ -850,7 +852,7 @@ function VentasPage() {
                     anulando ||
                     motivoAnulacion
                       .trim()
-                      .length < 5
+                      .length < MIN_MOTIVO_ANULACION
                   }
                   className="rounded-lg bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
                 >

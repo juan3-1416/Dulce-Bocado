@@ -33,6 +33,8 @@ Este es el registro único de avances y pruebas del Sprint 2. Actualizar este ar
 
 ## Pruebas a ejecutar al cierre del Sprint 2
 
+**Acuerdo de cierre (13-11-2026):** los casos de integración ante fallos reales y las validaciones finales de interfaz quedan programados para el final del sprint. En Ventas esto incluye caídas de Customer, Catalog y Security entre contenedores, permisos por rol, cliente o presentación desactivados, respuesta perdida durante alta/edición/anulación y cambios rápidos de filtro. Los casos de API con dependencias simuladas y el build ya ejecutados se conservan como evidencia parcial; no se marcarán esos escenarios finales como aprobados hasta observarlos en el entorno integrado. Las pruebas de interfaz se harán al cierre, no durante los avances actuales.
+
 ### Entorno y compilación
 
 - [x] Ejecutar `npm run build` del frontend con las dependencias instaladas.
@@ -79,6 +81,7 @@ Este es el registro único de avances y pruebas del Sprint 2. Actualizar este ar
 - [x] Reiniciar PostgreSQL y Sales sin borrar el volumen; conservar ventas, detalles, precios históricos y claves idempotentes.
 - [ ] Verificar los controles de la interfaz con un usuario sin permisos de Ventas.
 - [ ] Cambiar rápidamente el filtro de estado desde una página posterior; confirmar que solo se muestran el listado y la paginación de la consulta más reciente.
+- [ ] Anular un borrador con motivo de 3 caracteres desde la interfaz y comprobar que coincide con la regla de Sales; rechazar 2 caracteres.
 - [x] Confirmar en los servicios React de Ventas, Clientes y Catálogo que usan `VITE_API_URL` o `localhost:8080`, Bearer y ninguna ruta interna ni CSRF/cookie del monolito.
 
 ## Validación parcial de Ventas — 13-11-2026
@@ -125,6 +128,7 @@ Entorno local: `docker compose` con los archivos base, Sprint 1, Sprint 2 Sales,
 - Permanecen pendientes los casos que dependen del comportamiento de la interfaz, como permisos de usuario sin rol, selecciones inactivas y reintento tras perder una respuesta. No se ejecutó navegador para esta verificación.
 - La vista reutilizada de Ventas ahora invalida respuestas antiguas del listado y reinicia la página en el mismo cambio de filtro. Se evita que una consulta tardía sobrescriba la lista o paginación más reciente. `npm run build` compiló 118 módulos; `oxlint` del archivo informó cero errores y dos advertencias existentes por cargas iniciales en efectos. La interacción rápida queda pendiente de la validación final de interfaz; no se usó navegador para este ajuste.
 - Se añadieron dos casos a `VentaApiTest` sin crear otro archivo: tras una caída simulada de Catalog, un reintento con la misma clave crea una sola venta; con Customer inactivo, una edición rechazada conserva el total y detalles previos y la misma clave sirve después de reactivar el cliente. La suite de Sales pasó con **50 pruebas y 159 aserciones** sobre SQLite en memoria. En PostgreSQL local, antes y después siguieron `3` ventas, `3` detalles y `5` respuestas idempotentes; `ventas:auditar` volvió a informar cuatro contadores en cero. Son pruebas de contrato con dependencias simuladas, no sustituyen la caída real entre contenedores ni la comprobación de la vista.
+- Se alineó la longitud mínima del motivo de anulación en la vista de Ventas con `AnularVentaRequest`: 3 caracteres. El botón y la validación local usan la misma constante. React compiló 118 módulos y `oxlint` informó cero errores; persisten dos advertencias ya registradas sobre las cargas iniciales en efectos. La comprobación interactiva de 2 y 3 caracteres queda para el cierre del sprint.
 
 ## Límites actuales
 
