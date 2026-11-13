@@ -72,7 +72,9 @@ Este es el registro único de avances y pruebas del Sprint 2. Actualizar este ar
 - [x] Comprobar por API el total y snapshot histórico tras cambiar el precio en Catalog; repetir también desde React al cierre.
 - [ ] Probar venta con cliente registrado activo y ocasional; rechazar inactivo.
 - [ ] Simular caída de Customer/Catalog/Security y confirmar error controlado sin venta parcial.
-- [ ] Verificar `401`, `403`, idempotencia, permisos de UI y persistencia PostgreSQL.
+- [x] Verificar `401`, `403` e idempotencia en la suite aislada de Sales; conservar datos locales al ejecutarla.
+- [x] Reiniciar PostgreSQL y Sales sin borrar el volumen; conservar ventas, detalles, precios históricos y claves idempotentes.
+- [ ] Verificar los controles de la interfaz con un usuario sin permisos de Ventas.
 - [x] Confirmar en los servicios React de Ventas, Clientes y Catálogo que usan `VITE_API_URL` o `localhost:8080`, Bearer y ninguna ruta interna ni CSRF/cookie del monolito.
 
 ## Validación parcial de Ventas — 13-11-2026
@@ -88,6 +90,7 @@ Entorno local: `docker compose` con los archivos base, Sprint 1, Sprint 2 Sales,
 | Snapshot tras cambio de precio | Presentación ficticia #1: PUT `200`, precio vigente `13.50`; venta ficticia #6 conservó precio `12.50` y total `25.00`. | Aprobado por API |
 | Suite Sales y persistencia durante pruebas | `php artisan test --compact`: 48 aprobadas, 138 aserciones. Después de fijar `--database=sqlite` y la barrera de conexión, la venta ficticia #6 siguió en PostgreSQL (`count=1`). | Aprobado |
 | Compilación e interfaz | Vite compiló 118 módulos. El 13-11-2026 se recorrió el flujo principal de Ventas desde React; ver evidencia T216 abajo. | Aprobado en flujo principal |
+| Repetición segura de la suite y persistencia | Antes y después de `php artisan test --compact`: 3 ventas, 3 detalles y 5 registros de idempotencia en PostgreSQL. Suite: 48 aprobadas, 138 aserciones. Tras reiniciar `sales-db` y `sales-service`, se conservaron los mismos conteos, estados, totales y precios históricos; ambos contenedores quedaron saludables. `ventas:auditar` informó cuatro contadores en cero. | Aprobado sin navegador |
 
 **Incidente de datos local:** las primeras ejecuciones de PHPUnit se conectaron a `dulce_sales` de desarrollo a pesar de declarar SQLite en `phpunit.xml`; `RefreshDatabase` vació la tabla `venta`. Se observó que la venta ficticia previa dejó de existir. No hay un respaldo de esos registros en este trabajo y no se afirma que se hayan recuperado. El aislamiento quedó corregido en `tests/TestCase.php`, `tests/Feature/VentaApiTest.php` y `phpunit.xml`, y se comprobó con una venta ficticia persistente antes y después de la suite. No ejecutar copias antiguas de la suite dentro del contenedor con `DB_CONNECTION=pgsql`.
 
@@ -111,6 +114,12 @@ Entorno local: `docker compose` con los archivos base, Sprint 1, Sprint 2 Sales,
 - Con Customer detenido, “Nueva Venta” mostró “No se pudo conectar con Clientes” y permitió elegir cliente ocasional. Se registró la venta ficticia #8 con “Cliente ocasional T216 sin Customer”, una unidad a `13.50 BOB`; la pantalla mostró `BORRADOR` y total `13.50`. La validación de cliente registrado sin opción vigente permanece en el código del formulario; su rechazo interactivo no se volvió a ejecutar durante esta prueba. Customer fue restaurado y quedó saludable.
 - Los servicios React de Catalog, Customer y Sales convierten fallos de conexión en mensajes de error en español. Si falla el listado de Sales, la vista deja de indicar falsamente que no hay ventas y ofrece “Reintentar ventas”. El build de React compiló 118 módulos en el contenedor. Tras registrar #8, `ventas:auditar` devolvió cero detalles huérfanos, subtotales incorrectos, totales incorrectos y reintentos sin venta.
 
+### Verificación sin navegador — 13-11-2026
+
+- Los archivos de pruebas de Sales permanecen en `microservices/sales-service/tests`. La suite usa `sqlite` en memoria y `VentaApiTest` impide migraciones sobre otra conexión. Se contaron los registros de `dulce_sales` antes y después de ejecutarla: `venta=3`, `detalle_venta=3`, `venta_idempotencia=5` en ambos momentos. Pasaron 48 pruebas y 138 aserciones. Esto verifica que la suite actual no volvió a vaciar la base local; no recupera los datos de desarrollo perdidos antes de la corrección.
+- Se reiniciaron `sales-db` y `sales-service` sin borrar el volumen. Ambos quedaron saludables. Antes y después se observaron #6 `BORRADOR` por `25.00`, #7 `CANCELADA` por `40.50` y #8 `BORRADOR` por `13.50`; detalles con snapshots `12.50`, `13.50` y `13.50` respectivamente. Los conteos siguieron en `3/3/5`. `ventas:auditar` devolvió cuatro contadores en cero.
+- Permanecen pendientes los casos que dependen del comportamiento de la interfaz, como permisos de usuario sin rol, selecciones inactivas y reintento tras perder una respuesta. No se ejecutó navegador para esta verificación.
+
 ## Límites actuales
 
-T216 tiene aprobado el flujo principal en React, la recuperación de Catalog desde la pantalla abierta y la venta ocasional sin Customer. Aún faltan permisos sin rol en contenedores reales, caída de Security, cliente/presentación inactivos en la pantalla, reintentos idempotentes tras perder respuesta y persistencia tras reiniciar PostgreSQL/Sales. La venta de Sprint 2 continúa siendo un borrador: no incorpora pagos, inventario ni Pedidos. El Gateway usa resolución DNS dinámica para arrancar sin Catalog, pero las solicitudes de Catalog requieren su contenedor. Las rutas anidadas del monolito siguen en su fallback.
+T216 tiene aprobado el flujo principal en React, la recuperación de Catalog desde la pantalla abierta y la venta ocasional sin Customer. La suite aislada y la persistencia tras reiniciar PostgreSQL/Sales también quedaron verificadas sin navegador. Aún faltan permisos sin rol en contenedores reales, caída de Security, cliente/presentación inactivos en la pantalla y reintentos idempotentes tras perder respuesta. La venta de Sprint 2 continúa siendo un borrador: no incorpora pagos, inventario ni Pedidos. El Gateway usa resolución DNS dinámica para arrancar sin Catalog, pero las solicitudes de Catalog requieren su contenedor. Las rutas anidadas del monolito siguen en su fallback.
