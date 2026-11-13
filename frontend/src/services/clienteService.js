@@ -5,15 +5,20 @@ const API_URL = `${API_BASE}/api/clientes`
 
 async function solicitar(url, { method = 'GET', body } = {}) {
   const token = obtenerToken()
-  const response = await fetch(url, {
-    method,
-    headers: {
-      Accept: 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  })
+  let response
+  try {
+    response = await fetch(url, {
+      method,
+      headers: {
+        Accept: 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    })
+  } catch {
+    throw new ApiError('No se pudo conectar con Clientes. Reintenta la operación.', 503)
+  }
 
   let data = {}
   try {

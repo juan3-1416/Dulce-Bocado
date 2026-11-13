@@ -414,8 +414,18 @@ function VentasPage() {
           </div>
         ) : ventas.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
-            No existen ventas
-            registradas.
+            {error ? (
+              <>
+                <p>No se pudo mostrar el listado de ventas.</p>
+                <button
+                  type="button"
+                  onClick={cargarVentas}
+                  className="mt-3 font-semibold text-pink-700 underline"
+                >
+                  Reintentar ventas
+                </button>
+              </>
+            ) : 'No existen ventas registradas.'}
           </div>
         ) : (
           <div className="overflow-x-auto">

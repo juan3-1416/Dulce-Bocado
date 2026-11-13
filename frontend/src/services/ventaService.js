@@ -74,6 +74,17 @@ async function procesarRespuesta(response) {
   return data
 }
 
+async function solicitarVenta(url, opciones) {
+  let response
+  try {
+    response = await fetch(url, opciones)
+  } catch {
+    throw new ApiError('No se pudo conectar con Ventas. Reintenta la operación.', 503)
+  }
+
+  return procesarRespuesta(response)
+}
+
 export async function listarVentas(
   parametros = {},
 ) {
@@ -104,24 +115,20 @@ export async function listarVentas(
     ? `${API_URL}?${query.toString()}`
     : API_URL
 
-  const response = await fetch(url, {
+  return solicitarVenta(url, {
     method: 'GET',
     headers: obtenerHeaders(),
   })
-
-  return procesarRespuesta(response)
 }
 
 export async function obtenerVenta(id) {
-  const response = await fetch(
+  return solicitarVenta(
     `${API_URL}/${id}`,
     {
       method: 'GET',
       headers: obtenerHeaders(),
     },
   )
-
-  return procesarRespuesta(response)
 }
 
 export async function crearVenta(
@@ -129,7 +136,7 @@ export async function crearVenta(
   idempotencyKey =
     generarIdempotencyKey(),
 ) {
-  const response = await fetch(
+  return solicitarVenta(
     API_URL,
     {
       method: 'POST',
@@ -140,8 +147,6 @@ export async function crearVenta(
       body: JSON.stringify(datos),
     },
   )
-
-  return procesarRespuesta(response)
 }
 
 export async function actualizarVenta(
@@ -150,7 +155,7 @@ export async function actualizarVenta(
   idempotencyKey =
     generarIdempotencyKey(),
 ) {
-  const response = await fetch(
+  return solicitarVenta(
     `${API_URL}/${id}`,
     {
       method: 'PUT',
@@ -161,8 +166,6 @@ export async function actualizarVenta(
       body: JSON.stringify(datos),
     },
   )
-
-  return procesarRespuesta(response)
 }
 
 export async function anularVenta(
@@ -171,7 +174,7 @@ export async function anularVenta(
   idempotencyKey =
     generarIdempotencyKey(),
 ) {
-  const response = await fetch(
+  return solicitarVenta(
     `${API_URL}/${id}/anular`,
     {
       method: 'POST',
@@ -184,6 +187,4 @@ export async function anularVenta(
       }),
     },
   )
-
-  return procesarRespuesta(response)
 }

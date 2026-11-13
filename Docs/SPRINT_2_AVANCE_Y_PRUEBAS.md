@@ -14,7 +14,7 @@ Este es el registro único de avances y pruebas del Sprint 2. Actualizar este ar
 | T207 | En desarrollo | Catalog posee tablas de materias primas, recetas y detalles; API para listado, alta, edición y cambio de estado, con validación de ingredientes y cantidades. | Registrar permisos `recetas.ver`/`recetas.gestionar`, aplicar migración y comprobar el contrato al cierre. |
 | T208 | En desarrollo | Vistas existentes de Recetas y Materias Primas usan adaptadores Bearer hacia Catalog. Producción e Inventario conservan sus servicios legados. | Compilar, comprobar flujos completos y permisos al cierre. |
 | T214–T215 | Integración API validada parcialmente | Sales operó con Customer, Catalog y Security reales por Gateway: alta, consulta, edición, anulación, cálculo e idempotencia. Suite aislada: 48 pruebas/138 aserciones. | Completar casos negativos entre contenedores y persistencia tras reinicio. |
-| T216 | Flujo principal validado | Formulario existente de Ventas adaptado a `sales-service`; usa presentaciones de Catalog, distingue producto y presentación y conserva claves idempotentes para reintentos. Desde React se comprobó listado, alta, detalle, edición, anulación y filtro `CANCELADA` por Gateway. | Probar caídas y reintentos, clientes/presentaciones inactivos y permisos por rol desde la interfaz. |
+| T216 | Flujo principal y fallos parciales validados | Formulario existente de Ventas adaptado a `sales-service`; usa presentaciones de Catalog, distingue producto y presentación y conserva claves idempotentes para reintentos. Desde React se comprobó listado, alta, detalle, edición, anulación, filtro `CANCELADA`, recuperación de Catalog y venta ocasional sin Customer por Gateway. | Probar reintentos idempotentes ante respuesta perdida, clientes/presentaciones inactivos y permisos por rol desde la interfaz. |
 
 ## Contratos que deben coincidir
 
@@ -64,10 +64,11 @@ Este es el registro único de avances y pruebas del Sprint 2. Actualizar este ar
 ### Ventas — T214–T216 / PS2-14–19
 
 - [x] Crear, listar, consultar, editar borrador y anular venta desde React → Gateway → Sales con dependencias reales.
-- [ ] Reintentar carga de Catalog tras una caída y abrir el formulario con presentaciones vigentes; mostrar producto y presentación sin ambigüedad.
+- [x] Reintentar carga de Catalog tras una caída y abrir el formulario con presentaciones vigentes; mostrar producto y presentación sin ambigüedad.
 - [ ] Abrir un borrador con cliente o presentación ahora inactivos y exigir una opción vigente antes de guardar.
 - [ ] Reintentar el mismo alta/edición/anulación tras perder la respuesta: verificar que la clave idempotente y el registro no cambien; cambiar el contenido y comprobar que se usa otra clave.
-- [ ] Registrar una venta ocasional cuando el listado de Customer no responda; mantener bloqueado el registro con cliente registrado sin datos válidos.
+- [x] Registrar una venta ocasional cuando el listado de Customer no responda.
+- [ ] Comprobar en la interfaz que el registro con cliente registrado sin datos válidos queda bloqueado.
 - [x] Comprobar por API el total y snapshot histórico tras cambiar el precio en Catalog; repetir también desde React al cierre.
 - [ ] Probar venta con cliente registrado activo y ocasional; rechazar inactivo.
 - [ ] Simular caída de Customer/Catalog/Security y confirmar error controlado sin venta parcial.
@@ -106,7 +107,10 @@ Entorno local: `docker compose` con los archivos base, Sprint 1, Sprint 2 Sales,
 - El filtro “Anulada” enviaba antes `ANULADA`, rechazado por Sales con `422`. La vista ahora envía `CANCELADA`: la API devuelve `200` y el filtro en React muestra únicamente la venta #7 cancelada, total `1`. Se limpió la paginación anterior durante la carga para evitar un total transitorio obsoleto.
 - Los tres servicios React involucrados usan la URL del Gateway (`VITE_API_URL` o `localhost:8080`) y Bearer; la inspección de código no encontró puertos internos, CSRF ni cookies del monolito en este flujo. Tras las operaciones, `ventas:auditar` devolvió cuatro contadores en `0`; PostgreSQL conserva #6 `BORRADOR` por `25.00` y #7 `CANCELADA` por `40.50`.
 - La copia `local-backups/sprint2_ventas_baseline_20261113.zip` se tomó **antes** de crear #7 y no contiene esa venta de prueba. El frontend de desarrollo necesitó reiniciarse para invalidar el módulo antiguo de Vite; la compilación final pasó con 118 módulos.
+- Con Catalog detenido, la pantalla ya abierta bloqueó alta y edición, mantuvo la consulta histórica de #7 y ofreció “Reintentar Catálogo”. Tras restaurar Catalog, el botón volvió a cargar la presentación vigente y habilitó el formulario. La recarga completa del navegador durante la caída no se pudo verificar de forma concluyente; queda pendiente si se necesita cubrir ese caso.
+- Con Customer detenido, “Nueva Venta” mostró “No se pudo conectar con Clientes” y permitió elegir cliente ocasional. Se registró la venta ficticia #8 con “Cliente ocasional T216 sin Customer”, una unidad a `13.50 BOB`; la pantalla mostró `BORRADOR` y total `13.50`. La validación de cliente registrado sin opción vigente permanece en el código del formulario; su rechazo interactivo no se volvió a ejecutar durante esta prueba. Customer fue restaurado y quedó saludable.
+- Los servicios React de Catalog, Customer y Sales convierten fallos de conexión en mensajes de error en español. Si falla el listado de Sales, la vista deja de indicar falsamente que no hay ventas y ofrece “Reintentar ventas”. El build de React compiló 118 módulos en el contenedor. Tras registrar #8, `ventas:auditar` devolvió cero detalles huérfanos, subtotales incorrectos, totales incorrectos y reintentos sin venta.
 
 ## Límites actuales
 
-T216 tiene aprobado el flujo principal en React, pero aún faltan permisos sin rol en contenedores reales, caídas y reintentos de dependencias, cliente/presentación inactivos en la pantalla, reintentos idempotentes tras perder respuesta y persistencia tras reiniciar PostgreSQL/Sales. La venta de Sprint 2 continúa siendo un borrador: no incorpora pagos, inventario ni Pedidos. El Gateway usa resolución DNS dinámica para arrancar sin Catalog, pero las solicitudes de Catalog requieren su contenedor. Las rutas anidadas del monolito siguen en su fallback.
+T216 tiene aprobado el flujo principal en React, la recuperación de Catalog desde la pantalla abierta y la venta ocasional sin Customer. Aún faltan permisos sin rol en contenedores reales, caída de Security, cliente/presentación inactivos en la pantalla, reintentos idempotentes tras perder respuesta y persistencia tras reiniciar PostgreSQL/Sales. La venta de Sprint 2 continúa siendo un borrador: no incorpora pagos, inventario ni Pedidos. El Gateway usa resolución DNS dinámica para arrancar sin Catalog, pero las solicitudes de Catalog requieren su contenedor. Las rutas anidadas del monolito siguen en su fallback.

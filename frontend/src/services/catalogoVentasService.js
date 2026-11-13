@@ -4,12 +4,17 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 
 export async function listarPresentacionesVendibles() {
   const token = obtenerToken()
-  const response = await fetch(`${API_BASE}/api/presentaciones`, {
-    headers: {
-      Accept: 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  })
+  let response
+  try {
+    response = await fetch(`${API_BASE}/api/presentaciones`, {
+      headers: {
+        Accept: 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    })
+  } catch {
+    throw new ApiError('No se pudo conectar con Catálogo. Reintenta la consulta.', 503)
+  }
 
   let data = {}
   try {
