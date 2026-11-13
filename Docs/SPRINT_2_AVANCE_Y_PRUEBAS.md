@@ -14,7 +14,7 @@ Este es el registro único de avances y pruebas del Sprint 2. Actualizar este ar
 | T207 | En desarrollo | Catalog posee tablas de materias primas, recetas y detalles; API para listado, alta, edición y cambio de estado, con validación de ingredientes y cantidades. | Registrar permisos `recetas.ver`/`recetas.gestionar`, aplicar migración y comprobar el contrato al cierre. |
 | T208 | En desarrollo | Vistas existentes de Recetas y Materias Primas usan adaptadores Bearer hacia Catalog. Producción e Inventario conservan sus servicios legados. | Compilar, comprobar flujos completos y permisos al cierre. |
 | T214–T215 | Integración API validada parcialmente | Sales operó con Customer, Catalog y Security reales por Gateway: alta, consulta, edición, anulación, cálculo e idempotencia. Suite aislada: 48 pruebas/138 aserciones. | Completar casos negativos entre contenedores y persistencia tras reinicio. |
-| T216 | En desarrollo | Formulario existente de Ventas adaptado a `sales-service`; usa el listado de presentaciones de Catalog por Gateway, distingue producto y presentación, permite reintentar la consulta y refresca precios al abrir. El formulario conserva la clave idempotente al reintentar el mismo envío; la venta ocasional no depende del listado de Customer. Build React aprobado y API real comprobada; la pantalla solo se abrió hasta el inicio de sesión. | Recorrer listado, alta, edición, detalle, anulación, errores y permisos desde la interfaz React. |
+| T216 | Flujo principal validado | Formulario existente de Ventas adaptado a `sales-service`; usa presentaciones de Catalog, distingue producto y presentación y conserva claves idempotentes para reintentos. Desde React se comprobó listado, alta, detalle, edición, anulación y filtro `CANCELADA` por Gateway. | Probar caídas y reintentos, clientes/presentaciones inactivos y permisos por rol desde la interfaz. |
 
 ## Contratos que deben coincidir
 
@@ -63,7 +63,7 @@ Este es el registro único de avances y pruebas del Sprint 2. Actualizar este ar
 
 ### Ventas — T214–T216 / PS2-14–19
 
-- [ ] Crear, listar, consultar, editar borrador y anular venta desde React → Gateway → Sales.
+- [x] Crear, listar, consultar, editar borrador y anular venta desde React → Gateway → Sales con dependencias reales.
 - [ ] Reintentar carga de Catalog tras una caída y abrir el formulario con presentaciones vigentes; mostrar producto y presentación sin ambigüedad.
 - [ ] Abrir un borrador con cliente o presentación ahora inactivos y exigir una opción vigente antes de guardar.
 - [ ] Reintentar el mismo alta/edición/anulación tras perder la respuesta: verificar que la clave idempotente y el registro no cambien; cambiar el contenido y comprobar que se usa otra clave.
@@ -72,7 +72,7 @@ Este es el registro único de avances y pruebas del Sprint 2. Actualizar este ar
 - [ ] Probar venta con cliente registrado activo y ocasional; rechazar inactivo.
 - [ ] Simular caída de Customer/Catalog/Security y confirmar error controlado sin venta parcial.
 - [ ] Verificar `401`, `403`, idempotencia, permisos de UI y persistencia PostgreSQL.
-- [ ] Confirmar que React no usa puertos internos ni CSRF/cookies del monolito para estos flujos.
+- [x] Confirmar en los servicios React de Ventas, Clientes y Catálogo que usan `VITE_API_URL` o `localhost:8080`, Bearer y ninguna ruta interna ni CSRF/cookie del monolito.
 
 ## Validación parcial de Ventas — 13-11-2026
 
@@ -86,18 +86,27 @@ Entorno local: `docker compose` con los archivos base, Sprint 1, Sprint 2 Sales,
 | Idempotencia, edición y anulación | Repetición exacta del POST con la misma clave devolvió el mismo ID; PUT cambió cantidad a 3 y total a `37.50`; GET conservó precio unitario `12.50`; anulación devolvió `CANCELADA`. | Aprobado por API |
 | Snapshot tras cambio de precio | Presentación ficticia #1: PUT `200`, precio vigente `13.50`; venta ficticia #6 conservó precio `12.50` y total `25.00`. | Aprobado por API |
 | Suite Sales y persistencia durante pruebas | `php artisan test --compact`: 48 aprobadas, 138 aserciones. Después de fijar `--database=sqlite` y la barrera de conexión, la venta ficticia #6 siguió en PostgreSQL (`count=1`). | Aprobado |
-| Compilación e interfaz | Vite compiló 118 módulos; la página local de inicio de sesión cargó. No se recorrió el formulario de Ventas desde React. | Parcial |
+| Compilación e interfaz | Vite compiló 118 módulos. El 13-11-2026 se recorrió el flujo principal de Ventas desde React; ver evidencia T216 abajo. | Aprobado en flujo principal |
 
 **Incidente de datos local:** las primeras ejecuciones de PHPUnit se conectaron a `dulce_sales` de desarrollo a pesar de declarar SQLite en `phpunit.xml`; `RefreshDatabase` vació la tabla `venta`. Se observó que la venta ficticia previa dejó de existir. No hay un respaldo de esos registros en este trabajo y no se afirma que se hayan recuperado. El aislamiento quedó corregido en `tests/TestCase.php`, `tests/Feature/VentaApiTest.php` y `phpunit.xml`, y se comprobó con una venta ficticia persistente antes y después de la suite. No ejecutar copias antiguas de la suite dentro del contenedor con `DB_CONNECTION=pgsql`.
 
 ### Contención y consistencia tras el incidente
 
 - El equipo confirmó que los registros eliminados eran solo datos de desarrollo. El repositorio contiene únicamente `backup_antes_demo_20260924.sql` del monolito, anterior a `sales-service`; no es una copia de `dulce_sales`. Solo existe un volumen Docker de Sales y `archive_mode` de PostgreSQL está `off`. Sin una copia externa no se pueden recuperar con certeza los registros eliminados. No importar el respaldo monolítico en Sales: sus tablas, identificadores y relaciones pertenecen a otra arquitectura.
-- Estado observado de `dulce_sales`: una venta ficticia de desarrollo (#6), un detalle y una clave idempotente. La venta está en `BORRADOR`, total `25.00 BOB`. Auditoría SQL: cero detalles huérfanos, cero subtotales o totales discordantes y cero respuestas idempotentes que apunten a ventas inexistentes. Por las API de Customer y Catalog, el cliente #1 y la presentación #1 existen y están activos. El precio histórico `12.50` difiere correctamente del precio vigente `13.50`.
+- Estado observado al tomar el respaldo: una venta ficticia de desarrollo (#6), un detalle y una clave idempotente. La venta está en `BORRADOR`, total `25.00 BOB`. Auditoría SQL: cero detalles huérfanos, cero subtotales o totales discordantes y cero respuestas idempotentes que apunten a ventas inexistentes. Por las API de Customer y Catalog, el cliente #1 y la presentación #1 existen y están activos. El precio histórico `12.50` difiere correctamente del precio vigente `13.50`.
 - Copia lógica del estado actual en `local-backups/sprint2_ventas_baseline_20261113.zip`, ignorada por Git. Incluye `dulce_sales` y `dulce_customers` en formato `pg_dump -Fc`, más `dulce_catalog` en SQL. Se comprobaron los dos catálogos de `pg_restore`, la presencia de tablas en MySQL y la coincidencia SHA-256 de cada archivo dentro del ZIP. SHA-256 del ZIP: `3911F26C9B0B0876036F8903B8EF832A137B2B5C52D217C2D6459E4F420E19C9`. Es una base de recuperación **desde el estado actual**; no contiene las ventas perdidas ni la base de Security. Las tres copias se tomaron consecutivamente, sin transacción distribuida.
 - La ejecución reproducible de las 48 pruebas ahora usa SQLite en memoria; `VentaApiTest` fija `--database=sqlite` antes de cualquier `migrate:fresh`. Se repitió la suite completa y se comprobó por SQL que la venta #6 seguía en PostgreSQL (`count=1`). El README de Sales ya no recomienda forzar PostgreSQL para esa suite.
 - `php artisan ventas:auditar` es una orden de solo lectura en Sales. Se ejecutó contra PostgreSQL y devolvió código `0` con cuatro contadores en `0` (detalles huérfanos, subtotales, totales y respuestas idempotentes sin venta). Repetirla antes de seguir el desarrollo y después de restaurar datos; comprobar aparte las referencias externas por las API de sus dueños.
 
+### Evidencia T216 en React — 13-11-2026
+
+- Con el administrador de Security se abrió `/ventas`. La vista mostró la venta ficticia #6 y habilitó “Nueva Venta” tras cargar la presentación vigente de Catalog y el cliente activo de Customer.
+- Se creó la venta ficticia #7 con cliente registrado #1, presentación #1, dos unidades y observación de prueba. React mostró “Venta registrada correctamente” y total `27.00 BOB`; el detalle presentó cantidad `2`, precio `13.50` y subtotal `27.00`.
+- Se editó el borrador #7 a cliente ocasional “Cliente T216 UI” y tres unidades. React mostró “Venta actualizada correctamente” y total `40.50 BOB`. La anulación con motivo válido mostró confirmación y estado `CANCELADA`.
+- El filtro “Anulada” enviaba antes `ANULADA`, rechazado por Sales con `422`. La vista ahora envía `CANCELADA`: la API devuelve `200` y el filtro en React muestra únicamente la venta #7 cancelada, total `1`. Se limpió la paginación anterior durante la carga para evitar un total transitorio obsoleto.
+- Los tres servicios React involucrados usan la URL del Gateway (`VITE_API_URL` o `localhost:8080`) y Bearer; la inspección de código no encontró puertos internos, CSRF ni cookies del monolito en este flujo. Tras las operaciones, `ventas:auditar` devolvió cuatro contadores en `0`; PostgreSQL conserva #6 `BORRADOR` por `25.00` y #7 `CANCELADA` por `40.50`.
+- La copia `local-backups/sprint2_ventas_baseline_20261113.zip` se tomó **antes** de crear #7 y no contiene esa venta de prueba. El frontend de desarrollo necesitó reiniciarse para invalidar el módulo antiguo de Vite; la compilación final pasó con 118 módulos.
+
 ## Límites actuales
 
-T216 sigue pendiente de validación funcional completa en React. Faltan los casos de permisos sin rol en contenedores reales, caídas de dependencias, cliente/presentación inactivos en la pantalla y persistencia tras reiniciar PostgreSQL/Sales. La venta de Sprint 2 continúa siendo un borrador: no incorpora pagos, inventario ni Pedidos. El Gateway usa resolución DNS dinámica para arrancar sin Catalog, pero las solicitudes de Catalog requieren su contenedor. Las rutas anidadas del monolito siguen en su fallback.
+T216 tiene aprobado el flujo principal en React, pero aún faltan permisos sin rol en contenedores reales, caídas y reintentos de dependencias, cliente/presentación inactivos en la pantalla, reintentos idempotentes tras perder respuesta y persistencia tras reiniciar PostgreSQL/Sales. La venta de Sprint 2 continúa siendo un borrador: no incorpora pagos, inventario ni Pedidos. El Gateway usa resolución DNS dinámica para arrancar sin Catalog, pero las solicitudes de Catalog requieren su contenedor. Las rutas anidadas del monolito siguen en su fallback.

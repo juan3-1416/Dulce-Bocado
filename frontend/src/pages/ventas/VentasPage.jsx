@@ -77,6 +77,7 @@ function VentasPage() {
       try {
         setCargando(true)
         setError('')
+        setPaginacion(null)
 
         const respuesta =
           await listarVentas({
@@ -317,10 +318,7 @@ function VentasPage() {
       return 'bg-amber-100 text-amber-700'
     }
 
-    if (
-      estadoVenta === 'ANULADA' ||
-      estadoVenta === 'CANCELADA'
-    ) {
+    if (estadoVenta === 'CANCELADA') {
       return 'bg-red-100 text-red-700'
     }
 
@@ -403,7 +401,7 @@ function VentasPage() {
             Borrador
           </option>
 
-          <option value="ANULADA">
+          <option value="CANCELADA">
             Anulada
           </option>
         </select>
