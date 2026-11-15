@@ -34,6 +34,11 @@ class PedidosPermisosSeeder extends Seeder
             ->get()
             ->keyBy('nombre');
 
+        $nombreUsuario = env('ADMIN_USERNAME');
+        $admin = $nombreUsuario
+            ? Usuario::query()->where('nombre_usuario', $nombreUsuario)->first()
+            : null;
+
         foreach ($permisos as $datosPermiso) {
             $permiso = Permiso::updateOrCreate(
                 [
@@ -62,30 +67,12 @@ class PedidosPermisosSeeder extends Seeder
                         $permiso->id_permiso,
                 ]);
 
-                /*
-                 * El usuario administrador inicial recibe
-                 * explícitamente los permisos administrativos.
-                 *
-                 * Los demás usuarios obtienen accesos mediante
-                 * el flujo normal de asignación de Seguridad.
-                 */
-                if ($nombreRol === 'Administrador') {
-                    $admin = Usuario::query()
-                        ->where(
-                            'nombre_usuario',
-                            'admin'
-                        )
-                        ->first();
-
-                    if ($admin) {
-                        UsuarioRolPermiso::firstOrCreate([
-                            'usuario_id' =>
-                                $admin->id_usuario,
-                            'rol_permiso_id' =>
-                                $rolPermiso
-                                    ->id_rol_permiso,
-                        ]);
-                    }
+                // También asigna el permiso en instalaciones existentes.
+                if ($nombreRol === 'Administrador' && $admin) {
+                    UsuarioRolPermiso::firstOrCreate([
+                        'usuario_id' => $admin->id_usuario,
+                        'rol_permiso_id' => $rolPermiso->id_rol_permiso,
+                    ]);
                 }
             }
         }
