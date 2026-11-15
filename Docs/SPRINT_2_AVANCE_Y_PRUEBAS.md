@@ -10,7 +10,7 @@ Estado consolidado después de integrar el commit `5bb44d9` de `dev-jp` y las ve
 - **Gateway T217:** cerrado; el frontend accede a las API migradas mediante Gateway. El 15-11-2026 se corrigió el arranque dependiente de servicios ausentes mediante resolución DNS en cada solicitud y se verificaron Ventas, Pedidos y Clientes por sus rutas.
 - **T218:** continúa abierta, aunque PS2-02 ya pasó con dependencias reales tanto en Sales como en Orders. PS2-15 tiene prueba por API y PS2-19 está comprobada para Sales. Vincular resultados detallados de las pruebas reportadas aprobadas que solo aparecen en el resumen. Confirmar si el criterio exige evidencia visual de PS2-15/T213 o persistencia de Customer y Order.
 - **Pruebas ya registradas:** PS2-08, PS2-09, PS2-10, PS2-16, PS2-17, PS2-18 y PS2-20 tienen evidencia integrada en la sección final. Conservarla sin repetir pruebas destructivas.
-- **Siguiente trabajo verificable:** sustituir las pruebas copiadas de Sales dentro de `order-service/tests` por casos propios de Pedidos y consolidar la evidencia restante de T218. La suite de Orders ya tiene una barrera que fuerza SQLite en memoria, pero todavía no representa correctamente sus rutas y tablas. No añadir lógica de Pedidos a Sales.
+- **Siguiente trabajo verificable:** consolidar la evidencia restante de T218 y decidir los casos de interfaz exigidos para el cierre. La suite propia de Orders ya pasó en SQLite en memoria (8 pruebas/33 aserciones) sin modificar `dulce_orders`. No añadir lógica de Pedidos a Sales.
 
 - **Dónde tomar el avance:** esta integración está en la rama local `devFabian`. Después de publicarla en `origin/devFabian`, el otro desarrollador podrá hacer `git fetch origin devFabian` e integrarla según el flujo del equipo. Esta guía concentra el estado vigente; `microservices/sales-service/README.md` y `Docs/ROADMAP_SPRINT_2_SALES_SERVICE.md` contienen planificación histórica.
 
@@ -40,7 +40,7 @@ Esta tabla resume el estado funcional reportado el 13-11-2026. Una prueba PS2 ap
 | T214–T215 · Sales | Cerradas funcionalmente; PS2-14, PS2-16 y PS2-18 aprobadas | Suite aislada: 51 pruebas/167 aserciones. PS2-15 tiene evidencia por API y PS2-19 para Sales. |
 | T216 · React Ventas | Cerrada funcionalmente | Alta, consulta, edición, anulación, filtros y manejo básico de dependencias probados en React. Casos adicionales de UI listados abajo. |
 | T217 · Gateway | Cerrada; PS2-17 aprobada | Servicios migrados accesibles por Gateway, sin puertos internos en frontend. |
-| T218 · Integración y documentación | Abierta | PS2-02 completada por API; vincular resultados detallados que faltan en esta guía, reemplazar la suite copiada de Orders y decidir la evidencia complementaria requerida para PS2-15, PS2-19 y T213. |
+| T218 · Integración y documentación | Abierta | PS2-02 completada por API y suite propia de Orders aprobada; vincular resultados detallados que faltan en esta guía y decidir la evidencia complementaria requerida para PS2-15, PS2-19 y T213. |
 
 ## Contratos que deben coincidir
 
@@ -273,8 +273,16 @@ Se preparó el `.env` local ignorado por Git de Orders, con `APP_KEY` nueva y cl
 | Restauración de Customer | `PATCH /api/clientes/1/estado` devolvió `estado=true`, confirmado mediante `GET`. Se cerró el token temporal. |
 | Enrutamiento tras el ajuste de Gateway | `GET /api/ventas` devolvió `200` y 3 ventas; `GET /api/pedidos` devolvió `200` y 0 pedidos; `GET /api/clientes?estado=1` devolvió `200` y 1 cliente. El backend legado estaba detenido. |
 
-**Observaciones:** Docker Desktop se detuvo antes del primer intento de PS2-02 en Orders; no se había desactivado el cliente. Se reinició y se ejecutó la prueba completa con un grupo reducido de servicios. El `README.md` de Orders contenía instrucciones de Sales copiadas; se actualizó para describir Orders. La suite bajo `microservices/order-service/tests` aún incluye casos de Sales. Se añadió una barrera en `tests/TestCase.php` y en el único archivo que usa `RefreshDatabase` para forzar SQLite en memoria antes de cualquier migración; no se ejecutó la suite copiada porque no verifica Orders y su migración tiene sentencias propias de PostgreSQL incompatibles con SQLite.
+**Observaciones de esa sesión:** Docker Desktop se detuvo antes del primer intento de PS2-02 en Orders; no se había desactivado el cliente. Se reinició y se ejecutó la prueba completa con un grupo reducido de servicios. El `README.md` de Orders contenía instrucciones de Sales copiadas; se actualizó para describir Orders. La suite también tenía casos copiados y no se ejecutó en esa sesión. La corrección y su resultado posterior se registran a continuación.
+
+## Suite aislada de Orders — 15-11-2026
+
+Se sustituyeron cuatro archivos de pruebas copiados de Sales por `tests/Feature/PedidoApiTest.php`, con casos de alta y snapshots, cliente inactivo, presentación inexistente, transiciones y estado final, cancelación con motivo, y autorización. `tests/TestCase.php` fuerza SQLite en memoria y el caso que usa `RefreshDatabase` comprueba la conexión antes de migrar. El Dockerfile instala `pdo_sqlite`; la migración omite sus sentencias `ALTER TABLE ... ADD CONSTRAINT` solo en SQLite y las conserva en PostgreSQL.
+
+- `php artisan test --compact` en un contenedor temporal sin dependencias: **8 pruebas y 33 aserciones aprobadas**.
+- Conteo de la base PostgreSQL de desarrollo tras la suite: `pedido=0`, `detalle_pedido=0`, igual que antes.
+- Límite: SQLite no valida las restricciones `CHECK` específicas de PostgreSQL; conservar las verificaciones integradas y de persistencia reales para ese contrato.
 
 ## Límites actuales
 
-T216 quedó cerrado funcionalmente en React y T217 quedó cerrado para el enrutamiento del Sprint 2. Las caídas reales de Customer, Catalog y Security, el `403` con usuario sin permiso y PS2-02 en Sales y Orders ya fueron verificados. Permanecen como verificaciones complementarias de interfaz la selección inactiva, el reintento tras perder deliberadamente una respuesta y el cambio muy rápido de filtros. T218 requiere dar trazabilidad a los resultados PS2 reportados sin detalle en esta guía y reemplazar la suite copiada de Orders antes de ejecutarla; PS2-15/T213 necesitan evidencia visual solo si ese es el criterio de cierre. La venta de Sprint 2 continúa siendo un borrador: no incorpora pagos, inventario ni Pedidos. No ampliar el alcance hacia Sprint 3.
+T216 quedó cerrado funcionalmente en React y T217 quedó cerrado para el enrutamiento del Sprint 2. Las caídas reales de Customer, Catalog y Security, el `403` con usuario sin permiso, PS2-02 en Sales y Orders y la suite aislada propia de Orders ya fueron verificados. Permanecen como verificaciones complementarias de interfaz la selección inactiva, el reintento tras perder deliberadamente una respuesta y el cambio muy rápido de filtros. T218 requiere dar trazabilidad a los resultados PS2 reportados sin detalle en esta guía; PS2-15/T213 necesitan evidencia visual solo si ese es el criterio de cierre. La venta de Sprint 2 continúa siendo un borrador: no incorpora pagos, inventario ni Pedidos. No ampliar el alcance hacia Sprint 3.

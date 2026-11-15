@@ -75,6 +75,10 @@ return new class extends Migration
                 ->cascadeOnDelete();
         });
 
+        if (DB::getDriverName() !== 'pgsql') {
+            return;
+        }
+
         DB::statement("
             ALTER TABLE pedido
             ADD CONSTRAINT chk_pedido_cliente

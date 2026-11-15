@@ -3,8 +3,8 @@ FROM php:8.4-cli-bookworm
 RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git unzip libpq-dev libonig-dev libzip-dev \
-    && docker-php-ext-install pdo_pgsql mbstring bcmath zip \
+    git unzip libpq-dev libsqlite3-dev libonig-dev libzip-dev \
+    && docker-php-ext-install pdo_pgsql pdo_sqlite mbstring bcmath zip \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
