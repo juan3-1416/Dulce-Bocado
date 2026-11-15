@@ -4,13 +4,13 @@ Este es el registro único de avances y pruebas del Sprint 2. Actualizar este ar
 
 ## Estado vigente para el equipo — 15-11-2026
 
-Estado consolidado después de integrar el commit `5bb44d9` de `dev-jp`. Las evidencias descritas más abajo corresponden a las ejecuciones del 13-11-2026; esta actualización ordena el registro y corrige la preparación de permisos, sin afirmar nuevas pruebas de integración.
+Estado consolidado después de integrar el commit `5bb44d9` de `dev-jp` y las verificaciones locales del 15-11-2026. Cada bloque de evidencia conserva su fecha; no atribuir las pruebas de un servicio a otro.
 
 - **Ventas T214–T216:** implementación y flujo principal de React cerrados funcionalmente. Sales conserva solo sus datos de ventas; Pedidos permanece en `order-service`.
-- **Gateway T217:** cerrado según la auditoría del 13-11-2026; el frontend accede a las API migradas mediante Gateway.
-- **T218:** continúa abierta. PS2-02 ya pasó en Sales con dependencias reales; falta la parte integrada de Orders. PS2-15 tiene prueba por API y PS2-19 está comprobada para Sales. Vincular resultados detallados de las pruebas reportadas aprobadas que solo aparecen en el resumen. Confirmar si el criterio exige evidencia visual de PS2-15/T213 o persistencia de Customer y Order.
+- **Gateway T217:** cerrado; el frontend accede a las API migradas mediante Gateway. El 15-11-2026 se corrigió el arranque dependiente de servicios ausentes mediante resolución DNS en cada solicitud y se verificaron Ventas, Pedidos y Clientes por sus rutas.
+- **T218:** continúa abierta, aunque PS2-02 ya pasó con dependencias reales tanto en Sales como en Orders. PS2-15 tiene prueba por API y PS2-19 está comprobada para Sales. Vincular resultados detallados de las pruebas reportadas aprobadas que solo aparecen en el resumen. Confirmar si el criterio exige evidencia visual de PS2-15/T213 o persistencia de Customer y Order.
 - **Pruebas ya registradas:** PS2-08, PS2-09, PS2-10, PS2-16, PS2-17, PS2-18 y PS2-20 tienen evidencia integrada en la sección final. Conservarla sin repetir pruebas destructivas.
-- **Siguiente trabajo verificable:** completar PS2-02 en Orders cuando ese entorno tenga su `.env` local, con respuesta, ausencia de pedido nuevo y restauración del cliente; después consolidar la evidencia de T218. No añadir lógica de Pedidos a Sales.
+- **Siguiente trabajo verificable:** sustituir las pruebas copiadas de Sales dentro de `order-service/tests` por casos propios de Pedidos y consolidar la evidencia restante de T218. La suite de Orders ya tiene una barrera que fuerza SQLite en memoria, pero todavía no representa correctamente sus rutas y tablas. No añadir lógica de Pedidos a Sales.
 
 - **Dónde tomar el avance:** esta integración está en la rama local `devFabian`. Después de publicarla en `origin/devFabian`, el otro desarrollador podrá hacer `git fetch origin devFabian` e integrarla según el flujo del equipo. Esta guía concentra el estado vigente; `microservices/sales-service/README.md` y `Docs/ROADMAP_SPRINT_2_SALES_SERVICE.md` contienen planificación histórica.
 
@@ -24,6 +24,8 @@ Estado consolidado después de integrar el commit `5bb44d9` de `dev-jp`. Las evi
 
 - **Permisos en Security:** en una instalación nueva, después de las migraciones ejecutar `php artisan db:seed` con `ADMIN_NAME`, `ADMIN_USERNAME`, `ADMIN_EMAIL` y `ADMIN_PASSWORD` configurados. `DatabaseSeeder` crea los permisos de Clientes, Catálogo, Ventas y Pedidos antes de `AdministradorInicialSeeder`, que asigna al administrador configurado sus permisos. El seeder de Pedidos también busca `ADMIN_USERNAME` cuando se ejecuta por separado en una instalación existente. No ejecutar `db:seed` completo sobre una instalación existente sin revisar las variables del administrador: `AdministradorInicialSeeder` actualiza sus datos y contraseña. Para agregar solo permisos de Pedidos, ejecutar `php artisan db:seed --class=PedidosPermisosSeeder` con `ADMIN_USERNAME` configurado. Verificar después los permisos efectivos del usuario.
 
+- **Entorno local de Orders:** se creó `microservices/order-service/.env` a partir de la plantilla, con `APP_KEY` nueva y claves internas alineadas con Security, Customer y Catalog; está ignorado por Git y no se publica. Se construyó Orders, se aplicó su migración inicial con `migrate --force` y se ejecutó solo `PedidosPermisosSeeder`. La base `dulce_orders` es nueva en este equipo y conserva `0` pedidos y `0` detalles después de PS2-02. Cada desarrollador debe preparar su propio `.env`.
+
 - **Evidencia vigente:** suite aislada de Sales **51 pruebas/167 aserciones** en SQLite en memoria; último build React: 118 módulos. En la base local de este equipo, `ventas:auditar` devolvió cuatro ceros y los conteos antes/después de la suite fueron 3 ventas, 3 detalles y 5 registros de idempotencia. Se comprobó persistencia tras reiniciar Sales y PostgreSQL. Son datos ficticios locales y no viajan con Git. El respaldo `local-backups/sprint2_ventas_baseline_20261113.zip` está ignorado por Git, precede a las ventas de prueba #7 y #8 y **no** estará disponible tras hacer pull; cada entorno debe crear su propia copia verificada antes de cambios de esquema o restauraciones. Al preparar esta entrega, el proyecto Compose estaba detenido; estos resultados son de la última ejecución verificada y una auditoría nueva requiere levantar el stack.
 
 ## Estado del desarrollo
@@ -32,13 +34,13 @@ Esta tabla resume el estado funcional reportado el 13-11-2026. Una prueba PS2 ap
 
 | Tareas | Estado registrado | Evidencia y cierre pendiente |
 |---|---|---|
-| T201–T203 · Clientes | Implementación integrada; PS2-01 aprobada | PS2-02 ya tiene evidencia con Sales; falta la parte de Orders. Las verificaciones adicionales de UI siguen identificadas abajo. |
+| T201–T203 · Clientes | Implementación integrada; PS2-01 y PS2-02 aprobadas | PS2-02 se verificó por API con Sales y Orders; las verificaciones adicionales de UI siguen identificadas abajo. |
 | T204–T208 · Catálogo y recetas | Implementación integrada; PS2-03–06 y PS2-20 reportadas aprobadas | Conservar evidencia de API y persistencia; las verificaciones adicionales de UI siguen identificadas abajo. |
 | T209–T213 · Pedidos | Flujos de API y React implementados; PS2-07–13 reportadas aprobadas | Registrar prueba manual de T213 si se exige como criterio de cierre. Pedidos pertenece a `order-service`. |
 | T214–T215 · Sales | Cerradas funcionalmente; PS2-14, PS2-16 y PS2-18 aprobadas | Suite aislada: 51 pruebas/167 aserciones. PS2-15 tiene evidencia por API y PS2-19 para Sales. |
 | T216 · React Ventas | Cerrada funcionalmente | Alta, consulta, edición, anulación, filtros y manejo básico de dependencias probados en React. Casos adicionales de UI listados abajo. |
 | T217 · Gateway | Cerrada; PS2-17 aprobada | Servicios migrados accesibles por Gateway, sin puertos internos en frontend. |
-| T218 · Integración y documentación | Abierta | Completar PS2-02 en Orders, vincular resultados detallados que faltan en esta guía y decidir la evidencia complementaria requerida para PS2-15, PS2-19 y T213. |
+| T218 · Integración y documentación | Abierta | PS2-02 completada por API; vincular resultados detallados que faltan en esta guía, reemplazar la suite copiada de Orders y decidir la evidencia complementaria requerida para PS2-15, PS2-19 y T213. |
 
 ## Contratos que deben coincidir
 
@@ -86,7 +88,7 @@ Esta tabla resume el estado funcional reportado el 13-11-2026. Una prueba PS2 ap
 
 - [x] Rechazar por API el cliente inactivo en un alta de Sales por Gateway; restaurar el estado del cliente y comprobar que no se creó venta.
 
-- [ ] Rechazar por API el cliente inactivo en un alta de Orders por Gateway; comprobar que no se creó pedido y restaurar el estado del cliente.
+- [x] Rechazar por API el cliente inactivo en un alta de Orders por Gateway; comprobar que no se creó pedido y restaurar el estado del cliente.
 
 ### Catálogo y recetas — T204–T208 / PS2-03–06, PS2-20
 
@@ -105,6 +107,8 @@ Esta tabla resume el estado funcional reportado el 13-11-2026. Una prueba PS2 ap
 - [ ] Migrar las vistas de Catálogo y Recetas del monolito a Gateway/Bearer sin rutas ni cookies legadas.
 
 ### Pedidos — T209–T213 / PS2-07–13
+
+- [x] Rechazar un alta de pedido con cliente inactivo por Gateway sin persistir pedido ni detalle (parte de PS2-02).
 
 - [ ] Registrar y editar pedido con Customer/Catalog por REST y snapshot de precio.
 
@@ -238,7 +242,7 @@ Durante la misma jornada se completaron pruebas reales adicionales que actualiza
 ### Estado de cierre PS2 al terminar esta sesión
 
 - **Reportadas aprobadas en la sesión del 13-11-2026:** PS2-01, PS2-03, PS2-04, PS2-05, PS2-06, PS2-07, PS2-08, PS2-09, PS2-10, PS2-11, PS2-12, PS2-13, PS2-14, PS2-16, PS2-17, PS2-18 y PS2-20. Esta guía contiene pasos/resultados concretos de PS2-08, PS2-09, PS2-10, PS2-14, PS2-16, PS2-17, PS2-18 y PS2-20. Para el cierre formal de T218, vincular o agregar la evidencia de las demás sin asumir que el resumen sustituye los resultados detallados.
-- **PS2-02 parcialmente aprobada el 15-11-2026:** Sales rechazó por Gateway un cliente realmente desactivado sin crear venta; falta la comprobación integrada de Orders.
+- **PS2-02 aprobada por API el 15-11-2026:** Sales y Orders rechazaron por Gateway al mismo cliente realmente desactivado con `409 CLIENTE_INACTIVO`; no se crearon ventas ni pedidos y el cliente recuperó su estado activo.
 - **PS2-15:** el snapshot histórico de Venta ya fue comprobado por API anteriormente; repetir desde React solo si el criterio de cierre exige evidencia visual.
 - **PS2-19:** persistencia PostgreSQL está comprobada en Sales; si la revisión docente exige cubrir explícitamente también Customer y Order, ejecutar reinicio y verificación de esos servicios.
 - **T213:** backend de estados/entrega está validado; la implementación React está hecha. Solo queda registrar una prueba manual de UI si el equipo la considera obligatoria.
@@ -256,8 +260,21 @@ Se usaron Customer, Catalog, Security y Sales reales a través del Gateway, sin 
 | Restauración de Customer | `PATCH /api/clientes/1/estado` devolvió el cliente a `estado=true`, confirmado por consulta posterior. |
 | Consistencia de Sales | `venta/detalle_venta/venta_idempotencia = 3/3/5`; `php artisan ventas:auditar` informó cero detalles huérfanos, subtotales o totales incorrectos y reintentos sin venta. |
 
-**Alcance de la evidencia:** la parte de Sales de PS2-02 está aprobada. Orders no se probó en esta sesión: su `.env` local aún no existe y debe prepararse sin registrar secretos. PS2-02 completa sigue pendiente hasta comprobar que Orders también rechaza el cliente inactivo sin persistir un pedido. No se añadió funcionalidad de Pedidos a Sales.
+**Alcance de esta sesión:** se aprobó la parte de Sales. La sesión siguiente del mismo día completó Orders, como se detalla abajo. No se añadió funcionalidad de Pedidos a Sales.
+
+## Validación PS2-02 en Orders y Gateway — 15-11-2026
+
+Se preparó el `.env` local ignorado por Git de Orders, con `APP_KEY` nueva y claves internas coincidentes; se construyó el servicio, se aplicó su migración inicial sin borrar datos y se ejecutó `PedidosPermisosSeeder` de forma aislada. La primera consulta a `/api/pedidos` cayó en el backend legado porque la imagen de Gateway aún contenía la configuración antigua. Tras reconstruir Gateway, Orders respondió `200` con lista vacía. Después se corrigió la dependencia estática de Nginx respecto a backend y Sales; `nginx -t` pasó y Gateway inició con solo Security, Customer y Orders.
+
+| Comprobación | Resultado |
+|---|---|
+| Customer por Gateway | El cliente #1 pasó temporalmente a `estado=false` y desapareció del listado activo. |
+| Orders `POST /api/pedidos` con cliente #1 | `409 CLIENTE_INACTIVO` por Gateway; listado de pedidos `0 → 0` y conteo SQL `pedido/detalle_pedido = 0/0`. |
+| Restauración de Customer | `PATCH /api/clientes/1/estado` devolvió `estado=true`, confirmado mediante `GET`. Se cerró el token temporal. |
+| Enrutamiento tras el ajuste de Gateway | `GET /api/ventas` devolvió `200` y 3 ventas; `GET /api/pedidos` devolvió `200` y 0 pedidos; `GET /api/clientes?estado=1` devolvió `200` y 1 cliente. El backend legado estaba detenido. |
+
+**Observaciones:** Docker Desktop se detuvo antes del primer intento de PS2-02 en Orders; no se había desactivado el cliente. Se reinició y se ejecutó la prueba completa con un grupo reducido de servicios. El `README.md` de Orders contenía instrucciones de Sales copiadas; se actualizó para describir Orders. La suite bajo `microservices/order-service/tests` aún incluye casos de Sales. Se añadió una barrera en `tests/TestCase.php` y en el único archivo que usa `RefreshDatabase` para forzar SQLite en memoria antes de cualquier migración; no se ejecutó la suite copiada porque no verifica Orders y su migración tiene sentencias propias de PostgreSQL incompatibles con SQLite.
 
 ## Límites actuales
 
-T216 quedó cerrado funcionalmente en React y T217 quedó cerrado para el enrutamiento del Sprint 2. Las caídas reales de Customer, Catalog y Security, el `403` con usuario sin permiso y el rechazo de cliente inactivo en Sales ya fueron verificados. Permanecen como verificaciones complementarias de interfaz la selección inactiva, el reintento tras perder deliberadamente una respuesta y el cambio muy rápido de filtros. T218 requiere completar PS2-02 en Orders y dar trazabilidad a los resultados PS2 reportados sin detalle en esta guía; PS2-15/T213 necesitan evidencia visual solo si ese es el criterio de cierre. La venta de Sprint 2 continúa siendo un borrador: no incorpora pagos, inventario ni Pedidos. No ampliar el alcance hacia Sprint 3.
+T216 quedó cerrado funcionalmente en React y T217 quedó cerrado para el enrutamiento del Sprint 2. Las caídas reales de Customer, Catalog y Security, el `403` con usuario sin permiso y PS2-02 en Sales y Orders ya fueron verificados. Permanecen como verificaciones complementarias de interfaz la selección inactiva, el reintento tras perder deliberadamente una respuesta y el cambio muy rápido de filtros. T218 requiere dar trazabilidad a los resultados PS2 reportados sin detalle en esta guía y reemplazar la suite copiada de Orders antes de ejecutarla; PS2-15/T213 necesitan evidencia visual solo si ese es el criterio de cierre. La venta de Sprint 2 continúa siendo un borrador: no incorpora pagos, inventario ni Pedidos. No ampliar el alcance hacia Sprint 3.
