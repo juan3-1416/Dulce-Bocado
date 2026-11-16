@@ -7,6 +7,9 @@
 **Equipo:** Fabián Cuellar Salvatierra (Product Owner y desarrollador) y Juan Pablo Montoya Salinas (Scrum Master y desarrollador)
 
 **Estado de este archivo:** plan de trabajo compartido. Las tareas y pruebas no se consideran realizadas hasta registrar evidencia de su ejecución.
+
+**Avance verificado al 16-11-2026:** T302 y T308 terminadas y publicadas en `devFabian` (`6bc5997`). Las otras 12 tareas del backlog figuran por hacer en este archivo. La integración de Production con Inventory, las rutas públicas, la interfaz y las pruebas PS3 completas aún no están realizadas. El contrato de unidad para `PRESENTACION` está documentado para revisión conjunta antes de T310.
+
 **Referencia documental:** [documentación Scrum](Documentacion_Scrum_Dulce_Bocado_FINAL_REGENERADO.docx), apartados 3.1.3, 3.1.5 y 3.4.1–3.4.2; [avance y pruebas del Sprint 2](SPRINT_2_AVANCE_Y_PRUEBAS.md).
 
 ## 1. Objetivo y resultado esperado
@@ -80,9 +83,9 @@ Estos contratos son la **propuesta ejecutable del Sprint 3** para ambos desarrol
 | Production | `GET /api/producciones` y `GET /api/producciones/{id}` | Listar y consultar producciones. | `produccion.ver` |
 | Production | `POST /api/producciones` | Solicitar producción. | `produccion.crear` |
 
-**Contrato interno de Catalog:** Production consulta la receta de `presentacion_id` mediante el endpoint ya implementado y un adaptador que normalice, como mínimo, `presentacion_id`, vigencia de presentación y receta, y `ingredientes: [{ materia_prima_id, cantidad_por_unidad, unidad }]`. Se rechazan recetas vacías, ingredientes inactivos, cantidades no positivas o unidades incompatibles. Verificar el mecanismo de autenticación interna real de Catalog antes de implementarlo.
+**Contrato interno de Catalog:** Production consulta la receta de `presentacion_id` mediante el endpoint ya implementado y un adaptador que normaliza, como mínimo, `presentacion_id`, vigencia de presentación y receta, y `ingredientes: [{ materia_prima_id, cantidad_por_unidad, unidad }]`. Se rechazan recetas vacías, ingredientes inactivos, cantidades no positivas o unidades incompatibles. El mecanismo de autenticación interna real de Catalog se verificó antes de implementar el adaptador.
 
-**Contrato real comprobado en código el 16-11-2026:** `GET /api/presentaciones/{id}/receta` devuelve `{receta: {id_receta, presentacion_id, estado, presentacion: {presentacion_id, disponible, producto: {estado}}, detalles: [{id_materia_prima, cantidad, materia_prima: {id_materia_prima, unidad_medida, estado}}]}}`. Los decimales `cantidad` se serializan como texto con tres posiciones. El acceso interno existente usa `X-Internal-Service-Key` con `CATALOG_INTERNAL_KEY` y `X-Actor-User-Id`; Production configurará `CATALOGO_SERVICE_KEY` con ese valor local. El adaptador de T308 debe validar esos campos y normalizar los ingredientes sin confiar en cantidades enviadas por React. Catalog no guarda rendimiento de lote: se mantiene la regla explícita de una receta por unidad de presentación. Tampoco guarda unidad de medida de la presentación: para existencias de tipo `PRESENTACION` el contrato del Sprint 3 usará `unidad`, mientras cada materia prima conserva su `unidad_medida` de Catalog. Esta precisión debe revisarse con Inventory antes de integrar T310.
+**Contrato real comprobado en código el 16-11-2026:** `GET /api/presentaciones/{id}/receta` devuelve `{receta: {id_receta, presentacion_id, estado, presentacion: {presentacion_id, disponible, producto: {estado}}, detalles: [{id_materia_prima, cantidad, materia_prima: {id_materia_prima, unidad_medida, estado}}]}}`. Los decimales `cantidad` se serializan como texto con tres posiciones. El acceso interno existente usa `X-Internal-Service-Key` con `CATALOG_INTERNAL_KEY` y `X-Actor-User-Id`; Production configura `CATALOGO_SERVICE_KEY` con ese valor local. El adaptador de T308 valida esos campos y normaliza los ingredientes sin confiar en cantidades enviadas por React. Catalog no guarda rendimiento de lote: se mantiene la regla explícita de una receta por unidad de presentación. Tampoco guarda unidad de medida de la presentación: para existencias de tipo `PRESENTACION` el contrato del Sprint 3 usará `unidad`, mientras cada materia prima conserva su `unidad_medida` de Catalog. Esta precisión debe revisarse con Inventory antes de integrar T310.
 
 **Contrato interno de Inventory:** `POST /internal/producciones/aplicar` recibe `operacion_id`, `presentacion_id`, `cantidad_producida`, almacén de insumos, almacén interno y el detalle calculado de materias primas. Inventory valida, bloquea los saldos pertinentes, aplica débitos/crédito y guarda el resultado idempotente en una transacción. `GET /internal/producciones/{operacion_id}` permite conciliar una respuesta perdida. Ninguna de estas rutas se publica en Gateway.
 
@@ -107,13 +110,13 @@ Capacidad: **80 horas** entre dos desarrolladores; **70 horas** asignadas a tare
 | ID | HU | Tarea | Responsable | h | Estado |
 | --- | --- | --- | --- | ---: | --- |
 | T301 | HU17–HU19 | Preparar inventory-service, base de datos y migraciones | Juan Pablo | 5 | Por hacer |
-| T302 | HU16 | Preparar production-service, base de datos y modelo de producción | Fabián | 5 | En revisión |
+| T302 | HU16 | Preparar production-service, base de datos y modelo de producción | Fabián | 5 | Terminada |
 | T303 | HU17 | Implementar almacenes y consulta de existencias por artículo y almacén | Juan Pablo | 5 | Por hacer |
 | T304 | HU17 | Construir interfaz de almacenes y consulta de existencias | Fabián | 5 | Por hacer |
 | T305 | HU18 | Implementar ingresos con cantidad positiva y actualización de existencias | Juan Pablo | 5 | Por hacer |
 | T306 | HU18–HU19 | Construir interfaz de ingresos, egresos y traslados | Fabián | 4 | Por hacer |
 | T307 | HU19 | Implementar egresos con validación atómica de stock disponible | Juan Pablo | 6 | Por hacer |
-| T308 | HU16 | Integrar consulta REST de presentaciones y recetas del Catálogo | Fabián | 5 | En revisión |
+| T308 | HU16 | Integrar consulta REST de presentaciones y recetas del Catálogo | Fabián | 5 | Terminada |
 | T309 | HU17–HU19 | Implementar traslado del almacén interno al mostrador mediante movimientos vinculados | Juan Pablo | 5 | Por hacer |
 | T310 | HU16 | Registrar producción y coordinar consumo de insumos e ingreso de terminados | Fabián | 7 | Por hacer |
 | T311 | HU16 | Construir interfaz de registro y consulta de producción | Fabián | 5 | Por hacer |
@@ -127,8 +130,8 @@ Capacidad: **80 horas** entre dos desarrolladores; **70 horas** asignadas a tare
 
 | Fecha | Tarea | Responsable | h reales acumuladas | Rama / commit | Evidencia o prueba | Estado |
 | --- | --- | --- | ---: | --- | --- | --- |
-| 16-11-2026 | T302 | Fabián | Por registrar | `devFabian` | Compose validó; `production-db` y `production-service` saludables. `php artisan migrate --force` aplicó la migración solo en `dulce_production`; conteo inicial `produccion/produccion_idempotencia = 0/0`. No se modificaron las bases de Sprint 2. | En revisión |
-| 16-11-2026 | T308 | Fabián | Por registrar | `devFabian` | Adaptador interno Production → Catalog con validación de receta, vigencia, unidades y decimales. Suite aislada: 3 pruebas, 6 aserciones aprobadas. Consulta real de presentación ficticia #2: receta #1, materia prima #1, `2.000 g` por unidad; sin escritura. | En revisión |
+| 16-11-2026 | T302 | Fabián | Por registrar | `devFabian` / `6bc5997` | Compose validó; `production-db` y `production-service` saludables. `php artisan migrate --force` aplicó la migración solo en `dulce_production`; conteo inicial `produccion/produccion_idempotencia = 0/0`. No se modificaron las bases de Sprint 2. | Terminada |
+| 16-11-2026 | T308 | Fabián | Por registrar | `devFabian` / `6bc5997` | Adaptador interno Production → Catalog con validación de receta, vigencia, unidades y decimales. Suite aislada: 3 pruebas, 6 aserciones aprobadas. Consulta real de presentación ficticia #2: receta #1, materia prima #1, `2.000 g` por unidad; sin escritura. | Terminada |
 
 ### Distribución orientativa de la semana
 
