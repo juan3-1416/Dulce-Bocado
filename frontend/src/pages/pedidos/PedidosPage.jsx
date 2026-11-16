@@ -664,7 +664,7 @@ function PedidosPage() {
                                     </th>
 
                                     <th className="px-5 py-3 text-right text-xs font-semibold uppercase text-gray-600">
-                                        Saldos
+                                        Total
                                     </th>
 
                                     <th className="px-5 py-3 text-center text-xs font-semibold uppercase text-gray-600">
@@ -750,16 +750,10 @@ function PedidosPage() {
                                                 </span>
                                             </td>
 
-                                            {/* Saldos */}
+                                            {/* Total */}
                                             <td className="px-5 py-4 text-right">
                                                 <p className="font-bold text-gray-900">
-                                                    Tot: Bs {formatearMonto(pedido.total)}
-                                                </p>
-                                                <p className="mt-1 text-xs text-green-700 font-semibold">
-                                                    Pag: Bs {formatearMonto(pedido.total_pagado)}
-                                                </p>
-                                                <p className="mt-1 text-xs text-pink-700 font-bold">
-                                                    Sal: Bs {formatearMonto(pedido.saldo)}
+                                                    Bs {formatearMonto(pedido.total)}
                                                 </p>
                                             </td>
 

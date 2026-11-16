@@ -408,36 +408,15 @@ function PedidoDetalleModal({
                             </p>
                         </section>
 
-                        {/* Saldos */}
+                        {/* Total */}
                         <section className="rounded-xl border border-pink-200 bg-pink-50 p-5">
                             <h3 className="mb-4 font-semibold text-pink-900">
-                                Resumen de Saldos
+                                Total del pedido
                             </h3>
-                            <div className="grid gap-4 sm:grid-cols-3">
+                            <div>
                                 <div className="rounded-lg bg-white p-4 shadow-sm border border-pink-100">
-                                    <p className="text-xs font-semibold text-pink-800 uppercase">
-                                        Total del pedido
-                                    </p>
                                     <p className="mt-1 text-2xl font-bold text-gray-900">
                                         Bs {formatearMonto(pedido.total)}
-                                    </p>
-                                </div>
-
-                                <div className="rounded-lg bg-white p-4 shadow-sm border border-green-100">
-                                    <p className="text-xs font-semibold text-green-800 uppercase">
-                                        Total Pagado
-                                    </p>
-                                    <p className="mt-1 text-2xl font-bold text-green-700">
-                                        Bs {formatearMonto(pedido.total_pagado)}
-                                    </p>
-                                </div>
-
-                                <div className="rounded-lg bg-white p-4 shadow-sm border border-pink-200">
-                                    <p className="text-xs font-semibold text-pink-800 uppercase">
-                                        Saldo Pendiente
-                                    </p>
-                                    <p className="mt-1 text-2xl font-bold text-pink-700">
-                                        Bs {formatearMonto(pedido.saldo)}
                                     </p>
                                 </div>
                             </div>

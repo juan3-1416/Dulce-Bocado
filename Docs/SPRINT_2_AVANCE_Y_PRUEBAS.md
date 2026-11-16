@@ -1,6 +1,6 @@
 # Sprint 2 — Avance y pruebas de cierre
 
-Este es el registro único de avances y pruebas del Sprint 2. Actualizar este archivo con cada cambio, sin crear un informe nuevo por tarea. La validación integrada del 13-11-2026 cubrió Ventas, Pedidos, Gateway y persistencia. El estado vigente y la evidencia disponible se distinguen de las verificaciones adicionales.
+Este es el registro único de avances y pruebas del Sprint 2. Actualizar este archivo con cada cambio, sin crear un informe nuevo por tarea. La validación integrada del 13-11-2026 cubrió Ventas, Pedidos, Gateway y persistencia; la comprobación interactiva final se completó el 16-11-2026. El estado vigente y la evidencia disponible se distinguen de las verificaciones complementarias que siguen abiertas.
 
 ## Estado vigente para el equipo — 16-11-2026
 
@@ -8,15 +8,15 @@ Estado consolidado después de integrar el commit `5bb44d9` de `dev-jp` y las ve
 
 - **Ventas T214–T216:** implementación y flujo principal de React cerrados funcionalmente. Sales conserva solo sus datos de ventas; Pedidos permanece en `order-service`.
 - **Gateway T217:** cerrado; el frontend accede a las API migradas mediante Gateway. El 15-11-2026 se corrigió el arranque dependiente de servicios ausentes mediante resolución DNS en cada solicitud y se verificaron Ventas, Pedidos y Clientes por sus rutas.
-- **T218:** continúa abierta para la validación interactiva final y el cierre de entrega. PS2-01–20 ya tienen resultados individuales por API o base de datos en esta guía; PS2-19 incluye Sales, Customer y Orders. La verificación del 16-11-2026 confirmó suite, aislamiento de datos, auditoría y protección de rutas de Sales. Falta comprobar las interacciones de React señaladas abajo sin atribuirles una ejecución que no ocurrió.
+- **T218:** validación funcional e integración cerradas con evidencia de PS2-01–20 por API o base de datos y recorrido interactivo final de React el 16-11-2026. PS2-19 incluye Sales, Customer y Orders. La suite aislada, la auditoría, la protección de rutas y la compilación también pasaron. Las verificaciones complementarias aún abiertas se identifican abajo; no se les atribuye ejecución.
 - **Pruebas ya registradas:** PS2-01–20 tienen resultados concretos en las secciones de validación. Conservar esa evidencia sin repetir pruebas destructivas.
-- **Siguiente trabajo verificable:** ejecutar la comprobación final de interfaz React, especialmente T213 y los escenarios de Ventas enumerados abajo, y registrar su resultado antes de marcar T218 cerrada. La suite propia de Orders ya pasó en SQLite en memoria (8 pruebas/33 aserciones) sin modificar `dulce_orders`. No añadir lógica de Pedidos a Sales.
+- **Siguiente trabajo:** trasladar esta evidencia a la documentación formal cuando el equipo la prepare y decidir si desea ejecutar las verificaciones complementarias abiertas. La suite propia de Orders pasó en SQLite en memoria (8 pruebas/33 aserciones) sin modificar `dulce_orders`. No añadir lógica de Pedidos a Sales.
 
 - **Bases de datos:** Sales y Orders usan PostgreSQL (`dulce_sales` y `dulce_orders`) durante el funcionamiento normal, conforme a sus archivos Compose. SQLite `:memory:` se usa únicamente en sus suites automatizadas: los datos temporales desaparecen al acabar cada proceso de prueba. Las pruebas aisladas no sustituyen las comprobaciones integradas contra PostgreSQL ni demuestran por sí solas las restricciones específicas de ese motor. `phpunit.xml` y `tests/TestCase.php` fuerzan el aislamiento; antes de añadir una prueba que migre tablas, comprobar también la conexión activa en `beforeRefreshingDatabase()`.
 
 - **Avance de interfaz del 15-11-2026:** el formulario de edición distingue el total histórico guardado del estimado con precios vigentes; el detalle de la venta sigue mostrando sus snapshots. Se instalaron las dependencias según `package-lock.json` y `npm run build` compiló 118 módulos. `oxlint` no encontró errores en `VentaModal.jsx` ni `vite.config.js`; conserva una advertencia preexistente por la inicialización de estado dentro de un efecto. `git diff --check` pasó. No se modificaron datos de servicios.
 
-- **Aclaración de enrutamiento:** se actualizó el README de Sales para reflejar las integraciones ya operativas y se anotó en `frontend/vite.config.js` por qué las rutas relativas de módulos legados siguen usando el monolito. No se modificaron las rutas ni el destino efectivo del proxy; Ventas continúa usando Gateway. T218 sigue abierta para la evidencia final de integración e interfaz.
+- **Aclaración de enrutamiento:** se actualizó el README de Sales para reflejar las integraciones ya operativas y se anotó en `frontend/vite.config.js` por qué las rutas relativas de módulos legados siguen usando el monolito. No se modificaron las rutas ni el destino efectivo del proxy; Ventas continúa usando Gateway. La evidencia final de T218 se registra al final de esta guía.
 
 - **Dónde tomar el avance:** esta integración está publicada en `origin/devFabian`. El otro desarrollador puede hacer `git fetch origin devFabian` e integrarla según el flujo del equipo. Esta guía concentra el estado vigente; `microservices/sales-service/README.md` explica la operación actual de Sales y `Docs/ROADMAP_SPRINT_2_SALES_SERVICE.md` conserva planificación histórica.
 
@@ -34,7 +34,7 @@ Estado consolidado después de integrar el commit `5bb44d9` de `dev-jp` y las ve
 
 - **Entorno local de Orders:** se creó `microservices/order-service/.env` a partir de la plantilla, con `APP_KEY` nueva y claves internas alineadas con Security, Customer y Catalog; está ignorado por Git y no se publica. Se construyó Orders, se aplicó su migración inicial con `migrate --force` y se ejecutó solo `PedidosPermisosSeeder`. La base `dulce_orders` es nueva en este equipo y conserva `0` pedidos y `0` detalles después de PS2-02. Cada desarrollador debe preparar su propio `.env`.
 
-- **Evidencia vigente:** suite aislada de Sales **51 pruebas/167 aserciones** en SQLite en memoria; último build React: 118 módulos. En la base local de este equipo, `ventas:auditar` devolvió cuatro ceros y los conteos antes/después de la suite fueron 3 ventas, 3 detalles y 5 registros de idempotencia. Se comprobó persistencia tras reiniciar Sales y PostgreSQL. Son datos ficticios locales y no viajan con Git. El respaldo `local-backups/sprint2_ventas_baseline_20261113.zip` está ignorado por Git, precede a las ventas de prueba #7 y #8 y **no** estará disponible tras hacer pull; cada entorno debe crear su propia copia verificada antes de cambios de esquema o restauraciones. Al preparar esta entrega, el proyecto Compose estaba detenido; estos resultados son de la última ejecución verificada y una auditoría nueva requiere levantar el stack.
+- **Evidencia vigente:** suite aislada de Sales **51 pruebas/167 aserciones** en SQLite en memoria; build React final del 16-11-2026: 118 módulos con Vite 8.2.2 instalado según `package-lock.json`. En la base local de este equipo, `ventas:auditar` devolvió cuatro ceros después de las pruebas interactivas; los conteos antes/después de la suite aislada fueron 3 ventas, 3 detalles y 5 registros de idempotencia. La comprobación interactiva creó la venta ficticia #9 y el pedido ficticio #2, ambos documentados abajo. Se comprobó persistencia tras reiniciar Sales y PostgreSQL. Son datos ficticios locales y no viajan con Git. El respaldo `local-backups/sprint2_ventas_baseline_20261113.zip` está ignorado por Git, precede a las ventas de prueba #7–9 y **no** estará disponible tras hacer pull; cada entorno debe crear su propia copia verificada antes de cambios de esquema o restauraciones.
 
 ## Estado del desarrollo
 
@@ -42,13 +42,13 @@ Esta tabla resume el estado funcional reportado el 13-11-2026. Una prueba PS2 ap
 
 | Tareas | Estado registrado | Evidencia y cierre pendiente |
 |---|---|---|
-| T201–T203 · Clientes | Implementación integrada; PS2-01 y PS2-02 aprobadas | PS2-02 se verificó por API con Sales y Orders; las verificaciones adicionales de UI siguen identificadas abajo. |
-| T204–T208 · Catálogo y recetas | Implementación integrada; PS2-03–06 y PS2-20 reportadas aprobadas | Conservar evidencia de API y persistencia; las verificaciones adicionales de UI siguen identificadas abajo. |
-| T209–T213 · Pedidos | Flujos de API y React implementados; PS2-07–13 reportadas aprobadas | Registrar prueba manual de T213 si se exige como criterio de cierre. Pedidos pertenece a `order-service`. |
+| T201–T203 · Clientes | Implementación integrada; PS2-01 y PS2-02 aprobadas | PS2-02 se verificó por API con Sales y Orders; edición, desactivación y reactivación también se recorrieron en React. |
+| T204–T208 · Catálogo y recetas | Implementación integrada; PS2-03–06 y PS2-20 aprobadas | API y persistencia registradas; las vistas cargaron registros reales y se probó activar/desactivar receta y materia prima. |
+| T209–T213 · Pedidos | Flujos de API y React implementados; PS2-07–13 aprobadas | T213 se recorrió en React con pedido ficticio #2; Pedidos pertenece a `order-service`. |
 | T214–T215 · Sales | Cerradas funcionalmente; PS2-14, PS2-16 y PS2-18 aprobadas | Suite aislada: 51 pruebas/167 aserciones. PS2-15 tiene evidencia por API y PS2-19 para Sales. |
-| T216 · React Ventas | Cerrada funcionalmente | Alta, consulta, edición, anulación, filtros y manejo básico de dependencias probados en React. Casos adicionales de UI listados abajo. |
+| T216 · React Ventas | Cerrada y comprobada | Alta, consulta, edición, anulación, filtros, reintentos y selecciones inactivas probados en React. |
 | T217 · Gateway | Cerrada; PS2-17 aprobada | Servicios migrados accesibles por Gateway, sin puertos internos en frontend. |
-| T218 · Integración y documentación | En cierre | PS2-01–20 tienen resultados individuales por API o base; falta validar y registrar las interacciones finales de React, en particular T213 y los casos pendientes de Ventas. |
+| T218 · Integración y documentación | Cierre funcional registrado | PS2-01–20 tienen resultados individuales por API o base; T213, flujos críticos de Ventas y otras vistas se comprobaron de forma interactiva. Esta guía queda preparada como fuente para la documentación formal. |
 
 ## Contratos que deben coincidir
 
@@ -62,7 +62,7 @@ Esta tabla resume el estado funcional reportado el 13-11-2026. Una prueba PS2 ap
 
 - La vista de Ventas valida el formato decimal de Catalog como lo exige Sales, muestra el nombre de producto junto a la presentación y vuelve a consultar el listado antes de abrir el formulario. Si Catalog falla o no hay presentaciones disponibles, el alta y la edición siguen cerradas y se ofrece reintentar. Una venta antigua con cliente o presentación desactivados exige elegir una opción vigente antes de guardar. Si Customer falla al listar clientes, se informa y queda disponible la venta ocasional; Sales mantiene su validación del cliente registrado en el servidor.
 
-- Al editar una venta, el formulario distingue el total guardado del estimado con los precios vigentes de Catálogo. El detalle histórico sigue leyendo el precio, nombre y subtotal guardados en Sales; si se confirma la edición, Sales vuelve a consultar Catálogo y crea los nuevos snapshots y el total dentro de su transacción. Confirmar visualmente esta distinción durante el cierre de PS2-15 si se exige evidencia de interfaz.
+- Al editar una venta, el formulario distingue el total guardado del estimado con los precios vigentes de Catálogo. El detalle histórico sigue leyendo el precio, nombre y subtotal guardados en Sales; si se confirma la edición, Sales vuelve a consultar Catálogo y crea los nuevos snapshots y el total dentro de su transacción. La distinción se comprobó visualmente el 16-11-2026.
 
 - La clave `Idempotency-Key` se conserva en el formulario mientras se reintenta exactamente el mismo contenido; un cambio de contenido genera una clave nueva. La anulación aplica la misma regla mientras su diálogo permanezca abierto y muestra los errores dentro del diálogo. Esto evita duplicar una operación cuando se pierde la respuesta y el usuario reintenta sin cerrar el diálogo.
 
@@ -76,7 +76,7 @@ Esta tabla resume el estado funcional reportado el 13-11-2026. Una prueba PS2 ap
 
 ## Verificaciones complementarias y pendientes de cierre
 
-**Criterio de lectura al 15-11-2026:** esta lista reúne verificaciones funcionales y complementarias, además de las pruebas PS2. Las casillas abiertas indican que no hay evidencia específica de ese escenario en esta guía; no revocan las pruebas PS2 aprobadas en la validación integrada posterior del 13-11-2026. Las caídas reales de Customer, Catalog y Security, el `403` de Sales y el flujo principal de React ya se ejecutaron. La selección inactiva, los reintentos tras respuesta perdida y la interacción rápida de filtros permanecen como verificaciones de interfaz. No se realizaron pruebas nuevas al corregir este documento.
+**Criterio de lectura al 16-11-2026:** esta lista reúne verificaciones funcionales y complementarias, además de las pruebas PS2. Las casillas abiertas indican que no hay evidencia específica de ese escenario completo en esta guía; no revocan las pruebas PS2 aprobadas. Las caídas reales de Customer, Catalog y Security, el `403` de Sales, el flujo principal de React, selecciones inactivas, reintentos tras respuesta perdida y filtros rápidos de Ventas ya se ejecutaron. La evidencia nueva aparece al final de este archivo.
 
 ### Entorno y compilación
 
@@ -91,6 +91,8 @@ Esta tabla resume el estado funcional reportado el 13-11-2026. Una prueba PS2 ap
 ### Clientes — T201–T203 / PS2-01–02
 
 - [ ] Listar, buscar y filtrar activos/inactivos desde React → Gateway → Customer.
+
+- [x] Buscar y editar el cliente ficticio #2 desde React → Gateway → Customer; desactivarlo y reactivarlo, con restauración de sus datos originales. La prueba completa de filtros y validaciones `422` sigue abierta en las casillas correspondientes.
 
 - [ ] Crear, consultar, editar, desactivar y reactivar cliente; comprobar errores `422` y duplicados.
 
@@ -112,6 +114,8 @@ Esta tabla resume el estado funcional reportado el 13-11-2026. Una prueba PS2 ap
 
 - [ ] Consultar y editar receta sin cambiar su presentación; activar/desactivar receta y materia prima.
 
+- [x] Consultar las listas de productos, recetas y materias primas desde React; desactivar y reactivar la receta #1 y la materia prima #1, con `PATCH 200` y estado final activo confirmado por API.
+
 - [ ] Verificar `GET /api/presentaciones/{id}/receta` por contrato interno y rechazar actor o clave inválidos.
 
 - [ ] Migrar las vistas de Catálogo y Recetas del monolito a Gateway/Bearer sin rutas ni cookies legadas.
@@ -124,7 +128,7 @@ Esta tabla resume el estado funcional reportado el 13-11-2026. Una prueba PS2 ap
 
 - [ ] Rechazar cliente o presentación inexistente, transiciones inválidas y dependencias caídas.
 
-- [ ] Cambiar estado, registrar entrega y conservar el histórico de precio.
+- [x] Cambiar estado de pedido #2 de `PROGRAMADO` a `EN_PROCESO` y `ENTREGADO` desde React, con `PATCH 200` y total `12.50 BOB` conservado. La API también acredita el precio histórico de PS2-10.
 
 ### Ventas — T214–T216 / PS2-14–19
 
@@ -132,9 +136,9 @@ Esta tabla resume el estado funcional reportado el 13-11-2026. Una prueba PS2 ap
 
 - [x] Reintentar carga de Catalog tras una caída y abrir el formulario con presentaciones vigentes; mostrar producto y presentación sin ambigüedad.
 
-- [ ] Abrir un borrador con cliente o presentación ahora inactivos y exigir una opción vigente antes de guardar.
+- [x] Abrir un borrador con cliente o presentación ahora inactivos y exigir una opción vigente antes de guardar. Ambos casos bloquearon el envío; cliente y presentación fueron restaurados.
 
-- [ ] Reintentar el mismo alta/edición/anulación tras perder la respuesta: verificar que la clave idempotente y el registro no cambien; cambiar el contenido y comprobar que se usa otra clave.
+- [x] Reintentar el mismo alta/edición/anulación tras perder la respuesta: se conservó la clave idempotente y se produjo un solo resultado; cambiar el contenido generó otra clave.
 
 - [x] Registrar una venta ocasional cuando el listado de Customer no responda.
 
@@ -142,7 +146,7 @@ Esta tabla resume el estado funcional reportado el 13-11-2026. Una prueba PS2 ap
 
 - [x] Comprobar por API el total y snapshot histórico tras cambiar el precio en Catalog (PS2-15).
 
-- [ ] Repetir PS2-15 desde React solo si se exige evidencia visual.
+- [x] Repetir PS2-15 desde React: detalle histórico de venta #6 `25.00 BOB` a `12.50` por unidad; edición mostró estimado actual `27.00 BOB`.
 
 - [x] Probar venta con cliente registrado activo y ocasional.
 
@@ -158,9 +162,9 @@ Esta tabla resume el estado funcional reportado el 13-11-2026. Una prueba PS2 ap
 
 - [x] Verificar autorización real con usuario activo sin `ventas.ver`: Gateway → Sales respondió `403 PERMISO_DENEGADO`; se eliminó el token temporal de prueba.
 
-- [ ] Probar manualmente el cambio rápido de filtro; la lógica de concurrencia/paginación está implementada y auditada en código.
+- [x] Probar el cambio rápido de filtro con la respuesta de `BORRADOR` demorada: prevaleció `CANCELADA` y solo se mostró la venta cancelada.
 
-- [ ] Probar manualmente el cambio de filtro desde una página posterior; el filtro `CANCELADA` ya fue probado.
+- [x] Probar el cambio de filtro desde una página posterior con una lista paginada simulada de 16 filas: regresó a página 1 y mostró solo ventas `CANCELADA`.
 
 - [x] Anular un borrador desde la interfaz con motivo válido y comprobar la regla mínima de 3 caracteres; 2 caracteres quedan bloqueados y el motivo válido deja la venta `CANCELADA`.
 
@@ -328,6 +332,25 @@ Se usó un token temporal de administrador de Security por Gateway y se cerró l
 
 Las primeras ejecuciones del procedimiento se interrumpieron por dos comparaciones locales de PowerShell: `$PID` es una variable reservada y los decimales de la API llegan como texto. Se consultaron los registros ya creados, se reutilizaron producto #2 y pedido #1 y se corrigió la comparación usando `decimal`; no se duplicaron esos registros. Estas interrupciones no fueron errores de los servicios. La validación de interfaz React aún no se ejecutó en esta sesión.
 
-## Límites actuales
+## Validación interactiva final y cierre funcional — 16-11-2026
 
-T216 quedó cerrado funcionalmente en React y T217 quedó cerrado para el enrutamiento del Sprint 2. PS2-01–20 cuentan ahora con resultados individuales registrados, incluidas las pruebas de persistencia PostgreSQL de Sales, Customer y Orders. Permanecen las verificaciones de interfaz enumeradas arriba: selección inactiva, reintento tras perder una respuesta y cambio rápido de filtros de Ventas, además de la validación manual final de T213 y los flujos de Clientes/Catálogo indicados en sus apartados. No se ejecutaron esas interacciones el 16-11-2026. La venta de Sprint 2 continúa siendo un borrador: no incorpora pagos, inventario ni Pedidos. No ampliar el alcance hacia Sprint 3.
+Se abrió el frontend React local con Chrome automatizado y una sesión de administrador. Las solicitudes de los módulos migrados se dirigieron al Gateway local; la sesión se cerró después de cada escenario. Se usaron registros ficticios existentes o identificados `T218`, sin migraciones ni borrado de volúmenes. Los resultados siguientes complementan la evidencia PS2 obtenida por API y base de datos; los escenarios simulados se distinguen de las respuestas reales.
+
+| Vista / comprobación | Resultado observado |
+|---|---|
+| Clientes | `/clientes` cargó el cliente #2; búsqueda `T218`, edición del nombre, desactivación y reactivación funcionaron. Se restauraron los datos originales y `GET /api/clientes/2` confirmó `estado=true`. |
+| Catálogo y recetas | `/productos`, `/recetas` y `/recetas/materias-primas` mostraron los registros ficticios reales. La receta #1 y la materia prima #1 respondieron `PATCH 200` al desactivarse y reactivarse desde React; sus estados finales son `true`. El producto #2 también quedó activo. |
+| Pedidos T213 | Se creó el pedido ficticio #2 por API, `PROGRAMADO`, total `12.50 BOB`. En `/pedidos`, `Iniciar Preparación` y `Entregar Pedido` respondieron `PATCH 200`; el estado final fue `ENTREGADO` y desaparecieron las acciones de transición. |
+| Ventas PS2-15 | El detalle de la venta #6 mostró el snapshot `12.50` por unidad y total histórico `25.00 BOB`. El formulario de edición mostró `Total guardado: Bs 25.00` y `Estimado con precios actuales: Bs 27.00`, sin alterar la venta. |
+| Selecciones inactivas de Ventas | Se desactivó temporalmente el cliente #1 y, por separado, la presentación #1. Al editar el borrador #6, la opción antigua apareció como no disponible y deshabilitada. `Guardar cambios` no emitió `PUT /api/ventas/6`. Se restauraron ambos recursos al terminar. |
+| Filtros de Ventas | Con una respuesta `BORRADOR` demorada artificialmente 900 ms, cambiar de inmediato a `CANCELADA` conservó el filtro nuevo y mostró #7, sin #6 ni #8. Con un listado paginado **simulado** de 16 filas, desde página 2 el cambio a `CANCELADA` regresó a página 1. La segunda comprobación valida la lógica de la interfaz, no la paginación de PostgreSQL. |
+| Reintentos de Ventas | Se creó la venta ficticia #9, se editó y se anuló desde React. En cada operación se dejó llegar la primera petición al servidor (`201` o `200`) y se interrumpió **solo su respuesta** en el navegador. El reintento conservó la misma `Idempotency-Key`; el alta produjo una sola venta. Al cambiar observaciones en otra edición, la clave cambió. La venta #9 terminó `CANCELADA`. |
+| Consistencia final | `php artisan ventas:auditar` en PostgreSQL terminó con código `0` y cuatro indicadores en `0`: detalles huérfanos, subtotales incorrectos, totales incorrectos y reintentos sin venta. Tras restaurar `node_modules` con `npm ci`, el build React pasó (118 módulos con Vite 8.2.2 según el lockfile). `oxlint` en las dos vistas corregidas de Pedidos terminó sin errores, con dos advertencias preexistentes. |
+
+**Corrección detectada al recorrer Pedidos:** la lista y el detalle heredados del monolito calculaban `Pag: Bs 0.00` y `Sal: Bs 0.00` a partir de `total_pagado` y `saldo`, campos que el contrato actual de Orders no entrega. Se quitaron esos saldos de `PedidosPage.jsx` y `PedidoDetalleModal.jsx`; ambas vistas muestran únicamente `pedido.total`. Se comprobó en navegador que el pedido #2 muestra su total y no presenta cifras de pago inexistentes. El registro de pagos queda fuera de este Sprint 2.
+
+**Observación ajena al flujo migrado:** al abrir el inicio de sesión, el contador legado de visitas solicitó `/api/visitas` al proxy del monolito y produjo `502` porque el backend legado estaba detenido. El inicio de sesión y las vistas migradas funcionaron. Esa ruta de visitas pertenece al monolito y su migración no está incluida en Sprint 2.
+
+**Verificaciones complementarias aún sin evidencia integral:** siguen abiertas las casillas de este documento para todos los filtros de Clientes, alta y validaciones `422` desde su UI, ciclo completo de alta/edición de Catálogo y Recetas desde sus UI, controles de UI por permisos y algunos rechazos de API específicos de Orders. PS2-01–20 cuentan con evidencia por API o base de datos y los flujos críticos de React quedaron recorridos. No convertir estas casillas en aprobadas sin una ejecución posterior.
+
+**Estado para entrega:** T201–T218 están implementadas y el cierre funcional del Sprint 2 queda registrado aquí. Esta guía es la fuente única para trasladar resultados y límites a la documentación formal del proyecto. Sales solo maneja borradores de venta, detalles, snapshots e idempotencia; no incorpora pagos, inventario ni Pedidos.
