@@ -176,7 +176,11 @@ function VentaModal({ abierto, onCerrar, onGuardado, clientes, presentaciones, e
             <textarea value={observaciones} onChange={(event) => setObservaciones(event.target.value)} disabled={guardando} maxLength={2000} rows={3} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" />
           </label>
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-4">
-            <p className="text-sm text-gray-600">Estimado: <strong>Bs {totalEstimado.toFixed(2)}</strong>. El total definitivo lo calcula Sales.</p>
+            <div className="text-sm text-gray-600">
+              {venta && <p>Total guardado: <strong>Bs {Number(venta.total ?? 0).toFixed(2)}</strong>.</p>}
+              <p>Estimado con precios actuales: <strong>Bs {totalEstimado.toFixed(2)}</strong>.</p>
+              <p>Al guardar, Sales vuelve a consultar Catálogo y calcula el total definitivo.</p>
+            </div>
             <div className="flex gap-2">
               <button type="button" onClick={onCerrar} disabled={guardando} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700">Cancelar</button>
               <button type="submit" disabled={guardando} className="rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold text-white hover:bg-pink-700 disabled:opacity-50">{guardando ? 'Guardando...' : venta ? 'Guardar cambios' : 'Registrar venta'}</button>

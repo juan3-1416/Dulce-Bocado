@@ -1,10 +1,10 @@
 # Sales Service — Dulce Bocado
 
-Servicio Laravel independiente para ventas de mostrador. T214 aporta PostgreSQL y modelos propios; T215 implementa la API de borradores, autorización distribuida y consultas a Customer/Catalog. Gateway y React corresponden a pasos posteriores del roadmap.
+Servicio Laravel independiente para la venta base del Sprint 2. T214–T215 cubren PostgreSQL propio, API de borradores, autorización distribuida y consultas REST a Customer/Catalog. T216 reutiliza la vista React de Ventas y T217 publica la API mediante Gateway. El cierre de pruebas y evidencias corresponde a T218; pagos y descuento de inventario quedan fuera de este incremento.
 
 ## Preparación local
 
-Desde la raíz del repositorio:
+Desde la raíz del repositorio, para preparar **solo Sales**:
 
 ```powershell
 if (-not (Test-Path microservices/sales-service/.env)) { Copy-Item microservices/sales-service/.env.example microservices/sales-service/.env }
@@ -14,7 +14,9 @@ docker compose -f docker-compose.yml -f docker-compose.sprint1.yml -f docker-com
 docker compose -f docker-compose.yml -f docker-compose.sprint1.yml -f docker-compose.sprint2.sales.yml ps sales-db sales-service
 ```
 
-Conservar `.env` fuera de Git. En un clon nuevo, generar la clave **antes de usar rutas que dependan de ella**. El valor `SALES_DB_PASSWORD` del Compose es solo para desarrollo local; configurar un secreto propio para otros entornos. El servicio no publica un puerto al host ni está enrutado por Nginx todavía. `/up` se comprueba mediante `docker compose exec sales-service` o el healthcheck.
+Conservar `.env` fuera de Git. En un clon nuevo, generar `APP_KEY` **antes de usar rutas que dependan de ella**. El valor predeterminado de `SALES_DB_PASSWORD` en Compose es solo para desarrollo local; configurar una clave propia para otros entornos. Sales no publica un puerto directo al host: Gateway enruta `/api/ventas` y `/api/ventas/{id}` al servicio. `/up` se comprueba mediante `docker compose exec sales-service` o el healthcheck.
+
+Para probar el flujo completo React → Gateway → Sales se necesitan también Security, Customer y Catalog, cada uno con su `.env`, clave interna y migraciones. Usar la composición conjunta y las instrucciones vigentes de `Docs/SPRINT_2_AVANCE_Y_PRUEBAS.md`; levantar únicamente Sales no habilita el registro de ventas con esas dependencias ausentes. Aplicar migraciones con `migrate --force`, sin borrar volúmenes ni usar `migrate:fresh` sobre las bases de desarrollo.
 
 ## Comunicación con Security
 
@@ -22,11 +24,15 @@ Configurar `SECURITY_SERVICE_URL=http://security-service:8000` en el `.env` loca
 
 ## Comunicación con Customer
 
-El adaptador `ClienteService` consulta `CUSTOMER_SERVICE_URL` por HTTP solo para un cliente registrado. Requiere `CUSTOMER_SERVICE_KEY` acordada con el dueño de Customer; si falta, falla cerrado con `503`. La venta ocasional no usa Customer. El JSON y los headers propuestos están en el roadmap, sección «Evidencia paso 3», y deben confirmarse con el servicio propietario antes de una integración real. `POST` y `PUT /api/ventas` usan este adaptador.
+El adaptador `ClienteService` consulta `CUSTOMER_SERVICE_URL` por HTTP solo para un cliente registrado. `CUSTOMER_SERVICE_KEY` de Sales debe coincidir con `CUSTOMER_INTERNAL_KEY` de Customer; si falta o la respuesta no cumple el contrato, Sales falla cerrado con `503`. La venta ocasional no consulta Customer. `POST` y `PUT /api/ventas` usan este adaptador; el rechazo de un cliente inactivo se verificó por Gateway en PS2-02.
 
 ## Comunicación con Catalog
 
-`CatalogoService` consulta `CATALOGO_SERVICE_URL` para una presentación vendible y requiere `CATALOGO_SERVICE_KEY`. Obtiene nombre/precio para el snapshot y verifica disponibilidad **comercial**; no consulta inventario. `POST` y `PUT /api/ventas` lo usan para calcular el total. El contrato propuesto y la decisión pendiente sobre costo de personalización están en el roadmap, sección «Evidencia paso 4». Hasta que Catalog real lo confirme, los tests usan HTTP simulado y una venta real falla cerrado con `503`.
+`CatalogoService` consulta `CATALOGO_SERVICE_URL` para una presentación vendible. `CATALOGO_SERVICE_KEY` de Sales debe coincidir con `CATALOG_INTERNAL_KEY` de Catalog. Obtiene nombre/precio para el snapshot y verifica disponibilidad **comercial**; no consulta inventario. `POST` y `PUT /api/ventas` lo usan para calcular el total. La integración real se validó a través del Gateway; las pruebas aisladas también usan respuestas HTTP simuladas. Una caída o respuesta inválida de Catalog produce un error controlado, sin venta parcial. La personalización permanece prohibida hasta contar con un contrato y costo acordados.
+
+## Gateway y React
+
+La vista de Ventas usa `frontend/src/services/ventaService.js`, `clienteService.js` y `catalogoVentasService.js` con Bearer y `VITE_API_URL` (por defecto `http://localhost:8080`). Nginx envía `/api/ventas` a Sales y no publica `/api/internal/introspect`. El proxy `/api` de `frontend/vite.config.js` permanece dirigido al monolito para vistas legadas con rutas relativas y CSRF; no participa en las solicitudes migradas de Ventas. Algunas rutas, como `/api/productos`, existen en ambos sistemas: cambiar ese proxy global sin migrar sus consumidores rompería flujos legados.
 
 ## API T215
 

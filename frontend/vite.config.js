@@ -13,6 +13,9 @@ export default defineConfig({
     port: 5173,
 
     proxy: {
+      // Las vistas legadas usan rutas relativas y CSRF contra el monolito.
+      // Ventas y los demás módulos migrados usan VITE_API_URL (Gateway).
+      // No cambiar /api completo al Gateway: /api/productos coincide en ambos.
       '/api': {
         target: 'http://backend:8000',
         changeOrigin: true,
