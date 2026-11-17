@@ -52,7 +52,7 @@ class InventarioConsultaController extends Controller
             return response()->json([
                 'error' => [
                     'code' => 'FILTROS_INVALIDOS',
-                    'message' => 'Los filtros de existencias no son válidos.',
+                    'message' => 'Los filtros de existencias no son vÃ¡lidos.',
                     'details' => $validator->errors(),
                 ],
             ], 422);
@@ -100,4 +100,27 @@ class InventarioConsultaController extends Controller
             'existencias' => $existencias,
         ]);
     }
-}
+
+    public function movimientos(): \Illuminate\Http\JsonResponse
+    {
+        $movimientos = \App\Models\Movimiento::query()
+            ->orderByDesc('id_movimiento')
+            ->get([
+                'id_movimiento',
+                'tipo',
+                'tipo_articulo',
+                'articulo_id',
+                'cantidad',
+                'unidad',
+                'almacen_origen_id',
+                'almacen_destino_id',
+                'motivo',
+                'observaciones',
+                'actor_usuario_id',
+                'created_at',
+            ]);
+
+        return response()->json([
+            'movimientos' => $movimientos,
+        ]);
+    }}

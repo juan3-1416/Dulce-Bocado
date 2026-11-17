@@ -39,3 +39,9 @@ Route::post(
 )->middleware(
     AutorizarPermisoInventario::class.':inventario.trasladar'
 );
+Route::get(
+    '/movimientos',
+    [InventarioConsultaController::class, 'movimientos']
+)->middleware(
+    AutorizarPermisoInventario::class.':inventario.ver'
+);
