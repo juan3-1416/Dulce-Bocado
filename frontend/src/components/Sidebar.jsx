@@ -147,7 +147,7 @@ const SECCIONES_MENU = [
       {
         nombre: 'ProducciÃ³n',
         ruta: '/produccion',
-        permiso: 'produccion.listar',
+        permiso: 'produccion.ver',
       },
 
     ],

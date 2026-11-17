@@ -254,12 +254,12 @@ function App() {
             />
           </Route>
 
-          {/* CU16 - PRODUCCIÓN */}
+          {/* Sprint 3 - Producción mediante Gateway */}
 
           <Route
             element={
               <ProtectedRoute
-                permiso="produccion.listar"
+                permiso="produccion.ver"
               />
             }
           >
@@ -282,7 +282,7 @@ function App() {
             />
           </Route>
 
-          {/* CU17 - CONSUMO, COSTO Y DESPERDICIO */}
+          {/* La ruta legada de consumo queda fuera del flujo de Sprint 3. */}
 
           <Route
             element={
@@ -293,7 +293,7 @@ function App() {
           >
             <Route
               path="produccion/consumo-desperdicio"
-              element={<ProduccionList />}
+              element={<Navigate to="/produccion" replace />}
             />
           </Route>
 

@@ -8,7 +8,7 @@
 
 **Estado de este archivo:** plan de trabajo compartido. Las tareas y pruebas no se consideran realizadas hasta registrar evidencia de su ejecución.
 
-**Avance verificado al 16-11-2026:** T302 y T308 terminadas; T304, T306 y T310 están en curso. Las otras 9 tareas del backlog figuran por hacer en este archivo. Production ya tiene rutas públicas locales y coordinación probada con Inventory simulado, pero Gateway, los permisos efectivos de Security, la integración real con Inventory y las pruebas PS3 completas siguen pendientes. Los contratos de tipos de almacén, movimientos y unidad para `PRESENTACION` están documentados para revisión conjunta antes de cerrar T306/T310.
+**Avance verificado al 16-11-2026:** T302 y T308 terminadas; T304, T306, T310 y T311 están en curso. Las otras 8 tareas del backlog figuran por hacer en este archivo. Production ya tiene rutas públicas locales y coordinación probada con Inventory simulado, pero Gateway, los permisos efectivos de Security, la integración real con Inventory y las pruebas PS3 completas siguen pendientes. Los contratos de tipos de almacén, movimientos y unidad para `PRESENTACION` están documentados para revisión conjunta antes de cerrar T306/T310.
 
 **Referencia documental:** [documentación Scrum](Documentacion_Scrum_Dulce_Bocado_FINAL_REGENERADO.docx), apartados 3.1.3, 3.1.5 y 3.4.1–3.4.2; [avance y pruebas del Sprint 2](SPRINT_2_AVANCE_Y_PRUEBAS.md).
 
@@ -33,7 +33,7 @@ El incremento se considera funcional cuando un usuario autorizado puede completa
 
 ## 2. Punto de partida y preparación
 
-El avance del Sprint 2 registra Security, Gateway, Customer, Catalog, Orders y Sales; Catálogo ofrece presentaciones, materias primas y recetas, incluida la consulta `GET /api/presentaciones/{id}/receta`. Las pantallas legadas de Producción e Inventario aún usan servicios JavaScript del monolito. Al migrarlas, se deben crear adaptadores propios para Gateway/Bearer y conservar los servicios de Catálogo utilizados en las vistas ya migradas. No se debe redirigir indiscriminadamente el proxy relativo `/api` de Vite porque todavía convive con rutas legadas.
+El avance del Sprint 2 registra Security, Gateway, Customer, Catalog, Orders y Sales; Catálogo ofrece presentaciones, materias primas y recetas, incluida la consulta `GET /api/presentaciones/{id}/receta`. Las rutas activas de Producción e Inventario del Sprint 3 usan adaptadores propios para Gateway/Bearer; quedan archivos de vistas y servicios legados como referencia para flujos fuera del incremento. No se debe redirigir indiscriminadamente el proxy relativo `/api` de Vite porque todavía convive con rutas legadas.
 
 Antes de implementar:
 
@@ -125,7 +125,7 @@ Capacidad: **80 horas** entre dos desarrolladores; **70 horas** asignadas a tare
 | T308 | HU16 | Integrar consulta REST de presentaciones y recetas del Catálogo | Fabián | 5 | Terminada |
 | T309 | HU17–HU19 | Implementar traslado del almacén interno al mostrador mediante movimientos vinculados | Juan Pablo | 5 | Por hacer |
 | T310 | HU16 | Registrar producción y coordinar consumo de insumos e ingreso de terminados | Fabián | 7 | En curso |
-| T311 | HU16 | Construir interfaz de registro y consulta de producción | Fabián | 5 | Por hacer |
+| T311 | HU16 | Construir interfaz de registro y consulta de producción | Fabián | 5 | En curso |
 | T312 | HU17–HU19 | Probar reglas de stock, movimientos y traslados en Inventario | Juan Pablo | 5 | Por hacer |
 | T313 | HU16–HU19 | Configurar rutas del Gateway, permisos y contenedores de integración | Juan Pablo | 4 | Por hacer |
 | T314 | HU16–HU19 | Probar el flujo completo, los rechazos y los reintentos entre servicios | Fabián | 4 | Por hacer |
@@ -141,6 +141,7 @@ Capacidad: **80 horas** entre dos desarrolladores; **70 horas** asignadas a tare
 | 16-11-2026 | T304 | Fabián | Por registrar | `devFabian` | Se reutilizaron las vistas de Almacenes y Existencias con un adaptador separado para Gateway/Bearer; filtros por tipo e ID, carga, error y reintento. `npm run build`: 119 módulos; `oxlint`: 0 errores y 2 advertencias de efectos. Pendiente consulta real porque Inventory y la ruta de Gateway aún no están publicados. | En curso |
 | 16-11-2026 | T306 | Fabián | Por registrar | `devFabian` | Formulario e historial unificados para ingreso, egreso y traslado; las URL antiguas de creación/detalle redirigen a la vista nueva. Bearer, permisos propuestos e `Idempotency-Key` por contenido, con reintento de la misma solicitud. Build frontend: 109 módulos; `oxlint`: 0 errores y 1 advertencia de efecto. Pendiente API real de Inventory y prueba visual. | En curso |
 | 16-11-2026 | T310 | Fabián | Por registrar | `devFabian` | Production crea solicitud `EN_PROCESO` y snapshot decimal, llama a Inventory con ID estable y concilia respuesta incierta. Rutas y permisos locales registrados. Suite aislada SQLite: 8 pruebas/38 aserciones; `dulce_production` permaneció `0/0`. Pendiente Inventory real, Security/Gateway y concurrencia PostgreSQL. | En curso |
+| 16-11-2026 | T311 | Fabián | Por registrar | `devFabian` | Listado con filtro, paginación y detalle de estados; formulario selecciona receta activa de Catalog y envía solo presentación, cantidad y observaciones a Production. La clave idempotente se conserva por usuario en el navegador para conciliar reintentos; `EN_PROCESO` nunca se muestra como terminado. Build frontend: 106 módulos; `oxlint`: 0 errores y 1 advertencia de efecto. Pendiente Gateway, permisos `produccion.ver`/`produccion.crear`/`recetas.ver`, Inventory real y recorrido visual PS3-16. | En curso |
 
 ### Distribución orientativa de la semana
 
@@ -201,6 +202,7 @@ Copiar una fila por ejecución. Mantener los fallos y la evidencia de su correcc
 | 16-11-2026 | T304, compilación previa a PS3-16 | `devFabian`, frontend local | Adaptación de dos vistas reutilizadas a consultas Gateway/Bearer | Build: 119 módulos; análisis estático: 0 errores. Sin Inventory disponible, no se ejecutó la consulta real ni la prueba visual PS3-16. | Parcial, pendiente integración | Fabián |
 | 16-11-2026 | T306, compilación previa a PS3-03–08 y PS3-16 | `devFabian`, frontend local | Formularios de ingreso, egreso y traslado contra el contrato propuesto | Build: 109 módulos; análisis estático: 0 errores. Sin Inventory real no se registraron movimientos ni se ejecutó PS3-16. | Parcial, pendiente integración | Fabián |
 | 16-11-2026 | T310, pruebas aisladas previas a PS3-09–14 | `devFabian`, Docker local | Consumir receta simulada y responder a aplicación, rechazo y pérdida de respuesta de Inventory simulado | 8 pruebas/38 aserciones; 0 registros en PostgreSQL local antes y después. No acredita stock real ni concurrencia de PS3-19. | Parcial, pendiente integración | Fabián |
+| 16-11-2026 | T311, compilación previa a PS3-16 | `devFabian`, frontend local | Reemplazar listado y formulario legados por rutas de Production, consulta de recetas de Catalog y reintento con clave estable | Build: 106 módulos; análisis estático: 0 errores, 1 advertencia de efecto. Sin Gateway/Inventory/permisos nuevos no se registró una producción real ni se ejecutó PS3-16. | Parcial, pendiente integración | Fabián |
 
 Si el equipo cambia una regla, un endpoint o una estimación, registrar la decisión antes de modificar la implementación:
 

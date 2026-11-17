@@ -1,754 +1,184 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from 'react'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 
-import {
-  useNavigate,
-} from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
+import { listarRecetas } from '../../services/catalogoRecetaService'
+import { generarClaveProduccion, registrarProduccionGateway } from '../../services/produccionGatewayService'
 
-import {
-  listarRecetas,
-} from '../../services/recetaService'
+const clavePendiente = (actor) => `sprint3.produccion.pendiente.${actor}`
 
-import {
-  crearProduccion,
-} from '../../services/produccionService'
-function formatearCantidad(valor) {
-  const numero = Number(valor)
-
-  if (!Number.isFinite(numero)) {
-    return '0'
+function leerPendiente(actor) {
+  try {
+    if (!actor) return null
+    const valor = JSON.parse(localStorage.getItem(clavePendiente(actor)) || 'null')
+    if (valor?.actor === actor && typeof valor.clave === 'string' &&
+        Number.isSafeInteger(valor.datos?.presentacion_id) &&
+        Number.isSafeInteger(valor.datos?.cantidad)) return valor
+  } catch {
+    // Un almacenamiento bloqueado o inválido no impide abrir el formulario.
   }
-
-  return Number(numero.toFixed(3)).toString()
+  return null
 }
 
-function ProduccionForm() {
-  const navigate =
-    useNavigate()
-
-  const [
-    productosPresentaciones,
-    setProductosPresentaciones,
-  ] = useState([])
-
-  const [
-    recetas,
-    setRecetas,
-  ] = useState([])
-
-  const [
-    cargandoCatalogos,
-    setCargandoCatalogos,
-  ] = useState(true)
-
-  const [
-    guardando,
-    setGuardando,
-  ] = useState(false)
-
-  const [
-    error,
-    setError,
-  ] = useState('')
-
-  const [
-    formulario,
-    setFormulario,
-  ] = useState({
-    id_producto_presentacion: '',
-    cantidad: 1,
-    observaciones: '',
-  })
-
-  /*
-  |--------------------------------------------------------------------------
-  | Cargar presentaciones vinculadas a productos y recetas
-  |--------------------------------------------------------------------------
-  */
-useEffect(() => {
-  let activo = true
-
-  const cargarDatos = async () => {
-    try {
-      setCargandoCatalogos(true)
-      setError('')
-
-      const recetasRespuesta =
-        await listarRecetas({
-          estado: '1',
-        })
-
-      if (!activo) {
-        return
-      }
-
-      const listaRecetas =
-        recetasRespuesta?.recetas ?? []
-
-      /*
-       * Producción solamente puede utilizar
-       * presentaciones que tengan receta activa.
-       */
-      const presentacionesConReceta =
-        listaRecetas
-          .map((receta) => ({
-            ...receta.producto_presentacion,
-            receta,
-          }))
-          .filter(
-            (item) =>
-              item?.id_producto_presentacion &&
-              item?.producto &&
-              item?.presentacion
-          )
-
-      setRecetas(listaRecetas)
-
-      setProductosPresentaciones(
-        presentacionesConReceta
-      )
-    } catch (err) {
-      if (!activo) {
-        return
-      }
-
-      setError(
-        err.message ||
-          'No se pudieron cargar las presentaciones con receta.'
-      )
-    } finally {
-      if (activo) {
-        setCargandoCatalogos(false)
-      }
-    }
+function guardarPendiente(actor, valor) {
+  try {
+    if (!actor) return false
+    if (valor) localStorage.setItem(clavePendiente(actor), JSON.stringify(valor))
+    else localStorage.removeItem(clavePendiente(actor))
+    return true
+  } catch {
+    return false
   }
+}
 
-  cargarDatos()
+export default function ProduccionForm() {
+  const navigate = useNavigate()
+  const { usuario } = useAuth()
+  const actor = usuario?.id_usuario
+  const inicial = leerPendiente(actor)
+  const [pendiente, setPendiente] = useState(inicial)
+  const [presentacionId, setPresentacionId] = useState(String(inicial?.datos.presentacion_id || ''))
+  const [cantidad, setCantidad] = useState(String(inicial?.datos.cantidad || '1'))
+  const [observaciones, setObservaciones] = useState(inicial?.datos.observaciones || '')
+  const [recetas, setRecetas] = useState([])
+  const [reintentoCatalogo, setReintentoCatalogo] = useState(0)
+  const [cargando, setCargando] = useState(true)
+  const [guardando, setGuardando] = useState(false)
+  const [error, setError] = useState('')
+  const [mensaje, setMensaje] = useState(inicial ? 'Hay una solicitud anterior sin confirmar. Reinténtala con la misma clave para conocer su resultado.' : '')
 
-  return () => {
-    activo = false
-  }
-}, [])
-  /*
-  |--------------------------------------------------------------------------
-  | Producto / Presentación seleccionado
-  |--------------------------------------------------------------------------
-  */
-  const presentacionSeleccionada =
-    useMemo(() => {
-      if (
-        !formulario
-          .id_producto_presentacion
-      ) {
-        return null
-      }
-
-      return (
-        productosPresentaciones.find(
-          (item) =>
-            Number(
-              item
-                .id_producto_presentacion
-            ) ===
-            Number(
-              formulario
-                .id_producto_presentacion
-            )
-        ) ?? null
-      )
-    }, [
-      formulario
-        .id_producto_presentacion,
-      productosPresentaciones,
-    ])
-
-  /*
-  |--------------------------------------------------------------------------
-  | Receta asociada
-  |--------------------------------------------------------------------------
-  */
-const recetaActual =
-  useMemo(() => {
-    if (
-      !formulario.id_producto_presentacion
-    ) {
-      return null
-    }
-
-    const idSeleccionado =
-      Number(
-        formulario.id_producto_presentacion
-      )
-
-    return (
-      recetas.find(
-        (receta) =>
-          Number(
-            receta
-              .producto_presentacion
-              ?.id_producto_presentacion
-          ) === idSeleccionado
-      ) ?? null
-    )
-  }, [
-    formulario.id_producto_presentacion,
-    recetas,
-  ])
-  /*
-  |--------------------------------------------------------------------------
-  | Calcular requerimientos teóricos
-  |--------------------------------------------------------------------------
-  |
-  | El frontend solamente muestra una vista previa.
-  | La validación definitiva del stock la realiza Laravel.
-  |--------------------------------------------------------------------------
-  */
-  const insumos =
-    useMemo(() => {
-      if (
-        !recetaActual ||
-        !Array.isArray(
-          recetaActual.detalles
-        )
-      ) {
-        return []
-      }
-
-      const cantidadProduccion =
-        Number(
-          formulario.cantidad ||
-            0
-        )
-
-      return recetaActual
-        .detalles
-        .map(
-          (detalle) => {
-            const cantidadReceta =
-              Number(
-                detalle
-                  .cantidad ||
-                  0
-              )
-
-            return {
-              ...detalle,
-
-              requerido:
-                cantidadReceta *
-                cantidadProduccion,
-            }
-          }
-        )
-    }, [
-      formulario.cantidad,
-      recetaActual,
-    ])
-
-  const hayReceta =
-    Boolean(
-      recetaActual
-    )
-
-  const esValido =
-    Boolean(
-      formulario
-        .id_producto_presentacion
-    ) &&
-    Number(
-      formulario.cantidad
-    ) >= 1 &&
-    hayReceta
-
-  /*
-  |--------------------------------------------------------------------------
-  | Cambios de formulario
-  |--------------------------------------------------------------------------
-  */
-  const manejarCambio = (
-    evento
-  ) => {
-    const {
-      name,
-      value,
-    } = evento.target
-
-    setError('')
-
-    setFormulario(
-      (actual) => ({
-        ...actual,
-
-        [name]:
-          name ===
-          'cantidad'
-            ? Number(value) ||
-              0
-            : value,
+  useEffect(() => {
+    let activo = true
+    listarRecetas({ estado: '1' })
+      .then((respuesta) => {
+        if (!activo) return
+        setRecetas((respuesta.recetas || []).filter((receta) =>
+          receta.estado === true && receta.presentacion?.disponible === true &&
+          receta.presentacion?.producto?.estado === true &&
+          Array.isArray(receta.detalles) && receta.detalles.length > 0))
       })
-    )
-  }
+      .catch((err) => { if (activo) setError(err.message || 'No se pudieron consultar las recetas.') })
+      .finally(() => { if (activo) setCargando(false) })
+    return () => { activo = false }
+  }, [reintentoCatalogo])
 
-  /*
-  |--------------------------------------------------------------------------
-  | Obtener mensaje del backend
-  |--------------------------------------------------------------------------
-  */
-  const obtenerMensajeError = (
-    err
-  ) => {
-    if (
-      Array.isArray(
-        err?.data
-          ?.faltantes
-      ) &&
-      err.data.faltantes
-        .length > 0
-    ) {
-      const faltantes =
-        err.data.faltantes
-          .map(
-            (item) =>
-              `${item.materia_prima}: requiere ${item.requerido}, disponible ${item.disponible}`
-          )
-          .join(' | ')
+  const receta = recetas.find((item) => item.presentacion_id === Number(presentacionId))
+  const datosValidos = /^[1-9]\d*$/.test(presentacionId) && /^[1-9]\d*$/.test(cantidad) &&
+    Number.isSafeInteger(Number(presentacionId)) && Number(cantidad) <= 1000000 &&
+    observaciones.length <= 2000
 
-      return `${
-        err.message ||
-        'Stock insuficiente.'
-      } ${faltantes}`
+  const enviar = async (evento) => {
+    evento.preventDefault()
+    setError('')
+    setMensaje('')
+    if (!Number.isSafeInteger(Number(actor)) || Number(actor) <= 0) {
+      setError('No se pudo identificar al usuario. Vuelve a iniciar sesión.')
+      return
     }
-
-    const errores =
-      err?.data?.errors
-
-    if (errores) {
-      const primerError =
-        Object.values(
-          errores
-        )[0]
-
-      if (
-        Array.isArray(
-          primerError
-        )
-      ) {
-        return primerError[0]
-      }
+    if (!datosValidos || (!receta && !pendiente)) {
+      setError('Selecciona una presentación con receta vigente y una cantidad entre 1 y 1 000 000.')
+      return
     }
-
-    return (
-      err.message ||
-      'No se pudo crear la orden de producción.'
-    )
-  }
-
-  /*
-  |--------------------------------------------------------------------------
-  | Crear orden
-  |--------------------------------------------------------------------------
-  */
-  const manejarSubmit =
-    async (evento) => {
-      evento.preventDefault()
-
-      setError('')
-
-      if (
-        !formulario
-          .id_producto_presentacion
-      ) {
-        setError(
-          'Seleccione un producto y presentación.'
-        )
-
-        return
-      }
-
-      if (
-        Number(
-          formulario.cantidad
-        ) < 1
-      ) {
-        setError(
-          'La cantidad a producir debe ser mayor a 0.'
-        )
-
-        return
-      }
-
-      if (!hayReceta) {
-        setError(
-          'La presentación seleccionada no tiene una receta activa asociada.'
-        )
-
-        return
-      }
-
+    const datos = {
+      presentacion_id: Number(presentacionId),
+      cantidad: Number(cantidad),
+      observaciones: observaciones.trim() || null,
+    }
+    let intento = pendiente
+    if (!intento) {
       try {
-        setGuardando(true)
-
-        await crearProduccion({
-          id_producto_presentacion:
-            Number(
-              formulario
-                .id_producto_presentacion
-            ),
-
-          cantidad:
-            Number(
-              formulario.cantidad
-            ),
-
-          observaciones:
-            formulario
-              .observaciones
-              .trim() ||
-            null,
-        })
-
-        navigate(
-          '/produccion'
-        )
+        intento = { actor, datos, clave: generarClaveProduccion() }
       } catch (err) {
-        setError(
-          obtenerMensajeError(
-            err
-          )
-        )
-      } finally {
-        setGuardando(false)
+        setError(err.message)
+        return
       }
+      if (!guardarPendiente(actor, intento)) {
+        setError('No se pudo guardar la clave de reintento. Habilita el almacenamiento del navegador antes de registrar la producción.')
+        return
+      }
+      setPendiente(intento)
     }
+    setGuardando(true)
+    try {
+      const respuesta = await registrarProduccionGateway(intento.datos, intento.clave)
+      if (respuesta.produccion?.estado === 'COMPLETADA') {
+        guardarPendiente(actor, null)
+        setPendiente(null)
+        navigate('/produccion', { state: { aviso: `Producción #${respuesta.produccion.id_produccion} completada.` } })
+      } else if (respuesta.produccion?.estado === 'EN_PROCESO') {
+        setMensaje(`La producción #${respuesta.produccion?.id_produccion || ''} sigue en proceso. Reintenta esta misma solicitud para conciliar su resultado.`)
+      } else {
+        setError('Producción devolvió un estado desconocido. Reintenta la misma solicitud antes de crear otra.')
+      }
+    } catch (err) {
+      if (err.status === 409 && err.data?.produccion?.estado === 'RECHAZADA') {
+        guardarPendiente(actor, null)
+        setPendiente(null)
+        setError(`Producción rechazada: ${err.message}`)
+      } else if (err.status === 409 && err.data?.error?.code === 'CLAVE_IDEMPOTENTE_EN_CONFLICTO') {
+        guardarPendiente(actor, null)
+        setPendiente(null)
+        setError(err.message)
+      } else if ([401, 403, 404, 422].includes(err.status)) {
+        guardarPendiente(actor, null)
+        setPendiente(null)
+        setError(err.message)
+      } else {
+        setError(`${err.message} La solicitud podría seguir en proceso; reintenta sin cambiar los datos.`)
+      }
+    } finally {
+      setGuardando(false)
+    }
+  }
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Nueva Producción
-          </h1>
-
-          <p className="mt-1 text-sm text-gray-600">
-            Crea una orden de
-            producción a partir de
-            una receta registrada.
-          </p>
+          <h1 className="text-2xl font-semibold text-gray-900">Nueva producción</h1>
+          <p className="mt-1 text-sm text-gray-500">Elabora unidades a partir de una receta vigente de Catálogo.</p>
         </div>
-
-        <button
-          type="button"
-          onClick={() =>
-            navigate(
-              '/produccion'
-            )
-          }
-          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-        >
-          Volver a lista
-        </button>
+        <Link to="/produccion" className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-pink-600">Volver al listado</Link>
       </div>
 
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {error}
-        </div>
-      )}
+      {mensaje && <p role="status" className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">{mensaje}</p>}
+      {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p>}
+      {!cargando && recetas.length === 0 && !pendiente && <div className="rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-600">
+        No hay recetas vigentes disponibles para registrar una producción.
+        <button type="button" onClick={() => { setError(''); setCargando(true); setReintentoCatalogo((valor) => valor + 1) }} className="ml-2 font-semibold text-pink-700 underline">Reintentar consulta</button>
+      </div>}
 
-      <form
-        onSubmit={
-          manejarSubmit
-        }
-        className="space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
-      >
+      <form onSubmit={enviar} className="space-y-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Producto /
-              Presentación
-            </label>
-
-            <select
-              name="id_producto_presentacion"
-              value={
-                formulario
-                  .id_producto_presentacion
-              }
-              onChange={
-                manejarCambio
-              }
-              disabled={
-                cargandoCatalogos
-              }
-              required
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500 disabled:bg-slate-100"
-            >
-              <option value="">
-                {cargandoCatalogos
-                  ? 'Cargando presentaciones...'
-                  : 'Seleccione una presentación'}
-              </option>
-
-              {productosPresentaciones.map(
-                (item) => (
-                  <option
-                    key={
-                      item
-                        .id_producto_presentacion
-                    }
-                    value={
-                      item
-                        .id_producto_presentacion
-                    }
-                  >
-                    {item
-                      .producto
-                      ?.nombre ||
-                      'Producto'}
-                    {' / '}
-                    {item
-                      .presentacion
-                      ?.nombre ||
-                      'Presentación'}
-                  </option>
-                )
-              )}
+          <label className="text-sm font-medium text-gray-700">Presentación con receta vigente
+            <select value={presentacionId} onChange={(evento) => setPresentacionId(evento.target.value)} disabled={Boolean(pendiente) || cargando || guardando} required className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-pink-600 disabled:bg-gray-100">
+              <option value="">{cargando ? 'Cargando recetas...' : 'Seleccionar presentación'}</option>
+              {recetas.map((item) => <option key={item.presentacion_id} value={item.presentacion_id}>{item.presentacion?.producto?.nombre || 'Producto'} / {item.presentacion?.nombre || `Presentación #${item.presentacion_id}`}</option>)}
+              {pendiente && !receta && <option value={pendiente.datos.presentacion_id}>Presentación #{pendiente.datos.presentacion_id} de la solicitud pendiente</option>}
             </select>
-
-            {!cargandoCatalogos &&
-              productosPresentaciones.length ===
-                0 && (
-                <p className="mt-1 text-xs text-red-600">
-                  No existen
-                  productos con
-                  presentaciones
-                  disponibles.
-                </p>
-              )}
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Cantidad a producir
-            </label>
-
-            <input
-              type="number"
-              name="cantidad"
-              min="1"
-              step="1"
-              value={
-                formulario
-                  .cantidad
-              }
-              onChange={
-                manejarCambio
-              }
-              required
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500"
-            />
-          </div>
-        </div>
-
-        {presentacionSeleccionada && (
-          <div className="grid gap-4 rounded-xl border border-blue-200 bg-blue-50 p-4 sm:grid-cols-3">
-            <div>
-              <p className="text-xs font-semibold uppercase text-blue-600">
-                Producto
-              </p>
-
-              <p className="mt-1 font-semibold text-blue-900">
-                {presentacionSeleccionada
-                  .producto
-                  ?.nombre ||
-                  '—'}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold uppercase text-blue-600">
-                Presentación
-              </p>
-
-              <p className="mt-1 font-semibold text-blue-900">
-                {presentacionSeleccionada
-                  .presentacion
-                  ?.nombre ||
-                  '—'}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold uppercase text-blue-600">
-                Precio referencial
-              </p>
-
-              <p className="mt-1 font-semibold text-blue-900">
-                Bs{' '}
-                {Number(
-                  presentacionSeleccionada
-                    .precio ??
-                    0
-                ).toFixed(2)}
-              </p>
-            </div>
-          </div>
-        )}
-
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Observaciones
           </label>
-
-          <textarea
-            name="observaciones"
-            rows="3"
-            value={
-              formulario
-                .observaciones
-            }
-            onChange={
-              manejarCambio
-            }
-            placeholder="Ej. Producción de prueba para validar CU17."
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500"
-          />
+          <label className="text-sm font-medium text-gray-700">Cantidad de unidades
+            <input type="number" min="1" max="1000000" step="1" inputMode="numeric" value={cantidad} onChange={(evento) => setCantidad(evento.target.value)} disabled={Boolean(pendiente) || guardando} required className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-pink-600 disabled:bg-gray-100" />
+          </label>
         </div>
 
-        {formulario
-          .id_producto_presentacion && (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-            {!hayReceta ? (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                La presentación
-                seleccionada no tiene
-                una receta activa
-                asociada.
-              </div>
-            ) : (
-              <>
-                <div className="mb-4">
-                  <h2 className="text-sm font-bold text-slate-900">
-                    Materias primas
-                    requeridas
-                  </h2>
+        {receta && !pendiente && <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+          <h2 className="text-sm font-semibold text-blue-900">Receta #{receta.id_receta}</h2>
+          <p className="mt-1 text-xs text-blue-800">Insumos por unidad. Production calculará las cantidades exactas y Inventory verificará el stock al registrar.</p>
+          <ul className="mt-3 space-y-1 text-sm text-blue-900">
+            {receta.detalles.map((detalle) => <li key={detalle.id_materia_prima}>{detalle.materia_prima?.nombre || `Materia prima #${detalle.id_materia_prima}`}: {detalle.cantidad} {detalle.materia_prima?.unidad_medida || ''}</li>)}
+          </ul>
+        </div>}
 
-                  <p className="mt-1 text-xs text-slate-500">
-                    Cálculo según la
-                    receta y la cantidad
-                    que deseas producir.
-                    El stock será
-                    verificado nuevamente
-                    por el sistema al
-                    crear la orden.
-                  </p>
-                </div>
-
-                <div className="overflow-x-auto rounded-lg border border-slate-200">
-                  <table className="min-w-full divide-y divide-slate-200">
-                    <thead className="bg-slate-100">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-600">
-                          Materia Prima
-                        </th>
-
-                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-slate-600">
-                          Por unidad
-                        </th>
-
-                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-slate-600">
-                          Requerido
-                        </th>
-
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-600">
-                          Unidad
-                        </th>
-                      </tr>
-                    </thead>
-
-                    <tbody className="divide-y divide-slate-200 bg-white">
-                      {insumos.map(
-                        (insumo) => (
-                          <tr
-                            key={
-                              insumo
-                                .id_detalle_receta ??
-                              insumo
-                                .id_materia_prima
-                            }
-                          >
-                            <td className="px-4 py-3 text-sm font-medium text-slate-800">
-                              {insumo
-                                .materia_prima
-                                ?.nombre ||
-                                'Materia prima'}
-                            </td>
-
-                            <td className="px-4 py-3 text-right text-sm text-slate-700">
-{formatearCantidad(
-  insumo.cantidad
-)}
-                            </td>
-
-                            <td className="px-4 py-3 text-right text-sm font-semibold text-slate-900">
-{formatearCantidad(
-  insumo.requerido
-)}
-                            </td>
-
-                            <td className="px-4 py-3 text-sm text-slate-700">
-                              {insumo
-                                .materia_prima
-                                ?.unidad_medida ||
-                                '—'}
-                            </td>
-                          </tr>
-                        )
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        <div className="flex justify-end gap-3 border-t border-slate-200 pt-4">
-          <button
-            type="button"
-            onClick={() =>
-              navigate(
-                '/produccion'
-              )
-            }
-            disabled={
-              guardando
-            }
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-          >
-            Cancelar
-          </button>
-
-          <button
-            type="submit"
-            disabled={
-              guardando ||
-              cargandoCatalogos ||
-              !esValido
-            }
-            className="rounded-lg bg-pink-600 px-5 py-2 text-sm font-semibold text-white hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {guardando
-              ? 'Creando orden...'
-              : 'Crear Orden'}
+        <label className="block text-sm font-medium text-gray-700">Observaciones (opcional)
+          <textarea rows="3" maxLength={2000} value={observaciones} onChange={(evento) => setObservaciones(evento.target.value)} disabled={Boolean(pendiente) || guardando} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-pink-600 disabled:bg-gray-100" />
+        </label>
+        <div className="flex justify-end border-t border-gray-100 pt-4">
+          <button type="submit" disabled={guardando || (!pendiente && (cargando || !receta))} className="rounded-lg bg-pink-600 px-5 py-2 text-sm font-semibold text-white hover:bg-pink-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-pink-600 disabled:cursor-not-allowed disabled:opacity-50">
+            {guardando ? 'Consultando resultado...' : pendiente ? 'Reintentar misma solicitud' : 'Registrar producción'}
           </button>
         </div>
       </form>
     </section>
   )
 }
-
-export default ProduccionForm
