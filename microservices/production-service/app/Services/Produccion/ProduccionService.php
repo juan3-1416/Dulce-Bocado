@@ -89,6 +89,11 @@ class ProduccionService
         return $this->avanzar($registro->produccion, true);
     }
 
+    public function conciliar(Produccion $produccion): array
+    {
+        return $this->avanzar($produccion, true);
+    }
+
     private function avanzar(Produccion $produccion, bool $reintento): array
     {
         if ($produccion->estado !== 'EN_PROCESO') return $this->respuestaFinal($produccion);

@@ -77,7 +77,9 @@ class InventarioService
     {
         $estado = $respuesta->json('estado');
         $id = $respuesta->json('operacion_id');
-        if ($respuesta->successful() && $id === $operacionId && $estado === 'APLICADA') {
+        if ($id !== $operacionId) return ['estado' => 'INCIERTA'];
+
+        if ($respuesta->successful() && $estado === 'APLICADA') {
             return ['estado' => 'APLICADA'];
         }
 
@@ -88,7 +90,7 @@ class InventarioService
         if ($respuesta->status() === 422) {
             return ['estado' => 'RECHAZADA', 'codigo' => 'SOLICITUD_INVENTARIO_INVALIDA'];
         }
-        if ($respuesta->successful() && $id === $operacionId && $estado === 'RECHAZADA' &&
+        if ($respuesta->successful() && $estado === 'RECHAZADA' &&
             is_string($codigo) && $codigo !== '') {
             return ['estado' => 'RECHAZADA', 'codigo' => $codigo];
         }

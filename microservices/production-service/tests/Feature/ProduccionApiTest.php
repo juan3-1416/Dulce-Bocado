@@ -121,6 +121,7 @@ class ProduccionApiTest extends TestCase
     public function test_stock_insuficiente_rechaza_sin_acreditar_produccion(): void
     {
         $this->simular(fn ($request) => Http::response([
+            'operacion_id' => $request['operacion_id'],
             'error' => ['code' => 'STOCK_INSUFICIENTE', 'message' => 'Saldo insuficiente.'],
         ], 409));
 
@@ -128,6 +129,8 @@ class ProduccionApiTest extends TestCase
             ->assertJsonPath('error.code', 'STOCK_INSUFICIENTE')
             ->assertJsonPath('produccion.estado', 'RECHAZADA');
         $this->assertDatabaseHas('produccion', ['estado' => 'RECHAZADA', 'fecha_completada' => null]);
+        $this->postJson('/api/producciones', $this->datos(), $this->clave())->assertStatus(409)
+            ->assertJsonPath('produccion.estado', 'RECHAZADA');
     }
 
     public function test_respuesta_perdida_se_concilia_con_mismo_id_de_operacion(): void
@@ -181,5 +184,79 @@ class ProduccionApiTest extends TestCase
         $this->postJson('/api/producciones', $this->datos())->assertStatus(422)
             ->assertJsonPath('error.code', 'CLAVE_IDEMPOTENTE_INVALIDA');
         $this->assertDatabaseCount('produccion', 0);
+    }
+
+    public function test_rechazo_sin_id_coincidente_no_se_acepta_como_definitivo(): void
+    {
+        $operacion = null;
+        $consultas = 0;
+        $aplicaciones = 0;
+        $this->simular(function ($request) use (&$operacion, &$consultas, &$aplicaciones) {
+            if ($request->method() === 'POST') {
+                $aplicaciones++;
+                $operacion = $request['operacion_id'];
+                return Http::response([
+                    'operacion_id' => 'operacion-ajena',
+                    'error' => ['code' => 'STOCK_INSUFICIENTE'],
+                ], 409);
+            }
+            $consultas++;
+            return $consultas === 1
+                ? Http::response([], 503)
+                : Http::response(['operacion_id' => $operacion, 'estado' => 'APLICADA']);
+        });
+
+        $this->postJson('/api/producciones', $this->datos(), $this->clave())->assertStatus(202)
+            ->assertJsonPath('produccion.estado', 'EN_PROCESO');
+        $this->postJson('/api/producciones', $this->datos(), $this->clave())->assertCreated()
+            ->assertJsonPath('produccion.estado', 'COMPLETADA');
+        $this->assertSame(1, $aplicaciones);
+        $this->assertDatabaseCount('produccion', 1);
+    }
+
+    public function test_conciliador_recupera_solicitud_sin_reenvio_del_navegador(): void
+    {
+        $operacion = null;
+        $consultas = 0;
+        $aplicaciones = 0;
+        $this->simular(function ($request) use (&$operacion, &$consultas, &$aplicaciones) {
+            if ($request->method() === 'POST') {
+                $aplicaciones++;
+                $operacion = $request['operacion_id'];
+                throw new ConnectionException('Respuesta perdida.');
+            }
+            $consultas++;
+            return $consultas === 1
+                ? Http::response([], 503)
+                : Http::response(['operacion_id' => $operacion, 'estado' => 'APLICADA']);
+        });
+
+        $this->postJson('/api/producciones', $this->datos(), $this->clave())->assertStatus(202);
+        $this->artisan('produccion:conciliar')->assertSuccessful();
+        $this->assertDatabaseHas('produccion', ['estado' => 'COMPLETADA', 'operacion_id' => $operacion]);
+        $this->assertSame(1, $aplicaciones);
+        $this->assertDatabaseCount('produccion', 1);
+    }
+
+    public function test_caida_de_security_o_catalog_no_crea_produccion(): void
+    {
+        Http::swap(new Factory());
+        Http::preventStrayRequests();
+        Http::fake(['*/api/internal/introspect' => Http::response([], 503)]);
+        $this->postJson('/api/producciones', $this->datos(), $this->clave())->assertStatus(503);
+
+        Http::swap(new Factory());
+        Http::preventStrayRequests();
+        Http::fake(function ($request) {
+            if (str_contains($request->url(), '/api/internal/introspect')) {
+                return Http::response(['usuario' => [
+                    'id_usuario' => 7, 'activo' => true, 'permisos' => ['produccion.crear'],
+                ]]);
+            }
+            return Http::response([], 503);
+        });
+        $this->postJson('/api/producciones', $this->datos(), $this->clave())->assertStatus(503);
+        $this->assertDatabaseCount('produccion', 0);
+        $this->assertDatabaseCount('produccion_idempotencia', 0);
     }
 }
