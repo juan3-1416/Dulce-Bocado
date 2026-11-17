@@ -2,13 +2,13 @@
 
 **Propósito:** reunir el alcance, la arquitectura, las reglas de integración y la ruta de trabajo para completar el sistema web académico de la pastelería simulada Dulce Bocado.
 
-**Estado de referencia (11 de noviembre de 2026):** Sprint 1 cerrado según su acta; Sprint 2 documentado y pendiente según esa misma acta. Los sprints 3 y 4 están definidos en la documentación Scrum, pero su ejecución no queda acreditada por las fuentes revisadas. Antes de iniciar cada tarea, comprobar el estado real del repositorio y del tablero.
+**Estado verificado (16 de noviembre de 2026):** Sprint 1 y Sprint 2 cerrados y documentados. Sprint 3 está en desarrollo según `Docs/SPRINT_3_PLAN_DESARROLLO_Y_PRUEBAS.md`: T302 y T308 terminadas; T304, T306, T310, T311, T313 y T314 en curso; otras seis tareas por hacer. El cierre formal es 2 de 14 tareas (10 de 70 puntos estimados, 14 %). El aporte de T313 ya enruta Production por Gateway y ejecuta su conciliador local, pero Inventory aún no está publicado en `dev-jp`; los permisos efectivos y las pruebas integradas siguen pendientes. Este estado prevalece sobre fechas y secuencias históricas de las secciones siguientes.
 
 ## 1. Procedencia y uso autónomo
 
 Esta guía incorpora el contenido necesario para desarrollar el proyecto sin consultar otros archivos. Se elaboró a partir de la documentación Scrum oficial, del cierre de Sprint 1 y plan de Sprint 2, y del contraste con el código disponible al redactarla. Las fuentes sirven para trazabilidad histórica; **no son dependencias de lectura para el agente**. Cuando un detalle técnico no esté fijado aquí, verificar la implementación actual y registrar la decisión antes de codificar.
 
-Las primeras secciones del documento Scrum describen una distribución inicial de servicios y sprints distinta. Sus secciones posteriores **5.2–5.4** detallan el plan actualizado: Sprint 2 incorpora Customer, Catalog, Orders y Sales; Catalog usa MySQL y Sales usa PostgreSQL. Esta guía sigue ese plan detallado, coherente con el acta de Sprint 1. **La arquitectura de microservicios es la única referencia técnica para implementar el proyecto.** Cualquier descripción anterior del repositorio que difiera de ella se considera desactualizada para este trabajo.
+Las primeras secciones del documento Scrum describen una distribución inicial de servicios y sprints distinta. Sus secciones posteriores **5.2–5.4** detallan la migración iniciada en Sprint 2: Customer, Catalog, Orders y Sales; Catalog usa MySQL y Sales usa PostgreSQL. El plan vigente de Sprint 3 acota este incremento a Inventory y Production (HU16–HU19). El alcance más amplio de pagos, reportes, compras o ventas con descuento de stock permanece como hoja de ruta y no debe confundirse con tareas cerradas del Sprint 3. **La arquitectura de microservicios es la referencia técnica para nuevas capacidades**; el monolito conserva temporalmente pantallas y rutas de otros flujos.
 
 ## 2. Objetivo y alcance
 
@@ -25,7 +25,7 @@ El alcance funcional oficial comprende **HU1–HU23**:
 | Operación | HU16–HU19 | Producción, almacenes/existencias, ingresos y egresos |
 | Soporte y análisis | HU20–HU23 | Visitas, temas, dashboard y reportes PDF por correo |
 
-Los ajustes de inventario, proveedores/compras y consumo/costo/desperdicio constan en el alcance técnico del Sprint 3 y en el mapeo de casos de uso, **sin crear nuevas HU/R**. El sistema contempla integración con pasarela de pago y servidor de correo según sus contratos; las credenciales y proveedores concretos deben configurarse al implementar.
+Los ajustes de inventario, proveedores/compras y consumo/costo/desperdicio aparecen en una planificación técnica anterior, **sin crear nuevas HU/R**, pero no figuran en el backlog vigente T301–T314. El sistema contempla una futura pasarela de pago y servidor de correo; sus proveedores y credenciales concretos se definirán en el incremento correspondiente.
 
 Límites prácticos: recibo interno no equivale a facturación fiscal; pago por internet no exige una tienda pública completa. Evitar ampliar el proyecto con funciones ajenas a las 23 HU y el backlog técnico aprobado.
 
@@ -45,7 +45,7 @@ Usuario → React/Vite/Tailwind → Nginx API Gateway → servicios Laravel REST
                                                 └→ Report → APIs propietarias (sin BD de negocio)
 ```
 
-Stack: **React + JavaScript + Vite + Tailwind CSS**; **Laravel/PHP** para APIs REST; **Nginx** como Gateway; **PostgreSQL y MySQL**; **Docker Compose**; **Git/GitHub**; Jira para seguimiento Scrum. Cada servicio mantiene su esquema, migraciones, reglas y transacciones locales. El backend Laravel legado presente en Sprint 1 no debe confundirse con un servicio propietario del diseño final.
+Stack: **React + JavaScript + Vite + Tailwind CSS**; **Laravel/PHP** para APIs REST; **Nginx** como Gateway; **PostgreSQL y MySQL**; **Docker Compose**; **Git/GitHub**; Jira para seguimiento Scrum. Un microservicio es una aplicación desplegable con API, reglas y persistencia propias de un dominio. En este proyecto, Sales conserva ventas, Catalog conserva productos y recetas, Inventory conservará saldos y movimientos y Production registra elaboraciones. La comunicación entre ellos es HTTP/JSON; un servicio no lee ni escribe tablas de otro. El backend Laravel monolítico sigue presente para funciones aún no migradas, pero no es dueño de los datos de los microservicios.
 
 | Servicio | Propiedad y base | Introducción |
 |---|---|---|
@@ -53,16 +53,16 @@ Stack: **React + JavaScript + Vite + Tailwind CSS**; **Laravel/PHP** para APIs R
 | `customer-service` | Clientes; `dulce_customers` PostgreSQL | S2 |
 | `catalog-service` | Categorías, productos, presentaciones, materias primas maestras y recetas; `dulce_catalog` MySQL | S2 |
 | `order-service` | Pedidos, detalle, estados, entrega; `dulce_orders` PostgreSQL | S2 |
-| `sales-service` | Ventas, detalle, totales, anulación; `dulce_sales` PostgreSQL | S2; stock en S3 |
-| `payment-service` | Pagos, saldos, pago en línea y recibos; `dulce_payments` PostgreSQL | S3 |
-| `inventory-service` | Almacenes, existencias, movimientos, ajustes, proveedores/compras; `dulce_inventory` PostgreSQL | S3 |
-| `production-service` | Producción y trazabilidad de consumo/costo/desperdicio; `dulce_production` PostgreSQL | S3 |
+| `sales-service` | Ventas, detalle, totales, anulación; `dulce_sales` PostgreSQL | S2; descuento de stock fuera del incremento S3 vigente |
+| `payment-service` | Pagos y recibos; servicio previsto, aún no implementado | Hoja de ruta posterior al incremento vigente |
+| `inventory-service` | Almacenes, existencias y movimientos; PostgreSQL propia propuesta | S3, pendiente de publicación e integración |
+| `production-service` | Solicitudes y resultados de elaboración; `dulce_production` PostgreSQL | S3, API y conciliación local implementadas; integración pendiente |
 | `support-service` | Contadores por página; `dulce_support` PostgreSQL | S4 |
 | `report-service` | Dashboard, reportes, PDF y correo; sin base de negocio | S4 |
 
 ### Reglas obligatorias de comunicación
 
-1. React consume **solo el Gateway** mediante `VITE_API_URL` (en desarrollo, `http://localhost:8080`). No usar puertos internos en el frontend.
+1. Las **vistas migradas** de React consumen el Gateway mediante `VITE_API_URL` (en desarrollo, `http://localhost:8080`) y Bearer. Algunas vistas legadas siguen usando `/api` relativo y el proxy del monolito mientras esperan su migración; no cambiar el proxy global ni usar puertos internos de servicios en las vistas nuevas.
 2. Los servicios se llaman mediante **REST/HTTP con JSON** y contratos explícitos. El Gateway enruta las rutas públicas; en Docker, las llamadas internas usan los nombres de servicio de la red y el mecanismo de autenticación acordado.
 3. Cada servicio accede solo a **su propia base**. Guardar IDs externos y snapshots necesarios; nunca FK ni SQL hacia tablas de otro servicio.
 4. Validar referencias externas mediante la API propietaria antes de confirmar. Si una dependencia falla, responder con error controlado y no confirmar una operación incompleta.
@@ -76,21 +76,37 @@ Stack: **React + JavaScript + Vite + Tailwind CSS**; **Laravel/PHP** para APIs R
 | Orders → Customer | Existencia y estado del cliente |
 | Orders → Catalog | Presentación, precio vigente y personalización |
 | Sales → Customer/Catalog | Cliente opcional; presentación y precio previo al snapshot |
-| Sales → Inventory | Validar y egresar stock de Mostrador antes de confirmar venta; integración S3 |
+| Sales → Inventory | Integración futura para validar y egresar stock de Mostrador; fuera de T301–T314 |
 | Payment → Sales/Orders | Total, estado y saldo de la operación pagada |
 | Production → Catalog/Inventory | Receta; disponibilidad y movimientos de materias primas y producto terminado |
 | Report → Sales/Orders/Production/Inventory | Agregación para dashboard y reportes, siempre por API |
 
-Las rutas públicas ya existentes de Seguridad incluyen `/api/auth/*`, `/api/usuarios*`, `/api/roles*`, `/api/permisos*` y `/api/asignaciones*`. Sprint 2 agrega `/api/clientes*`, `/api/categorias*`, `/api/productos*`, `/api/presentaciones*`, `/api/materias-primas*`, `/api/recetas*`, `/api/pedidos*` y `/api/ventas*`. Los contratos preliminares de S3/S4 deben cerrarse con métodos, payloads, permisos y errores antes de conectar interfaces. Actualizar Nginx al agregar cada servicio y verificar el enrutamiento desde React.
+Las rutas públicas ya existentes de Seguridad incluyen `/api/auth/*`, `/api/usuarios*`, `/api/roles*`, `/api/permisos*` y `/api/asignaciones*`. Sprint 2 agregó `/api/clientes*`, `/api/categorias*`, `/api/productos*`, `/api/presentaciones*`, `/api/materias-primas*`, `/api/recetas*`, `/api/pedidos*` y `/api/ventas*`. Sprint 3 ya agregó `/api/producciones` y `/api/producciones/{id}` a Gateway; las rutas de Inventory siguen propuestas en su plan hasta que exista su servicio. Confirmar el contrato y el permiso efectivo antes de marcar cualquier flujo como integrado.
+
+### Reutilización de vistas y separación de rutas
+
+La migración reutiliza la **estructura visual** y los componentes React del monolito cuando corresponden a la misma historia. Cambia el adaptador HTTP, el permiso y el contrato de datos para que la vista activa consulte al servicio propietario por Gateway. Reutilizar una vista no traslada las tablas ni las reglas de negocio del monolito al microservicio. La verificación del stock, el cálculo definitivo y la escritura ocurren en Inventory o Production según su propiedad.
+
+| Flujo de React activo | Ruta pública y propietario | Situación actual |
+|---|---|---|
+| Ventas `/ventas` | `/api/ventas*` → Sales | Migrado en S2; las llamadas de Ventas usan Gateway/Bearer. |
+| Almacenes `/almacenes` y existencias | `/api/almacenes`, `/api/existencias` → Inventory propuesto | Vistas reutilizadas con `inventarioConsultaService.js`; falta API real. |
+| Ingresos, egresos y traslados `/inventario/*` | `/api/ingresos`, `/api/egresos`, `/api/traslados`, `/api/movimientos` → Inventory propuesto | Formulario/historial nuevos a partir del flujo legado; faltan API y permisos efectivos. |
+| Producción `/produccion` y `/produccion/crear` | `/api/producciones*` → Production | Lista y formulario activos usan `produccionGatewayService.js`; Gateway ya enruta Production, pero falta Inventory real para completar elaboraciones. |
+| Pagos, reportes y otras pantallas aún legadas | `/api/*` relativo → backend monolítico cuando no haya una ruta específica en Gateway | Su migración se decide en el sprint correspondiente; no presentarlas como microservicios activos. |
+
+Nginx asigna primero las rutas públicas explícitas al servicio propietario. La ruta general `/api/` queda para el monolito temporalmente; por eso un endpoint nuevo debe añadirse expresamente antes de usarlo en React. En el código actual, `/api/producciones` y `/api/producciones/*` apuntan a Production; `/api/internal/introspect` devuelve `404` desde Gateway. El Gateway elimina `X-Internal-Service-Key` y `X-Actor-User-Id` enviados por un cliente hacia Production, conserva Bearer e `Idempotency-Key` y deja la autorización final a Laravel/Security. Las rutas antiguas de crear/detallar ingresos y egresos redirigen a su nueva pantalla; `/produccion/consumo-desperdicio` redirige al listado y no forma parte del flujo nuevo. No reutilizar nombres de ruta del monolito con payloads incompatibles ni redirigir globalmente el proxy de Vite.
+
+**Observación abierta de rutas:** el Gateway todavía no tiene reglas para `/api/almacenes`, `/api/existencias`, `/api/movimientos`, `/api/ingresos`, `/api/egresos` ni `/api/traslados`. Hoy esas URL llegan al fallback del monolito, aunque las vistas nuevas preparan solicitudes para Inventory. Una compilación o una respuesta HTTP de esas URL no valida el microservicio nuevo. No ejecutar escrituras desde las vistas de Inventory hasta que T313 publique rutas explícitas al servicio real, verifique método/cuerpo/Bearer/`Idempotency-Key` y descarte encabezados internos; entonces comprobar que ninguna llamada de Sprint 3 termina en el monolito. La ruta `/api/produccion` en singular pertenece al legado; la nueva API usa `/api/producciones` en plural, con coincidencia exacta y prefijo separado en Nginx.
 
 ## 4. Reglas de negocio transversales
 
 - **Históricos:** guardar en detalle de pedido/venta `presentacion_id`, nombre, precio unitario, cantidad y subtotal como snapshot. Cambios posteriores del catálogo no alteran operaciones registradas.
 - **Pedidos:** cliente, presentaciones, fecha/hora de entrega, observaciones y personalización opcional; transiciones de estado válidas y entrega registrada. El pedido no reserva stock automáticamente. La entrega exige saldo pagado y disponibilidad suficiente según la regla final de Inventario.
-- **Ventas:** uno o varios ítems, cliente registrado u ocasional, total calculado, responsable y anulación controlada. En S2 la venta base conserva total/snapshot; en S3 se completa validación y descuento de Mostrador. No considerar HU10 integralmente cerrada antes de esa integración.
+- **Ventas:** uno o varios ítems, cliente registrado u ocasional, total calculado, responsable y anulación controlada. La venta base de S2 conserva total/snapshot. La validación y descuento de Mostrador requieren una integración futura con Inventory; no atribuirla al incremento S3 vigente.
 - **Pagos:** montos positivos, uno o varios abonos, acumulado no mayor que el total, saldo correcto; pago por internet con estados `PENDIENTE`, `APROBADO`, `RECHAZADO`, referencia y respuesta del proveedor. Recibos internos emitibles y consultables.
 - **Inventario:** almacenes de Materias Primas, Producción y Mostrador; stock nunca negativo; ingresos, egresos y ajustes con usuario, fecha y motivo. Catalog es dueño de la ficha del artículo, Inventory de su existencia. Las pérdidas se registran con trazabilidad.
-- **Producción:** consultar receta vigente de Catalog, calcular requerimientos, validar insumos en Inventory, registrar consumo y unidades buenas; solo estas incrementan terminado. Registrar costo/desperdicio conforme al diseño S3.
+- **Producción:** consultar receta vigente de Catalog, calcular requerimientos exactos y solicitar a Inventory el consumo y el ingreso atómico de unidades terminadas. Production registra estado y snapshot; costo/desperdicio no forman parte del contrato actual.
 - **Soporte:** contador por ruta; al menos tres temas en React, persistidos localmente si se desea; dashboard con datos de APIs; al menos tres reportes parametrizados (ventas, pedidos, inventario), PDF con filtros y envío a uno o varios correos válidos.
 
 ## 5. Ruta de ejecución y estado
@@ -98,8 +114,8 @@ Las rutas públicas ya existentes de Seguridad incluyen `/api/auth/*`, `/api/usu
 | Sprint | Entrega definida | Estado sustentado |
 |---|---|---|
 | 1 | Infraestructura, Gateway, Seguridad HU1–HU6, pruebas PS1-01 a PS1-20 | Cerrado según acta; código de Security/Gateway presente |
-| 2 | HU7–HU9, HU14–HU15 y base HU10: Customer, Catalog, Orders, Sales, React y Gateway | Planificado en acta; verificar avance antes de empezar |
-| 3 | HU11–HU13, HU16–HU19, alcance técnico de inventario/compras/producción e integración Sales→Inventory | Plan detallado, sin cierre verificado |
+| 2 | HU7–HU9, HU14–HU15 y base HU10: Customer, Catalog, Orders, Sales, React y Gateway | Cerrado y documentado; la integración de stock queda fuera del cierre S2 |
+| 3 | Incremento vigente HU16–HU19: Inventory y Production | En curso; 2 de 14 tareas terminadas, integración y pruebas pendientes |
 | 4 | HU20–HU23, Support, Report, temas, integración, pruebas, Docker y evidencias | Plan detallado, sin cierre verificado |
 
 ### Sprint 2: secuencia concreta
@@ -108,15 +124,16 @@ Las rutas públicas ya existentes de Seguridad incluyen `/api/auth/*`, `/api/usu
 2. T204–T208: Catalog en MySQL, productos/presentaciones, materias primas y recetas, con interfaz.
 3. T209–T213: Orders; validar Customer y Catalog por REST; snapshots, estados y entrega.
 4. T214–T216: Sales base; total, snapshots, anulación e interfaz.
-5. T217–T218: Gateway, integración, pruebas PS2-01 a PS2-20 y documentación. Mantener explícita la deuda de stock para S3.
+5. T217–T218: Gateway, integración, pruebas PS2-01 a PS2-20 y documentación. El stock quedó como integración futura fuera del cierre de S2.
 
-### Sprint 3: orden de dependencia
+### Sprint 3: orden de dependencia vigente
 
-1. Fijar contratos de Inventory para existencias, movimientos y egresos idempotentes; crear sus tablas y APIs propietarias.
-2. Completar Sales→Inventory con validación/descuento real de Mostrador y rechazo de stock insuficiente.
-3. Payment consulta Sales/Orders por REST; implementar pagos, saldo, QR/pasarela y recibo.
-4. Production consulta Catalog e Inventory; implementar producción, consumo, entradas de unidades buenas y desperdicio.
-5. Integrar compras/proveedores y ajustes definidos en backlog técnico, interfaces, rutas Gateway y pruebas T301–T318.
+1. T301–T303, T305, T307 y T309: Inventory debe publicar su base, almacenes, existencias, ingresos, egresos y traslado atómico, con contrato compartido.
+2. T302 y T308 ya completadas: Production tiene base propia y adaptador de receta de Catalog. T310 implementa la solicitud, snapshot, cálculo decimal e idempotencia; requiere Inventory real para cerrarse.
+3. T304, T306 y T311: vistas React migradas a adaptadores de Gateway/Bearer; su compilación no demuestra persistencia ni movimientos reales.
+4. T313: la ruta pública y el planificador de Production están preparados; faltan rutas de Inventory y permisos efectivos de Security. T312 y T314 deben verificar stock, fallos, reintentos, persistencia y el recorrido completo antes del cierre.
+
+Pagos, Sales→Inventory, proveedores/compras y ajustes aparecen en la hoja de ruta histórica, pero **no son tareas del backlog vigente T301–T314**. No agregarlos a este incremento sin modificar expresamente el plan compartido.
 
 ### Sprint 4: cierre
 
@@ -139,7 +156,7 @@ docker compose -f docker-compose.yml -f docker-compose.sprint1.yml up -d
 docker compose -f docker-compose.yml -f docker-compose.sprint1.yml ps
 ```
 
-El Gateway de S1 se publica en `localhost:8080`, frontend en `localhost:5173` y Security en `localhost:8001` para diagnóstico local; React usa solo `VITE_API_URL=http://localhost:8080`. El Compose final para S2–S4 deberá ampliarse de forma incremental y verificarse en cada sprint. La primera tarea planificada en el acta es **T201: crear `customer-service`, su PostgreSQL y sus rutas base**.
+El Gateway se publica en `localhost:8080`, frontend en `localhost:5173` y Security en `localhost:8001` para diagnóstico local. Las vistas migradas usan `VITE_API_URL=http://localhost:8080`; algunas vistas legadas aún usan rutas relativas del monolito. Para Sprint 3, combinar los overlays de los servicios requeridos con `docker-compose.sprint3.production.yml` y, cuando se publique, el overlay de Inventory; validar exactamente esa combinación con `docker compose config --services` antes de levantarla. El overlay de Production incluye PostgreSQL, API y `production-scheduler`. No ejecutar migraciones o suites no aisladas sobre bases de desarrollo.
 
 ## 9. Instrucciones de ejecución para el agente
 
@@ -203,7 +220,7 @@ Antes de reutilizar Security en otro Laravel, verificar **en código** cómo val
 
 ### Sprint 3 y 4: contratos que deben cerrarse
 
-Para Sprint 3 y 4 se adoptan las rutas preliminares indicadas más abajo y las reglas operativas de la sección 17. Cada ruta debe especificar payload y respuesta en su contrato de código antes de conectar el frontend:
+Las secciones 10–18 conservan criterios de la hoja de ruta amplia. Para ejecutar Sprint 3 prevalecen su plan T301–T314 y los contratos comprobados en código; los puntos de pagos, compras, ajustes y Sales→Inventory que aparecen abajo no se consideran trabajo vigente de este incremento. Cada ruta futura debe especificar payload y respuesta antes de conectar el frontend:
 
 - Inventory: consulta de existencias por almacén/tipo/artículo; ingreso, egreso y ajuste con ID de operación único; respuesta con saldo actualizado; rechazo de stock negativo. El mismo ID no puede descontar dos veces.
 - Payment: consulta del total de venta/pedido, pagos existentes y saldo; registro de abono; inicio/confirmación/rechazo de pago externo; recibo asociado a pago confirmado. Un callback repetido no puede duplicar abonos.
@@ -248,7 +265,7 @@ Report recibe filtros y permiso; consulta por REST a los servicios propietarios,
 
 **Sprint 2:** comprobar las veinte pruebas PS2-01 a PS2-20 del acta: altas y estados de cliente, persistencia MySQL, rechazo de precios/recetas inválidos, pedido válido y referencias inválidas, precio histórico, estados/entrega, venta base, dependencia caída, Gateway, permisos y persistencia. La venta base no acredita por sí sola descuento real de stock.
 
-**Sprint 3:** además del plan de pruebas oficial, comprobar saldo cero/positivo, sobrepago rechazado, pasarela aprobada/rechazada/pendiente, callback duplicado, recibo, stock insuficiente, concurrencia de egresos, ajustes con motivo, receta insuficiente, solo unidades buenas ingresadas, y Sales→Inventory sin doble descuento.
+**Sprint 3 vigente:** ejecutar PS3-01–PS3-19 de `Docs/SPRINT_3_PLAN_DESARROLLO_Y_PRUEBAS.md`: saldos, ingresos, egresos y traslados atómicos; receta válida/inválida, producción con stock suficiente/insuficiente, permisos, reintentos, concurrencia, Gateway y persistencia. Sobrepagos, pasarela, recibos, ajustes y Sales→Inventory pertenecen a una planificación posterior.
 
 **Sprint 4:** comprobar conteo por ruta y concurrencia, persistencia de tres temas, dashboard desde APIs, tres reportes con filtros reflejados en PDF, correo válido/incorrecto y fallido, permisos, regresión de venta y pedido completos, reinicio con persistencia y Compose integral. Guardar evidencia de respuestas HTTP y pantallas clave.
 
@@ -338,7 +355,7 @@ Las **HU1–HU23** corresponden a **R1–R23** por número. Los criterios siguie
 - Aceptación: solo transiciones de estado permitidas; registrar entrega cuando corresponda.
 - Implementación: definir tabla de transiciones antes de programar, rechazar transiciones inválidas y duplicación de entrega. Al integrar S3, comprobar saldo pagado y disponibilidad en Mostrador antes de entregar.
 
-### Pagos, inventario y producción — Sprint 3
+### Pagos, inventario y producción — historias de la hoja de ruta general
 
 **HU11 / R11 — Pagos (`payment-service`).** Como administrador o vendedor, quiero registrar pagos de una venta y consultar saldo para controlar importes pendientes.
 
@@ -399,7 +416,7 @@ Las **HU1–HU23** corresponden a **R1–R23** por número. Los criterios siguie
 
 ### Alcance técnico adicional sin nueva historia
 
-En Sprint 3 también se prevén ajustes de inventario, proveedores y compras, y registro de consumo/costo/desperdicio de producción. Su inclusión procede del backlog técnico y mapeo de casos de uso; no numerar HU24 ni crear requisitos R24. Definir sus contratos y pruebas dentro de Inventory/Production respetando las reglas de stock, trazabilidad y propiedad de datos ya descritas.
+La hoja de ruta general prevé ajustes de inventario, proveedores y compras, y registro de consumo/costo/desperdicio. No aparecen en T301–T314 y requieren planificación posterior antes de implementarse; no numerar HU24 ni crear R24 sin aprobación del backlog. Sus futuros contratos deberán respetar la propiedad de datos y la trazabilidad ya definidas.
 
 ## 17. Decisiones de implementación para evitar ambigüedades
 
@@ -431,7 +448,7 @@ Los nombres de estado siguientes son la convención operativa propuesta. Si las 
 | Pedido | `REGISTRADO → EN_PREPARACION → LISTO → ENTREGADO`; `REGISTRADO/EN_PREPARACION → CANCELADO` | Entregar antes de `LISTO`, cancelar después de entregar o repetir entrega con otro ID |
 | Venta | `BORRADOR → PENDIENTE_STOCK → CONFIRMADA`; `BORRADOR/PENDIENTE_STOCK → CANCELADA`; `CONFIRMADA → ANULADA` con reversión documentada | Confirmar sin egreso de stock en S3, o anular sin tratar stock/pagos relacionados |
 | Pago internet | `PENDIENTE → APROBADO` o `PENDIENTE → RECHAZADO`; estados finales inmutables salvo corrección auditada | Acreditar pendiente/rechazado o duplicar callback |
-| Producción | `PLANIFICADA → EN_PROCESO → COMPLETADA`; cancelación solo antes de consumos irreversibles o con compensación auditada | Completar sin receta, insumos o movimientos confirmados |
+| Producción en el incremento S3 actual | `EN_PROCESO → COMPLETADA` o `EN_PROCESO → RECHAZADA` | Completar sin aplicación confirmada de Inventory; la planificación/cancelación legada no pertenece a la API actual |
 | Recibo | `EMITIDO → ANULADO`; reimpresión registra evento, no crea pago | Emitir para pago inexistente/no confirmado |
 
 El pedido puede saltar a `LISTO` desde `REGISTRADO` **solo si se define y prueba una regla explícita para productos disponibles sin elaboración**. Hasta entonces, usar la secuencia normal. La entrega exige saldo cero confirmado por Payment y existencias verificadas en Mostrador por Inventory; una respuesta de dependencia desconocida no autoriza entregar. Las reglas de cancelación y devolución de pagos deben cerrarse como parte del contrato de anulación antes de habilitar el botón en React.
@@ -446,7 +463,7 @@ El pedido puede saltar a `LISTO` desde `REGISTRADO` **solo si se define y prueba
 
 ### 17.5 Producción e inventario sin duplicaciones
 
-Production toma snapshot de receta y cantidades, consulta disponibilidad, y registra estado antes de solicitar movimientos. Cada consumo y cada ingreso de unidades buenas lleva `operacion_id` propio y referencia a producción. Inventory es el único que cambia existencias. Si una llamada queda incierta, Production consulta por ID y reanuda; no repite con una clave distinta. El producto terminado ingresa únicamente por unidades buenas. Cualquier desperdicio queda como registro trazable y, si afecta stock, como movimiento de Inventory. No marcar `COMPLETADA` hasta confirmar todos los movimientos requeridos.
+Production obtiene la receta vigente de Catalog, calcula insumos con decimales exactos y guarda una solicitud `EN_PROCESO` con snapshot e `operacion_id` estable antes de llamar a Inventory. Inventory debe descontar todos los insumos e ingresar las unidades terminadas en **una transacción local idempotente**; Production nunca cambia existencias. Una respuesta incierta se consulta/reintenta con el mismo ID desde la API y mediante `produccion:conciliar` ejecutado por `production-scheduler`. Solo una respuesta definitiva con `operacion_id` coincidente permite marcar `COMPLETADA` o `RECHAZADA`. El plan vigente no incluye un flujo separado de desperdicio o cancelación; cualquier ampliación requiere contrato y pruebas propios.
 
 ### 17.6 Pagos, saldo y recibos
 
@@ -456,13 +473,13 @@ El pago por internet guarda referencia única del proveedor y estado `PENDIENTE`
 
 ### 17.7 Rutas preliminares de Sprint 3 y 4
 
-Estas rutas aparecen en el plan detallado y deben respetarse al cerrar los contratos, salvo ajuste documentado antes de crear consumidores:
+La tabla siguiente conserva rutas de la hoja de ruta amplia; **no acredita su implementación**. Para el Sprint 3 vigente prevalece `Docs/SPRINT_3_PLAN_DESARROLLO_Y_PRUEBAS.md` y el código. Production implementa `GET/POST /api/producciones` y `GET /api/producciones/{id}`; **no** implementa `/completar`. Inventory propone `GET /api/almacenes`, `/api/existencias`, `/api/movimientos` y `POST /api/ingresos`, `/api/egresos`, `/api/traslados`, aún pendientes de su servicio real.
 
 | Servicio | Rutas base |
 |---|---|
 | Payment | `/api/pagos`, `/api/pagos/{id}`, `/api/pagos/{id}/anular`, `/api/pagos/resumen/{tipo}/{id}`, `/api/pagos-internet`, `/api/pagos-internet/{id}`, `/api/pagos-internet/{id}/confirmar`, `/api/recibos`, `/api/recibos/{id}`, `/api/recibos/{id}/anular` |
 | Inventory | `/api/almacenes`, `/api/existencias`, `/api/ingresos`, `/api/egresos`, `/api/ajustes`, `/api/proveedores`, `/api/compras`, `/api/stock/validar` |
-| Production | `/api/producciones`, `/api/producciones/{id}`, `/api/producciones/{id}/completar` |
+| Production | `/api/producciones`, `/api/producciones/{id}`; `/completar` es histórico y no existe en la API actual |
 | Support | `/api/visitas`, `/api/visitas/resumen` |
 | Report | `/api/dashboard/resumen`, `/api/reportes/ventas`, `/api/reportes/pedidos`, `/api/reportes/inventario`, `/api/reportes/produccion`, `/api/reportes/{tipo}/pdf`, `/api/reportes/{tipo}/enviar` |
 
