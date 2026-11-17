@@ -259,4 +259,56 @@ class ProduccionApiTest extends TestCase
         $this->assertDatabaseCount('produccion', 0);
         $this->assertDatabaseCount('produccion_idempotencia', 0);
     }
+
+    public function test_listar_y_consultar_producciones_con_permiso_y_filtros(): void
+    {
+        $this->simular(fn ($request) => Http::response([
+            'operacion_id' => $request['operacion_id'],
+            'estado' => 'APLICADA',
+        ]));
+
+        $res1 = $this->postJson('/api/producciones', $this->datos(), $this->clave())->assertCreated();
+        $id1 = $res1->json('produccion.id_produccion');
+
+        $this->getJson('/api/producciones')
+            ->assertOk()
+            ->assertJsonStructure([
+                'producciones' => [
+                    '*' => ['id_produccion', 'operacion_id', 'presentacion_id', 'estado'],
+                ],
+                'pagination' => ['page', 'last_page', 'total'],
+            ])
+            ->assertJsonPath('pagination.total', 1);
+
+        $this->getJson('/api/producciones?estado=COMPLETADA')
+            ->assertOk()
+            ->assertJsonPath('pagination.total', 1);
+
+        $this->getJson('/api/producciones?estado=RECHAZADA')
+            ->assertOk()
+            ->assertJsonPath('pagination.total', 0);
+
+        $this->getJson('/api/producciones/'.$id1)
+            ->assertOk()
+            ->assertJsonPath('produccion.id_produccion', $id1)
+            ->assertJsonPath('produccion.estado', 'COMPLETADA');
+
+        $this->getJson('/api/producciones/999999')
+            ->assertNotFound();
+    }
+
+    public function test_consulta_sin_permiso_produccion_ver_devuelve_403(): void
+    {
+        $this->simular(fn ($request) => Http::response([
+            'operacion_id' => $request['operacion_id'],
+            'estado' => 'APLICADA',
+        ]));
+        $res = $this->postJson('/api/producciones', $this->datos(), $this->clave())->assertCreated();
+        $id = $res->json('produccion.id_produccion');
+
+        $this->simular(fn () => Http::response([], 404), ['otro.permiso']);
+
+        $this->getJson('/api/producciones')->assertForbidden();
+        $this->getJson('/api/producciones/'.$id)->assertForbidden();
+    }
 }
