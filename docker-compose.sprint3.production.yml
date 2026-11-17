@@ -20,6 +20,7 @@ services:
     build:
       context: ./microservices/production-service
       dockerfile: Dockerfile
+    image: dulce-bocado-production-service:local
     restart: unless-stopped
     working_dir: /var/www/html
     env_file:
@@ -49,6 +50,35 @@ services:
       timeout: 5s
       retries: 10
       start_period: 20s
+    networks:
+      - dulce_bocado_net
+
+  production-scheduler:
+    image: dulce-bocado-production-service:local
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: ["php", "artisan", "schedule:work"]
+    env_file:
+      - ./microservices/production-service/.env
+    volumes:
+      - ./microservices/production-service:/var/www/html
+      - production_vendor:/var/www/html/vendor
+    environment:
+      APP_NAME: Dulce Bocado Production
+      APP_ENV: local
+      APP_DEBUG: "true"
+      DB_CONNECTION: pgsql
+      DB_HOST: production-db
+      DB_PORT: 5432
+      DB_DATABASE: dulce_production
+      DB_USERNAME: dulce_production_user
+      DB_PASSWORD: ${PRODUCTION_DB_PASSWORD:-dulce_production_local_only}
+      SESSION_DRIVER: file
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
+    depends_on:
+      production-service:
+        condition: service_healthy
     networks:
       - dulce_bocado_net
 
