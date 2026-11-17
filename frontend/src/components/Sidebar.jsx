@@ -166,12 +166,17 @@ const SECCIONES_MENU = [
       {
         nombre: 'Ingresos',
         ruta: '/inventario/ingresos',
-        permiso: 'inventario.gestionar_ingreso',
+        permiso: 'inventario.ingresar',
       },
       {
         nombre: 'Egresos',
         ruta: '/inventario/egresos',
-        permiso: 'inventario.gestionar_egreso',
+        permiso: 'inventario.egresar',
+      },
+      {
+        nombre: 'Traslados',
+        ruta: '/inventario/traslados',
+        permiso: 'inventario.trasladar',
       },
     ],
   },

@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\Catalogo\CatalogoRecetaException;
+use App\Services\Produccion\ProduccionException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -14,10 +15,18 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Las rutas públicas y sus permisos se incorporarán con T310.
+        // Los permisos de cada ruta se verifican contra Security.
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(fn (CatalogoRecetaException $e) => response()->json([
+            'error' => [
+                'code' => $e->codigo,
+                'message' => $e->getMessage(),
+                'details' => (object) [],
+            ],
+        ], $e->httpStatus));
+
+        $exceptions->render(fn (ProduccionException $e) => response()->json([
             'error' => [
                 'code' => $e->codigo,
                 'message' => $e->getMessage(),

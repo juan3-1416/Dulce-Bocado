@@ -1,4 +1,5 @@
 import {
+  Navigate,
   Route,
   Routes,
 } from 'react-router-dom'
@@ -35,12 +36,7 @@ import ProduccionForm from './pages/produccion/ProduccionForm'
 
 import AlmacenList from './pages/inventario/AlmacenList'
 import ExistenciaList from './pages/inventario/ExistenciaList'
-import IngresoList from './pages/inventario/IngresoList'
-import IngresoForm from './pages/inventario/IngresoForm'
-import IngresoDetail from './pages/inventario/IngresoDetail'
-import EgresoList from './pages/inventario/EgresoList'
-import EgresoForm from './pages/inventario/EgresoForm'
-import EgresoDetail from './pages/inventario/EgresoDetail'
+import MovimientoInventarioPage from './pages/inventario/MovimientoInventarioPage'
 import DashboardPage from './pages/dashboard/DashboardPage'
 import ReportesPage from './pages/reportes/ReportesPage'
 
@@ -324,21 +320,21 @@ function App() {
           <Route
             element={
               <ProtectedRoute
-                permiso="inventario.gestionar_ingreso"
+                permiso="inventario.ingresar"
               />
             }
           >
             <Route
               path="inventario/ingresos"
-              element={<IngresoList />}
+              element={<MovimientoInventarioPage key="ingreso" modo="INGRESO" />}
             />
             <Route
               path="inventario/ingresos/crear"
-              element={<IngresoForm />}
+              element={<Navigate to="/inventario/ingresos" replace />}
             />
             <Route
               path="inventario/ingresos/:id"
-              element={<IngresoDetail />}
+              element={<Navigate to="/inventario/ingresos" replace />}
             />
           </Route>
 
@@ -346,22 +342,26 @@ function App() {
           <Route
             element={
               <ProtectedRoute
-                permiso="inventario.gestionar_egreso"
+                permiso="inventario.egresar"
               />
             }
           >
             <Route
               path="inventario/egresos"
-              element={<EgresoList />}
+              element={<MovimientoInventarioPage key="egreso" modo="EGRESO" />}
             />
             <Route
               path="inventario/egresos/crear"
-              element={<EgresoForm />}
+              element={<Navigate to="/inventario/egresos" replace />}
             />
             <Route
               path="inventario/egresos/:id"
-              element={<EgresoDetail />}
+              element={<Navigate to="/inventario/egresos" replace />}
             />
+          </Route>
+
+          <Route element={<ProtectedRoute permiso="inventario.trasladar" />}>
+            <Route path="inventario/traslados" element={<MovimientoInventarioPage key="traslado" modo="TRASLADO" />} />
           </Route>
 
           {/* CU24 - CONSULTAR DASHBOARD */}

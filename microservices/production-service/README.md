@@ -4,7 +4,7 @@ Production conserva solicitudes y resultados de elaboración en su propia base P
 
 ## Estado actual
 
-T302 preparó el servicio, el modelo, la migración y su contenedor. T308 agregó el adaptador que consulta y valida la receta real de Catalog. Las rutas públicas, autorización, coordinación con Inventory e interfaz se incorporarán en T310–T311. Por ahora `/up` es la única ruta operativa de salud; no se debe considerar este servicio funcional para producir.
+T302 preparó el servicio, el modelo, la migración y su contenedor. T308 agregó el adaptador que consulta y valida la receta real de Catalog. T310 incorporó rutas públicas, autorización y coordinación idempotente con Inventory, verificadas con respuestas simuladas. La integración real con Inventory, Gateway y los permisos de Security sigue pendiente; no se debe presentar una producción de desarrollo como completada hasta comprobar ese circuito.
 
 ## Entorno local
 
@@ -14,6 +14,14 @@ Con el archivo Compose base y el overlay, iniciar `production-db` y `production-
 
 ## Datos y contratos previstos
 
-`produccion` guarda `operacion_id` único, referencia externa a presentación y receta, cantidad entera positiva, estado `EN_PROCESO|COMPLETADA|RECHAZADA`, snapshot JSON de insumos, actor y fechas de resultado. `produccion_idempotencia` vincula una clave y huella de solicitud con una producción y reserva campos para la respuesta definitiva. No hay claves foráneas entre servicios. La base exige cantidad y referencias positivas y un estado permitido. Los nombres de campos de las rutas HTTP y los códigos finales se consolidan en `Docs/SPRINT_3_PLAN_DESARROLLO_Y_PRUEBAS.md` antes de T310.
+`produccion` guarda `operacion_id` único, referencia externa a presentación y receta, cantidad entera positiva, estado `EN_PROCESO|COMPLETADA|RECHAZADA`, snapshot JSON de insumos, actor y fechas de resultado. `produccion_idempotencia` vincula una clave y huella de solicitud con una producción y conserva la respuesta definitiva. No hay claves foráneas entre servicios. La base exige cantidad y referencias positivas y un estado permitido. Los nombres de campos y códigos propuestos constan en `Docs/SPRINT_3_PLAN_DESARROLLO_Y_PRUEBAS.md`; deben cotejarse con Inventory antes de cerrar T310.
 
-El adaptador T308 usa `GET /api/presentaciones/{id}/receta` dentro de la red de servicios, con `X-Internal-Service-Key` y `X-Actor-User-Id`. Rechaza recetas y productos inactivos, ingredientes repetidos/inactivos, unidades desconocidas y cantidades fuera de la precisión de Catalog. Devuelve `cantidad_por_unidad` como decimal de tres posiciones, sin convertirlo a `float`; T310 multiplicará ese valor por unidades elaboradas con aritmética decimal exacta. Una presentación terminada se mide en `unidad` en este sprint, pendiente de revisión conjunta con Inventory.
+El adaptador T308 usa `GET /api/presentaciones/{id}/receta` dentro de la red de servicios, con `X-Internal-Service-Key` y `X-Actor-User-Id`. Rechaza recetas y productos inactivos, ingredientes repetidos/inactivos, unidades desconocidas y cantidades fuera de la precisión de Catalog. Devuelve `cantidad_por_unidad` como decimal de tres posiciones, sin convertirlo a `float`; T310 multiplica ese valor por unidades elaboradas con aritmética decimal exacta. Una presentación terminada se mide en `unidad` en este sprint, pendiente de revisión conjunta con Inventory.
+
+## API y conciliación en curso
+
+`GET /api/producciones` y `GET /api/producciones/{id}` requieren `produccion.ver`. `POST /api/producciones` requiere `produccion.crear`, `Idempotency-Key` de 16–128 caracteres y `{presentacion_id, cantidad, observaciones?}`. Security valida el token y el permiso. Production obtiene el consumo desde Catalog y guarda una solicitud `EN_PROCESO` con un `operacion_id` estable y snapshot antes de llamar a Inventory. No acepta ingredientes calculados por el cliente.
+
+Production envía a Inventory `POST /internal/producciones/aplicar` con el mismo `operacion_id`, las cantidades calculadas con BCMath y tipos de almacén, sin IDs locales fijos. `APLICADA` confirma `COMPLETADA`; `STOCK_INSUFICIENTE` deja `RECHAZADA`; una respuesta perdida provoca consulta a `GET /internal/producciones/{operacion_id}`. Si tampoco puede confirmarse, la API devuelve `202 EN_PROCESO`; un reintento público con la misma clave consulta y usa el mismo ID. La misma clave con otro contenido devuelve `409`. El contrato exacto requiere cotejo con Inventory antes de integrarlo.
+
+`php artisan test --compact` usa SQLite en memoria y la barrera de `beforeRefreshingDatabase()` impide migraciones de la base de desarrollo. Las pruebas de contrato simuladas no sustituyen las pruebas reales de stock, concurrencia y persistencia PostgreSQL del cierre del sprint.

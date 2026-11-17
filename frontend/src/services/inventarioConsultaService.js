@@ -2,7 +2,7 @@ import { ApiError, obtenerToken } from './authService'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 
-async function consultar(ruta, { filtros = {}, signal } = {}) {
+async function solicitar(ruta, { method = 'GET', filtros = {}, datos, clave, signal } = {}) {
   const query = new URLSearchParams()
   Object.entries(filtros).forEach(([clave, valor]) => {
     if (valor !== '' && valor !== null && valor !== undefined) {
@@ -16,11 +16,15 @@ async function consultar(ruta, { filtros = {}, signal } = {}) {
     response = await fetch(
       `${API_BASE}/api/${ruta}${query.size ? `?${query}` : ''}`,
       {
+        method,
         signal,
         headers: {
           Accept: 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(datos ? { 'Content-Type': 'application/json' } : {}),
+          ...(clave ? { 'Idempotency-Key': clave } : {}),
         },
+        ...(datos ? { body: JSON.stringify(datos) } : {}),
       },
     )
   } catch (error) {
@@ -47,7 +51,7 @@ async function consultar(ruta, { filtros = {}, signal } = {}) {
 }
 
 export async function listarAlmacenes({ signal } = {}) {
-  const data = await consultar('almacenes', { signal })
+  const data = await solicitar('almacenes', { signal })
   if (!Array.isArray(data?.almacenes) || !data.almacenes.every((almacen) =>
     almacen && typeof almacen === 'object' &&
     Number.isSafeInteger(almacen.id_almacen) && almacen.id_almacen > 0 &&
@@ -61,7 +65,7 @@ export async function listarAlmacenes({ signal } = {}) {
 }
 
 export async function listarExistencias(filtros = {}, { signal } = {}) {
-  const data = await consultar('existencias', { filtros, signal })
+  const data = await solicitar('existencias', { filtros, signal })
   if (!Array.isArray(data?.existencias) || !data.existencias.every((existencia) =>
     existencia && typeof existencia === 'object' &&
     Number.isSafeInteger(existencia.almacen_id) && existencia.almacen_id > 0 &&
@@ -78,3 +82,27 @@ export async function listarExistencias(filtros = {}, { signal } = {}) {
   }
   return data.existencias
 }
+
+export async function listarMovimientos(tipo, { signal } = {}) {
+  const data = await solicitar('movimientos', { filtros: { tipo }, signal })
+  if (!Array.isArray(data?.movimientos)) {
+    throw new ApiError('Inventario devolvió un historial de movimientos inválido.', 503)
+  }
+  return data.movimientos
+}
+
+export function generarClaveInventario() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `inventario-${crypto.randomUUID()}`
+  }
+  return `inventario-${Date.now()}-${Math.random().toString(36).slice(2, 14)}`
+}
+
+export const registrarIngreso = (datos, clave) =>
+  solicitar('ingresos', { method: 'POST', datos, clave })
+
+export const registrarEgreso = (datos, clave) =>
+  solicitar('egresos', { method: 'POST', datos, clave })
+
+export const registrarTraslado = (datos, clave) =>
+  solicitar('traslados', { method: 'POST', datos, clave })
