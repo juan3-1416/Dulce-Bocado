@@ -1,0 +1,27 @@
+# Complemento del docker-compose.yml principal de Dulce Bocado.
+# No elimina ni reemplaza los servicios OLTP existentes.
+services:
+  dw-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dulce_dw
+      POSTGRES_USER: dulce_dw
+      POSTGRES_PASSWORD: ${DW_POSTGRES_PASSWORD:?Debes definir DW_POSTGRES_PASSWORD en tu terminal}
+      TZ: America/La_Paz
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - dw_postgres_data:/var/lib/postgresql/data
+      - ./bi/sql/001_init_dw.sql:/docker-entrypoint-initdb.d/001_init_dw.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dulce_dw -d dulce_dw"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - dulce_bocado_net
+
+volumes:
+  dw_postgres_data:

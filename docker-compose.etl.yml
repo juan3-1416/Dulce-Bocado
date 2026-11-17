@@ -1,0 +1,13 @@
+# Complemento para ejecutar el ETL sin alterar los servicios OLTP.
+# Usar junto a docker-compose.yml y docker-compose.dw.yml.
+services:
+  bi-etl:
+    build:
+      context: ./bi/etl
+      dockerfile: Dockerfile
+    env_file:
+      - ./bi/etl/.env.etl.local
+    profiles: ["bi"]
+    networks:
+      - dulce_bocado_net
+    restart: "no"

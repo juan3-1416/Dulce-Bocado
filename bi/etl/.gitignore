@@ -1,0 +1,4 @@
+# Credenciales locales de los sistemas OLTP y del Data Warehouse.
+.env.etl.local
+__pycache__/
+.pytest_cache/

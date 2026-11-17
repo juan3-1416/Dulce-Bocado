@@ -1,0 +1,116 @@
+# Paso 4: laboratorios BI totalmente separados de las bases operativas.
+# Se combina SOLO con docker-compose.yml; no usar down -v ni --remove-orphans.
+services:
+  bi-demo-pg:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: demo_admin
+      POSTGRES_PASSWORD: bi_demo_admin_2026
+      POSTGRES_DB: postgres
+      TZ: America/La_Paz
+    volumes:
+      - bi_demo_pg_data:/var/lib/postgresql/data
+      - ./bi/demo/001_oltp_demo_postgres.sql:/docker-entrypoint-initdb.d/001_oltp_demo_postgres.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U demo_admin -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [dulce_bocado_net]
+
+  bi-demo-mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: dulce_catalog
+      MYSQL_USER: dulce_catalog_user
+      MYSQL_PASSWORD: bi_demo_catalog_2026
+      MYSQL_ROOT_PASSWORD: bi_demo_mysql_root_2026
+      TZ: America/La_Paz
+    volumes:
+      - bi_demo_mysql_data:/var/lib/mysql
+      - ./bi/demo/002_catalogo_demo_mysql.sql:/docker-entrypoint-initdb.d/002_catalogo_demo_mysql.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    networks: [dulce_bocado_net]
+
+  bi-demo-dw:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: dulce_dw
+      POSTGRES_USER: dulce_dw
+      POSTGRES_PASSWORD: bi_demo_dw_2026
+      TZ: America/La_Paz
+    ports:
+      - "127.0.0.1:5435:5432"
+    volumes:
+      - bi_demo_dw_data:/var/lib/postgresql/data
+      - ./bi/sql/001_init_dw.sql:/docker-entrypoint-initdb.d/001_init_dw.sql:ro
+      - ./bi/sql/003_staging.sql:/docker-entrypoint-initdb.d/003_staging.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dulce_dw -d dulce_dw"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [dulce_bocado_net]
+
+  bi-demo-seed:
+    image: dulce-bocado-bi-etl
+    profiles: ["bi"]
+    command: ["python", "/app/seed_demo.py"]
+    environment:
+      BI_DEMO_PG_HOST: bi-demo-pg
+      BI_DEMO_PG_USER: demo_admin
+      BI_DEMO_PG_PASSWORD: bi_demo_admin_2026
+      BI_DEMO_MYSQL_HOST: bi-demo-mysql
+      BI_DEMO_MYSQL_USER: dulce_catalog_user
+      BI_DEMO_MYSQL_PASSWORD: bi_demo_catalog_2026
+    volumes:
+      - ./bi/demo/seed_demo.py:/app/seed_demo.py:ro
+    restart: "no"
+    networks: [dulce_bocado_net]
+
+  bi-etl-demo:
+    image: dulce-bocado-bi-etl
+    profiles: ["bi"]
+    environment:
+      BI_SALES_HOST: bi-demo-pg
+      BI_SALES_PORT: 5432
+      BI_SALES_DB: dulce_sales
+      BI_SALES_USER: dulce_sales_user
+      BI_SALES_PASSWORD: bi_demo_sales_2026
+      BI_ORDERS_HOST: bi-demo-pg
+      BI_ORDERS_PORT: 5432
+      BI_ORDERS_DB: dulce_orders
+      BI_ORDERS_USER: dulce_orders_user
+      BI_ORDERS_PASSWORD: bi_demo_orders_2026
+      BI_CATALOG_HOST: bi-demo-mysql
+      BI_CATALOG_PORT: 3306
+      BI_CATALOG_DB: dulce_catalog
+      BI_CATALOG_USER: dulce_catalog_user
+      BI_CATALOG_PASSWORD: bi_demo_catalog_2026
+      BI_CUSTOMERS_HOST: bi-demo-pg
+      BI_CUSTOMERS_PORT: 5432
+      BI_CUSTOMERS_DB: dulce_customers
+      BI_CUSTOMERS_USER: dulce_customers_user
+      BI_CUSTOMERS_PASSWORD: bi_demo_customers_2026
+      BI_SECURITY_HOST: bi-demo-pg
+      BI_SECURITY_PORT: 5432
+      BI_SECURITY_DB: dulce_security
+      BI_SECURITY_USER: dulce_security_user
+      BI_SECURITY_PASSWORD: bi_demo_security_2026
+      BI_DW_HOST: bi-demo-dw
+      BI_DW_PORT: 5432
+      BI_DW_DB: dulce_dw
+      BI_DW_USER: dulce_dw
+      BI_DW_PASSWORD: bi_demo_dw_2026
+    restart: "no"
+    networks: [dulce_bocado_net]
+
+volumes:
+  bi_demo_pg_data:
+  bi_demo_mysql_data:
+  bi_demo_dw_data:
