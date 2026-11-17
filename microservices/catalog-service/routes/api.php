@@ -30,6 +30,8 @@ Route::put('/presentaciones/{presentacion}', [CatalogoController::class, 'actual
 
 Route::get('/materias-primas', [RecetaController::class, 'materiasPrimas'])
     ->middleware(AutorizarPermisoCatalogo::class.':recetas.ver');
+Route::get('/materias-primas/{materiaPrima}', [RecetaController::class, 'materiaPrima'])
+    ->middleware(AutorizarPermisoCatalogo::class.':recetas.ver,interno')->whereNumber('materiaPrima');
 Route::post('/materias-primas', [RecetaController::class, 'guardarMateriaPrima'])
     ->middleware(AutorizarPermisoCatalogo::class.':recetas.gestionar');
 Route::put('/materias-primas/{materiaPrima}', [RecetaController::class, 'actualizarMateriaPrima'])

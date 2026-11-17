@@ -23,6 +23,13 @@ class RecetaController extends Controller
         return response()->json(['materias_primas' => $query->get()]);
     }
 
+    public function materiaPrima(MateriaPrima $materiaPrima): JsonResponse
+    {
+        return response()->json([
+            'materia_prima' => $materiaPrima,
+        ]);
+    }
+
     public function guardarMateriaPrima(Request $request): JsonResponse
     {
         $datos = $this->validarMateriaPrima($request);

@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\Inventario\InventarioException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -13,9 +14,22 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Los permisos de cada ruta se verifican contra Security.
+        //
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->render(
+            fn (InventarioException $e) =>
+                response()->json([
+                    'error' => [
+                        'code' => $e->codigo,
+                        'message' => $e->getMessage(),
+                        'details' => empty($e->details)
+                            ? (object) []
+                            : $e->details,
+                    ],
+                ], $e->httpStatus)
+        );
+
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) =>
                 $request->is('api/*')
