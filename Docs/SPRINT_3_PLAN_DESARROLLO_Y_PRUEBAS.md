@@ -8,7 +8,7 @@
 
 **Estado de este archivo:** plan de trabajo compartido. Las tareas y pruebas no se consideran realizadas hasta registrar evidencia de su ejecución.
 
-**Avance verificado al 16-11-2026:** T302 y T308 terminadas y publicadas en `devFabian` (`6bc5997`). Las otras 12 tareas del backlog figuran por hacer en este archivo. La integración de Production con Inventory, las rutas públicas, la interfaz y las pruebas PS3 completas aún no están realizadas. El contrato de unidad para `PRESENTACION` está documentado para revisión conjunta antes de T310.
+**Avance verificado al 16-11-2026:** T302 y T308 terminadas y publicadas en `devFabian` (`6bc5997`); T304 está en curso. Las otras 11 tareas del backlog figuran por hacer en este archivo. La integración de Production con Inventory, las rutas públicas y las pruebas PS3 completas aún no están realizadas. El contrato de unidad para `PRESENTACION` está documentado para revisión conjunta antes de T310.
 
 **Referencia documental:** [documentación Scrum](Documentacion_Scrum_Dulce_Bocado_FINAL_REGENERADO.docx), apartados 3.1.3, 3.1.5 y 3.4.1–3.4.2; [avance y pruebas del Sprint 2](SPRINT_2_AVANCE_Y_PRUEBAS.md).
 
@@ -83,6 +83,10 @@ Estos contratos son la **propuesta ejecutable del Sprint 3** para ambos desarrol
 | Production | `GET /api/producciones` y `GET /api/producciones/{id}` | Listar y consultar producciones. | `produccion.ver` |
 | Production | `POST /api/producciones` | Solicitar producción. | `produccion.crear` |
 
+**Contrato de lectura propuesto para T303/T304 (pendiente de revisión con Inventory):** `GET /api/almacenes` responde `{ "almacenes": [{ "id_almacen": 1, "tipo": "MATERIAS_PRIMAS", "nombre": "Materias primas", "activo": true }] }`. Los tipos de almacén son `MATERIAS_PRIMAS`, `PRODUCCION` y `MOSTRADOR`; los IDs son datos, no constantes de interfaz. `GET /api/existencias?almacen_id=&tipo_articulo=&articulo_id=` responde `{ "existencias": [{ "almacen_id": 1, "tipo_articulo": "MATERIA_PRIMA", "articulo_id": 3, "cantidad": "2.000", "unidad": "g" }] }`. `cantidad` viaja como texto decimal de hasta tres posiciones; `PRESENTACION` usa `unidad`. El listado de saldos no necesita nombres duplicados de Catalog. La ausencia de fila equivale a saldo cero. T304 usa estas dos lecturas por Gateway/Bearer y conserva las vistas existentes; no crea almacenes ni traslada stock, operaciones fuera de T304. Si Inventory publica otro nombre o formato, ajustar este contrato y ambas partes antes de integrar.
+
+Las pantallas de Ingresos y Egresos todavía consumen `inventarioService.js` del monolito; T304 usa `inventarioConsultaService.js` para no cambiar sus flujos antes de T306. El permiso de lectura en la ruta y el menú ya se cambió a `inventario.ver`, que Security debe crear/asignar en T313. Hasta que Inventory y Gateway publiquen las rutas, la compilación no acredita una consulta real de existencias.
+
 **Contrato interno de Catalog:** Production consulta la receta de `presentacion_id` mediante el endpoint ya implementado y un adaptador que normaliza, como mínimo, `presentacion_id`, vigencia de presentación y receta, y `ingredientes: [{ materia_prima_id, cantidad_por_unidad, unidad }]`. Se rechazan recetas vacías, ingredientes inactivos, cantidades no positivas o unidades incompatibles. El mecanismo de autenticación interna real de Catalog se verificó antes de implementar el adaptador.
 
 **Contrato real comprobado en código el 16-11-2026:** `GET /api/presentaciones/{id}/receta` devuelve `{receta: {id_receta, presentacion_id, estado, presentacion: {presentacion_id, disponible, producto: {estado}}, detalles: [{id_materia_prima, cantidad, materia_prima: {id_materia_prima, unidad_medida, estado}}]}}`. Los decimales `cantidad` se serializan como texto con tres posiciones. El acceso interno existente usa `X-Internal-Service-Key` con `CATALOG_INTERNAL_KEY` y `X-Actor-User-Id`; Production configura `CATALOGO_SERVICE_KEY` con ese valor local. El adaptador de T308 valida esos campos y normaliza los ingredientes sin confiar en cantidades enviadas por React. Catalog no guarda rendimiento de lote: se mantiene la regla explícita de una receta por unidad de presentación. Tampoco guarda unidad de medida de la presentación: para existencias de tipo `PRESENTACION` el contrato del Sprint 3 usará `unidad`, mientras cada materia prima conserva su `unidad_medida` de Catalog. Esta precisión debe revisarse con Inventory antes de integrar T310.
@@ -112,7 +116,7 @@ Capacidad: **80 horas** entre dos desarrolladores; **70 horas** asignadas a tare
 | T301 | HU17–HU19 | Preparar inventory-service, base de datos y migraciones | Juan Pablo | 5 | Por hacer |
 | T302 | HU16 | Preparar production-service, base de datos y modelo de producción | Fabián | 5 | Terminada |
 | T303 | HU17 | Implementar almacenes y consulta de existencias por artículo y almacén | Juan Pablo | 5 | Por hacer |
-| T304 | HU17 | Construir interfaz de almacenes y consulta de existencias | Fabián | 5 | Por hacer |
+| T304 | HU17 | Construir interfaz de almacenes y consulta de existencias | Fabián | 5 | En curso |
 | T305 | HU18 | Implementar ingresos con cantidad positiva y actualización de existencias | Juan Pablo | 5 | Por hacer |
 | T306 | HU18–HU19 | Construir interfaz de ingresos, egresos y traslados | Fabián | 4 | Por hacer |
 | T307 | HU19 | Implementar egresos con validación atómica de stock disponible | Juan Pablo | 6 | Por hacer |
@@ -132,6 +136,7 @@ Capacidad: **80 horas** entre dos desarrolladores; **70 horas** asignadas a tare
 | --- | --- | --- | ---: | --- | --- | --- |
 | 16-11-2026 | T302 | Fabián | Por registrar | `devFabian` / `6bc5997` | Compose validó; `production-db` y `production-service` saludables. `php artisan migrate --force` aplicó la migración solo en `dulce_production`; conteo inicial `produccion/produccion_idempotencia = 0/0`. No se modificaron las bases de Sprint 2. | Terminada |
 | 16-11-2026 | T308 | Fabián | Por registrar | `devFabian` / `6bc5997` | Adaptador interno Production → Catalog con validación de receta, vigencia, unidades y decimales. Suite aislada: 3 pruebas, 6 aserciones aprobadas. Consulta real de presentación ficticia #2: receta #1, materia prima #1, `2.000 g` por unidad; sin escritura. | Terminada |
+| 16-11-2026 | T304 | Fabián | Por registrar | `devFabian` | Se reutilizaron las vistas de Almacenes y Existencias con un adaptador separado para Gateway/Bearer; filtros por tipo e ID, carga, error y reintento. `npm run build`: 119 módulos; `oxlint`: 0 errores y 2 advertencias de efectos. Pendiente consulta real porque Inventory y la ruta de Gateway aún no están publicados. | En curso |
 
 ### Distribución orientativa de la semana
 
@@ -189,12 +194,14 @@ Copiar una fila por ejecución. Mantener los fallos y la evidencia de su correcc
 | --- | --- | --- | --- | --- | --- | --- |
 | 16-11-2026 | T302, comprobación técnica previa a PS3-01 | `devFabian`, Docker local | Levantar solo Production/PostgreSQL y migrar la base nueva | Ambos contenedores saludables; migración `[1] Ran`; tablas de negocio `0/0`. PS3-01 completo espera Gateway e Inventory. | Aprobada para T302 | Fabián |
 | 16-11-2026 | T308, contrato previo a PS3-09–11 | `devFabian`, Docker local | Suite aislada y GET interno de receta para presentación ficticia #2 | 3 pruebas/6 aserciones; respuesta real normalizada: receta #1, ingrediente #1, `2.000 g` por unidad. `dulce_production` siguió `0/0`. No acredita aún producción ni descuento de insumos. | Aprobada para T308 | Fabián |
+| 16-11-2026 | T304, compilación previa a PS3-16 | `devFabian`, frontend local | Adaptación de dos vistas reutilizadas a consultas Gateway/Bearer | Build: 119 módulos; análisis estático: 0 errores. Sin Inventory disponible, no se ejecutó la consulta real ni la prueba visual PS3-16. | Parcial, pendiente integración | Fabián |
 
 Si el equipo cambia una regla, un endpoint o una estimación, registrar la decisión antes de modificar la implementación:
 
 | Fecha | Decisión o cambio | Motivo | Secciones, tareas y pruebas afectadas | Acordado por |
 | --- | --- | --- | --- | --- |
 | 16-11-2026 | Se confirmó el JSON real de Catalog y la ausencia de rendimiento y unidad de medida en Presentación. Para `PRESENTACION` se propone `unidad`; los decimales de ingredientes se conservan como texto hasta operar con precisión decimal. | Evitar suposiciones que alteren consumo o saldos al integrar Production e Inventory. | Contrato de Catalog, T308–T310, PS3-09–11 | Propuesta Fabián; revisión pendiente con Juan Pablo |
+| 16-11-2026 | T304 propone `almacenes` y `existencias` como arreglos con los campos detallados en la sección 4; las vistas solo consultan saldos. | Evitar rutas legadas, IDs fijos y acciones de stock fuera de T304. | T303–T304, T306, T309, T313, PS3-02 y PS3-16 | Propuesta Fabián; revisión pendiente con Juan Pablo |
 
 ## 8. Criterio de cierre y documentación Scrum
 

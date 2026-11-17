@@ -306,7 +306,7 @@ function App() {
           <Route
             element={
               <ProtectedRoute
-                permiso="inventario.listar_almacenes"
+                permiso="inventario.ver"
               />
             }
           >
