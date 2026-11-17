@@ -1,13 +1,19 @@
-﻿<?php
+<?php
 
+use App\Http\Controllers\InventarioConsultaController;
+use App\Http\Middleware\AutorizarPermisoInventario;
 use Illuminate\Support\Facades\Route;
 
-/*
-|--------------------------------------------------------------------------
-| Inventory Service API
-|--------------------------------------------------------------------------
-|
-| Las rutas públicas e internas de Inventario se incorporarán durante
-| T303, T305, T307 y T309.
-|
-*/
+Route::get(
+    '/almacenes',
+    [InventarioConsultaController::class, 'almacenes']
+)->middleware(
+    AutorizarPermisoInventario::class.':inventario.ver'
+);
+
+Route::get(
+    '/existencias',
+    [InventarioConsultaController::class, 'existencias']
+)->middleware(
+    AutorizarPermisoInventario::class.':inventario.ver'
+);
