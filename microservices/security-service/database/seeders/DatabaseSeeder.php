@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             VentasPermisosSeeder::class,
             PedidosPermisosSeeder::class,
             AdministradorInicialSeeder::class,
+            InventoryPermisosSeeder::class,
         ]);
     }
 }
