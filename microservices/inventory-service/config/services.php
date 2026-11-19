@@ -1,6 +1,9 @@
 <?php
 
 return [
+    'inventory_sales' => [
+        'key' => env('INVENTORY_SALES_KEY'),
+    ],
     'security' => [
         'url' => env(
             'SECURITY_SERVICE_URL',

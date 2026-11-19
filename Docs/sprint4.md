@@ -3,7 +3,7 @@
 **Proyecto:** Dulce Bocado  \
 **Duración prevista:** una semana, cinco jornadas de ocho horas  \
 **Equipo:** Fabián Cuellar Salvatierra (Product Owner y desarrollador) y Juan Pablo Montoya Salinas (Scrum Master y desarrollador)  \
-**Estado:** planificación compartida. Ninguna tarea ni prueba de este documento representa trabajo ejecutado hasta registrar evidencia.  \
+**Estado:** desarrollo parcial recibido; backlog revisado el 2026-11-19 contra `dev-jp` en `f0daadf`. T402 y T403 completadas en alcance técnico el 2026-11-19; aceptación integral del Sprint pendiente. Evidencia en [SPRINT_4_PRUEBAS_PAYMENT.md](SPRINT_4_PRUEBAS_PAYMENT.md).  \
 **Documento formal:** [documentación Scrum](Documentacion_Scrum_Dulce_Bocado_FINAL_REGENERADO.docx), apartados 3.5 a 3.5.2.  \
 **Bases de referencia:** [avance del Sprint 2](SPRINT_2_AVANCE_Y_PRUEBAS.md) y [avance del Sprint 3](avancesprint3.md).
 
@@ -24,6 +24,8 @@ HU20 Contador de visitas, HU21 Temas, HU22 Dashboard y HU23 Reportes permanecen 
 **Sprint Goal:** completar una venta presencial con stock consistente, pagos parciales controlados y recibo interno, además de registrar el resultado del pago QR mediante un adaptador. El objetivo se comprueba con servicios reales y datos persistidos. Un QR generado por el simulador demuestra el contrato de la aplicación, **no** una transacción financiera real.
 
 ## 2. Estado inicial que debe respetarse
+
+> Esta sección describe la base previa al Sprint 4. El avance recibido y sus límites se registran en [AVANCE_SPRINT_4_DEV_JP.md](AVANCE_SPRINT_4_DEV_JP.md), con corte en `f0daadf`. Payment ya dispone de esquema y API inicial de efectivo; QR, recibos y aceptación integrada continúan pendientes.
 
 - Sales, desarrollado en el Sprint 2, posee `dulce_sales` y gestiona borradores `BORRADOR` y anulaciones `CANCELADA`, con precios históricos e idempotencia. No descuenta stock, confirma ventas ni registra pagos en el estado documentado. El frontend de Ventas entra por Gateway con Bearer. Las escrituras existentes utilizan `Idempotency-Key`.
 - Orders conserva pedidos y precios fijados al registrarlos. Customer y Catalog son propietarios de sus datos. Catalog utiliza MySQL; Security, Customer, Orders y Sales utilizan PostgreSQL.
@@ -112,12 +114,12 @@ Capacidad semanal: **80 horas**; **70** estimadas para T401–T414, **35 por des
 
 | ID | HU | Tarea | Responsable | h | Estado |
 | --- | --- | --- | --- | ---: | --- |
-| T401 | HU16–HU19 | Verificar flujo integrado de Inventario y Producción con bases reales | Juan Pablo | 6 | Por hacer |
-| T402 | HU11–HU12 | Preparar payment-service, esquema PostgreSQL y contenedores | Juan Pablo | 5 | Por hacer |
-| T403 | HU11 | Implementar pagos en efectivo, saldo e idempotencia | Juan Pablo | 6 | Por hacer |
-| T404 | HU10 | Confirmar venta con egreso idempotente de mostrador | Juan Pablo | 7 | Por hacer |
+| T401 | HU16–HU19 | Verificar flujo integrado de Inventario y Producción con bases reales | Juan Pablo | 6 | En curso |
+| T402 | HU11–HU12 | Preparar payment-service, esquema PostgreSQL y contenedores | Juan Pablo | 5 | Completado |
+| T403 | HU11 | Implementar pagos en efectivo, saldo e idempotencia | Juan Pablo | 6 | Completado |
+| T404 | HU10 | Confirmar venta con egreso idempotente de mostrador | Juan Pablo | 7 | En curso |
 | T405 | HU12 | Validar callback QR y conciliar transacciones | Juan Pablo | 6 | Por hacer |
-| T406 | HU10–HU13 | Configurar Gateway, permisos y credenciales internas | Juan Pablo | 3 | Por hacer |
+| T406 | HU10–HU13 | Configurar Gateway, permisos y credenciales internas | Juan Pablo | 3 | En curso |
 | T407 | HU10–HU13 | Revisar contratos y pruebas de servicios para el cierre | Juan Pablo | 2 | Por hacer |
 | T408 | HU12 | Implementar adaptador QR y simulador de pruebas | Fabián | 6 | Por hacer |
 | T409 | HU11–HU12 | Construir interfaz de efectivo, QR y saldo | Fabián | 5 | Por hacer |
@@ -126,6 +128,8 @@ Capacidad semanal: **80 horas**; **70** estimadas para T401–T414, **35 por des
 | T412 | HU13 | Construir interfaz de impresión y reimpresión | Fabián | 4 | Por hacer |
 | T413 | HU12 | Asociar anticipo QR a pedido y consultar resultado | Fabián | 4 | Por hacer |
 | T414 | HU10–HU13 | Ejecutar pruebas integradas y documentar resultados | Fabián | 6 | Por hacer |
+
+**Revisión del 2026-11-19:** estados sustentados en [el informe de avance recibido](AVANCE_SPRINT_4_DEV_JP.md). T401 refleja ajustes preparatorios de Producción; T406, middleware y conexiones parciales. T402/T403 pasan a revisión por código incorporado, con pruebas y aceptación pendientes. Las estimaciones no son horas ejecutadas y la matriz PS4 continúa sin resultados.
 
 **Secuencia crítica:** verificar Sprint 3 → acordar contratos → crear Payment y operación de stock → confirmar ventas → pagos en efectivo → intención/callback QR → recibos → interfaces → pruebas de extremo a extremo. El trabajo paralelo comienza con contratos compartidos y respuestas de prueba; la aceptación usa servicios reales. Una tarea cambia de `Por hacer` a `En curso`, `En revisión` y `Terminada` con commit y evidencia, sin confundir código escrito con historia aceptada.
 
@@ -138,6 +142,20 @@ Capacidad semanal: **80 horas**; **70** estimadas para T401–T414, **35 por des
 | J5 | T407, T414; persistencia, fallos y revisión. | Registro PS4, demostración y decisión basada en la Definición de Terminado. |
 
 La distribución diaria es una guía de coordinación, **no** un registro de Daily Scrum ni horas ejecutadas. En cada Daily Scrum se revisa avance hacia el Sprint Goal, trabajo siguiente e impedimentos, y se adapta el Sprint Backlog.
+
+**Avance T404 (2026-11-19):** contrato interno de descuento/consulta de ventas implementado en Inventory, con transacción e idempotencia. Sales y pruebas concurrentes PostgreSQL pendientes; ver [registro de confirmación](SPRINT_4_CONFIRMACION_VENTAS.md).
+
+### 7.1 Registro incremental de desarrollo
+
+Cada subtarea se marca **Completado** con su evidencia; la tarea principal solo cambia a **Completado** cuando satisface todo su alcance y las verificaciones aplicables. Las estimaciones no se contabilizan como horas reales.
+
+| Fecha | Tarea / subtarea | Estado | Evidencia y límite |
+| --- | --- | --- | --- |
+| 2026-11-19 | T406 — Rutas de Gateway para consulta de pagos y efectivo | Completado | `gateway/nginx.conf`: rutas exactas `/api/pagos` y `/api/pagos/efectivo` dirigidas a Payment, preservan Bearer e Idempotency-Key y eliminan encabezados internos del cliente. `nginx:alpine nginx -t` exitoso. Pendiente aceptación con Payment real; no cierra T406. |
+
+**Actualización de desarrollo 2026-11-19:** T402 y T403 completadas en alcance técnico con 18 pruebas y 93 aserciones, migración, salud HTTP y persistencia comprobadas. Ver [evidencia y límites](SPRINT_4_PRUEBAS_PAYMENT.md). La aceptación de HU11 continúa pendiente de servicios reales; los estados anteriores de revisión se conservan como historial.
+
+**Siguiente paso de integración:** completar permisos de Pagos y validar llamadas reales por Gateway (T406), además de confirmar ventas con egreso de stock (T404). T401 y T404 siguen siendo requisitos para aceptar cobros de ventas confirmadas. El entorno Docker está disponible; los contenedores del proyecto estaban detenidos al comenzar esta intervención.
 
 ## 8. Preparación y ejecución segura
 

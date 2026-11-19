@@ -45,6 +45,7 @@ class StorePagoEfectivoRequest extends FormRequest
             'monto' => [
                 'required',
                 'numeric',
+                'regex:/^\d+(?:\.\d{1,2})?$/D',
                 'gt:0',
                 'max:9999999999.99',
             ],

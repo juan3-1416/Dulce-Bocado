@@ -1,58 +1,43 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Payment Service — Sprint 4
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Laravel/PHP 8.4, PostgreSQL 16 y BCMath. Propietario de pagos, intenciones QR, eventos, idempotencia y recibos. Actualmente expone efectivo y consulta de saldo; QR y recibos tienen esquema, pero sus API siguen pendientes.
 
-## About Laravel
+## Arranque local
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+Usar Docker desde la raíz del repositorio. Copiar `microservices/payment-service/.env.example` a `.env` si no existe; establecer `INTERNAL_SERVICE_KEY` con la clave autorizada de Security. Nunca versionar secretos. Incluir `docker-compose.sprint4.payment.yml` junto a los overlays existentes de Security, Sales y Orders y la red `dulce_bocado_net`.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.sprint1.yml -f docker-compose.sprint4.payment.yml build payment-service
+docker compose -f docker-compose.yml -f docker-compose.sprint1.yml -f docker-compose.sprint4.payment.yml up -d payment-db payment-service
+docker compose -f docker-compose.yml -f docker-compose.sprint1.yml -f docker-compose.sprint4.payment.yml exec payment-service php artisan key:generate
+docker compose -f docker-compose.yml -f docker-compose.sprint1.yml -f docker-compose.sprint4.payment.yml exec payment-service php artisan migrate --force
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+El arranque anterior prepara Payment; para cobrar se deben levantar también los propietarios del origen con sus overlays. Usar migraciones incrementales, nunca `migrate:fresh` sobre desarrollo. `GET /up` verifica salud HTTP. La base usa volumen persistente y el servicio no publica un puerto al host: se consume por Gateway.
 
-## Contributing
+Variables: `DB_*` (PostgreSQL propio), `APP_KEY`, `INTERNAL_SERVICE_KEY`, `SECURITY_SERVICE_URL`, `SALES_SERVICE_URL`, `ORDER_SERVICE_URL`, y tiempos máximos `SECURITY_TIMEOUT`, `SALES_TIMEOUT`, `ORDER_TIMEOUT` (3 segundos por defecto). Compose establece los hosts internos.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Contratos actuales
 
-## Code of Conduct
+- `POST /api/pagos/efectivo`: Bearer con `pagos.crear`, encabezado `Idempotency-Key` de 16–128 caracteres alfanuméricos, guion o guion bajo. JSON: `{"origen_tipo":"VENTA","origen_id":1,"monto":"40.00","moneda":"BOB"}`.
+- `GET /api/pagos?origen=VENTA&origen_id=1`: Bearer con `pagos.ver`; responde total, pagado, saldo y lista de pagos.
+- Origen `VENTA` exige estado `CONFIRMADA`; `PEDIDO` admite `PROGRAMADO`, `EN_PROCESO` o `ENTREGADO`. El servicio consulta al propietario con el Bearer del actor y no modifica el pedido.
+- Importes positivos en BOB con máximo dos decimales; enviar cadenas decimales. Reintentar con la misma clave y contenido reproduce la respuesta sin otro cobro. Cambiar contenido o actor con la misma clave produce conflicto.
+- Errores: 401 sin sesión, 403 sin acceso, 404 origen inexistente, 422 datos o clave inválidos, 409 sobrepago/origen no pagable/clave conflictiva, 503 dependencia indisponible.
+- Security debe provisionar permisos; Gateway y la confirmación de ventas pertenecen a T406/T404. Las tablas QR y recibos no demuestran que T405/T408/T411 estén implementadas.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Pruebas aisladas reproducibles
 
-## Security Vulnerabilities
+Desde la raíz:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```powershell
+docker compose -p dulce-payment-check -f docker-compose.payment-test.yml build payment-test
+docker compose -p dulce-payment-check -f docker-compose.payment-test.yml run --rm payment-test
+docker compose -p dulce-payment-check -f docker-compose.payment-test.yml down
+```
 
-## License
+El stack crea su propia red y PostgreSQL `payment-test-db/dulce_payment_test`, sin publicar puertos ni montar bases de desarrollo. Las pruebas rechazan otro host/base antes de migrar o limpiar registros. Usan PostgreSQL real y HTTP simulado de Security/Sales/Orders: verifican negocio y contratos esperados, no acreditan aceptación integral de servicios reales.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Las pruebas concurrentes lanzan dos procesos independientes contra PostgreSQL. Cubren sobrepago y repetición simultánea de clave. La suite también valida parciales, saldo, precisión, permisos, actor, estado del origen, caída de dependencia y persistencia al reconectar.
+
+No ejecutar la suite contra desarrollo ni adaptar la protección para permitirlo. El contenedor de pruebas usa credenciales ficticias exclusivas y descartables.

@@ -10,10 +10,11 @@ class AutorizarServicioInternoInventario
 {
     public function handle(
         Request $request,
-        Closure $next
+        Closure $next,
+        string $scope = 'inventory_internal'
     ): Response {
         $esperada = config(
-            'services.inventory_internal.key'
+            'services.'.$scope.'.key'
         );
 
         $recibida = $request->header(
