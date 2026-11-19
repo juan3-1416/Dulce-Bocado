@@ -180,6 +180,9 @@ function VentaModal({ abierto, onCerrar, onGuardado, clientes, presentaciones, e
               {venta && <p>Total guardado: <strong>Bs {Number(venta.total ?? 0).toFixed(2)}</strong>.</p>}
               <p>Estimado con precios actuales: <strong>Bs {totalEstimado.toFixed(2)}</strong>.</p>
               <p>Al guardar, Sales vuelve a consultar Catálogo y calcula el total definitivo.</p>
+              <p className="mt-1 text-xs text-amber-700">
+                Nota: La venta se guarda en estado <strong>BORRADOR</strong>. Las existencias se comprobarán y descontarán del almacén Mostrador al confirmar la venta.
+              </p>
             </div>
             <div className="flex gap-2">
               <button type="button" onClick={onCerrar} disabled={guardando} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700">Cancelar</button>

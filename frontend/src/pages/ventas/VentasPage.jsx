@@ -15,6 +15,7 @@ import { listarClientes } from '../../services/clienteService'
 import { listarPresentacionesVendibles } from '../../services/catalogoVentasService'
 import { useAuth } from '../../context/AuthContext'
 import VentaModal from './VentaModal'
+import ConfirmarVentaModal from './ConfirmarVentaModal'
 
 const MIN_MOTIVO_ANULACION = 3
 
@@ -28,6 +29,7 @@ function VentasPage() {
   const [errorClientes, setErrorClientes] = useState('')
   const [modalVentaAbierto, setModalVentaAbierto] = useState(false)
   const [ventaParaEditar, setVentaParaEditar] = useState(null)
+  const [ventaParaConfirmar, setVentaParaConfirmar] = useState(null)
   const [ventas, setVentas] =
     useState([])
 
@@ -225,6 +227,31 @@ function VentasPage() {
     }
   }
 
+  const abrirModalConfirmar = async (venta) => {
+    setError('')
+    setMensaje('')
+    try {
+      if (!venta.detalles || venta.detalles.length === 0) {
+        setCargandoDetalle(true)
+        const resp = await obtenerVenta(venta.id_venta)
+        setVentaParaConfirmar(resp.venta ?? resp)
+      } else {
+        setVentaParaConfirmar(venta)
+      }
+    } catch (errorPeticion) {
+      setError(
+        errorPeticion.message ||
+          'No se pudo obtener la información de la venta para confirmar.',
+      )
+    } finally {
+      setCargandoDetalle(false)
+    }
+  }
+
+  const cerrarModalConfirmar = () => {
+    setVentaParaConfirmar(null)
+  }
+
   const abrirModalAnular = (
     venta,
   ) => {
@@ -334,6 +361,12 @@ function VentasPage() {
       return 'bg-amber-100 text-amber-700'
     }
 
+    if (
+      estadoVenta === 'CONFIRMADA'
+    ) {
+      return 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+    }
+
     if (estadoVenta === 'CANCELADA') {
       return 'bg-red-100 text-red-700'
     }
@@ -414,6 +447,10 @@ function VentasPage() {
 
           <option value="BORRADOR">
             Borrador
+          </option>
+
+          <option value="CONFIRMADA">
+            Confirmada
           </option>
 
           <option value="CANCELADA">
@@ -542,6 +579,19 @@ function VentasPage() {
                           {venta.estado ===
                             'BORRADOR' && (
                             <>
+                              {tienePermiso('ventas.confirmar') && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    abrirModalConfirmar(venta)
+                                  }
+                                  disabled={cargandoDetalle}
+                                  className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                                >
+                                  Confirmar
+                                </button>
+                              )}
+
                               <button
                                 type="button"
                                 onClick={() => abrirFormulario(venta)}
@@ -715,6 +765,29 @@ function VentasPage() {
                 </div>
               </div>
 
+              {ventaSeleccionada.fecha_confirmacion && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-gray-500">
+                      Fecha confirmación
+                    </p>
+                    <p className="mt-1 text-sm text-gray-900">
+                      {formatearFecha(ventaSeleccionada.fecha_confirmacion)}
+                    </p>
+                  </div>
+                  {ventaSeleccionada.operacion_stock_id && (
+                    <div>
+                      <p className="text-xs font-semibold uppercase text-gray-500">
+                        Operación stock (Mostrador)
+                      </p>
+                      <p className="mt-1 font-mono text-xs text-emerald-700">
+                        {ventaSeleccionada.operacion_stock_id}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div>
                 <p className="mb-2 text-sm font-semibold text-gray-900">
                   Detalles
@@ -787,6 +860,38 @@ function VentasPage() {
                       ventaSeleccionada.observaciones
                     }
                   </p>
+                </div>
+              )}
+
+              {ventaSeleccionada.estado === 'BORRADOR' && (
+                <div className="flex flex-wrap items-center justify-end gap-3 border-t border-gray-200 pt-4">
+                  {tienePermiso('ventas.modificar') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const v = ventaSeleccionada
+                        setVentaSeleccionada(null)
+                        abrirFormulario(v)
+                      }}
+                      disabled={cargandoCatalogo || !catalogoDisponible}
+                      className="rounded-lg border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50"
+                    >
+                      Editar
+                    </button>
+                  )}
+                  {tienePermiso('ventas.confirmar') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const v = ventaSeleccionada
+                        setVentaSeleccionada(null)
+                        abrirModalConfirmar(v)
+                      }}
+                      className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
+                    >
+                      Confirmar Venta y Descontar Stock
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -880,6 +985,24 @@ function VentasPage() {
           </div>
         </div>
       )}
+
+      <ConfirmarVentaModal
+        abierto={Boolean(ventaParaConfirmar)}
+        venta={ventaParaConfirmar}
+        onCerrar={cerrarModalConfirmar}
+        onConfirmado={async (mensajeExito, ventaConfirmada) => {
+          setMensaje(mensajeExito)
+          if (
+            ventaSeleccionada &&
+            ventaConfirmada &&
+            ventaSeleccionada.id_venta === ventaConfirmada.id_venta
+          ) {
+            setVentaSeleccionada(ventaConfirmada)
+          }
+          await cargarVentas()
+        }}
+        tienePermisoInventario={tienePermiso('inventario.ver')}
+      />
     </section>
   )
 }

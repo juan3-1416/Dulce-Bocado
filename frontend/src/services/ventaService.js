@@ -9,15 +9,15 @@ const API_BASE =
 
 const API_URL = `${API_BASE}/api/ventas`
 
-export function generarIdempotencyKey() {
+export function generarIdempotencyKey(prefijo = 'venta') {
   if (
     typeof crypto !== 'undefined' &&
     typeof crypto.randomUUID === 'function'
   ) {
-    return `venta-${crypto.randomUUID()}`
+    return `${prefijo}-${crypto.randomUUID()}`
   }
 
-  return `venta-${Date.now()}-${Math.random()
+  return `${prefijo}-${Date.now()}-${Math.random()
     .toString(36)
     .slice(2, 14)}`
 }
@@ -188,3 +188,20 @@ export async function anularVenta(
     },
   )
 }
+
+export async function confirmarVenta(
+  id,
+  idempotencyKey =
+    generarIdempotencyKey('venta-conf'),
+) {
+  return solicitarVenta(
+    `${API_URL}/${id}/confirmar`,
+    {
+      method: 'POST',
+      headers: obtenerHeaders({
+        idempotencyKey,
+      }),
+    },
+  )
+}
+

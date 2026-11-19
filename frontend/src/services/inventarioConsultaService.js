@@ -106,3 +106,30 @@ export const registrarEgreso = (datos, clave) =>
 
 export const registrarTraslado = (datos, clave) =>
   solicitar('traslados', { method: 'POST', datos, clave })
+
+export async function consultarStockMostrador({ signal } = {}) {
+  const almacenes = await listarAlmacenes({ signal })
+  const mostrador = almacenes.find((a) => a.tipo === 'MOSTRADOR' && a.activo)
+  if (!mostrador) {
+    throw new ApiError('No se encontró un almacén Mostrador activo.', 404)
+  }
+  const existencias = await listarExistencias(
+    {
+      almacen_id: mostrador.id_almacen,
+      tipo_articulo: 'PRESENTACION',
+    },
+    { signal },
+  )
+
+  const stockPorPresentacion = {}
+  existencias.forEach((item) => {
+    stockPorPresentacion[Number(item.articulo_id)] = Number(item.cantidad)
+  })
+
+  return {
+    almacen: mostrador,
+    existencias,
+    stockPorPresentacion,
+  }
+}
+

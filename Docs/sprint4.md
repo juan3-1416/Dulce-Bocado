@@ -123,7 +123,7 @@ Capacidad semanal: **80 horas**; **70** estimadas para T401–T414, **35 por des
 | T407 | HU10–HU13 | Revisar contratos y pruebas de servicios para el cierre | Juan Pablo | 2 | Por hacer |
 | T408 | HU12 | Implementar adaptador QR y simulador de pruebas | Fabián | 6 | Por hacer |
 | T409 | HU11–HU12 | Construir interfaz de efectivo, QR y saldo | Fabián | 5 | Por hacer |
-| T410 | HU10 | Construir interfaz de confirmación y disponibilidad | Fabián | 4 | Por hacer |
+| T410 | HU10 | Construir interfaz de confirmación y disponibilidad | Fabián | 4 | Completado |
 | T411 | HU13 | Implementar API de recibos, PDF, consulta y anulación | Fabián | 6 | Por hacer |
 | T412 | HU13 | Construir interfaz de impresión y reimpresión | Fabián | 4 | Por hacer |
 | T413 | HU12 | Asociar anticipo QR a pedido y consultar resultado | Fabián | 4 | Por hacer |
@@ -152,6 +152,7 @@ Cada subtarea se marca **Completado** con su evidencia; la tarea principal solo 
 | Fecha | Tarea / subtarea | Estado | Evidencia y límite |
 | --- | --- | --- | --- |
 | 2026-11-19 | T406 — Rutas de Gateway para consulta de pagos y efectivo | Completado | `gateway/nginx.conf`: rutas exactas `/api/pagos` y `/api/pagos/efectivo` dirigidas a Payment, preservan Bearer e Idempotency-Key y eliminan encabezados internos del cliente. `nginx:alpine nginx -t` exitoso. Pendiente aceptación con Payment real; no cierra T406. |
+| 2026-11-19 | T410 — Interfaz de confirmación y disponibilidad de ventas | Completado | Frontend adaptado a microservicios: `ConfirmarVentaModal` con verificación de existencias en Mostrador (`inventarioConsultaService.consultarStockMostrador`), confirmación idempotente vía `POST /api/ventas/{id}/confirmar` (`ventaService.confirmarVenta`) con `Idempotency-Key` y Bearer Sanctum, soporte de estado `CONFIRMADA` en filtros y modal de detalle en `VentasPage`, bloqueo de edición/anulación para confirmadas, advertencia visual preventiva de stock insuficiente y captura de respuestas 409 (`STOCK_INSUFICIENTE`), 422 y 503 (`INVENTORY_NO_DISPONIBLE`, `CONFIRMACION_INCIERTA`). Build y lint limpios. |
 
 **Actualización de desarrollo 2026-11-19:** T402 y T403 completadas en alcance técnico con 18 pruebas y 93 aserciones, migración, salud HTTP y persistencia comprobadas. Ver [evidencia y límites](SPRINT_4_PRUEBAS_PAYMENT.md). La aceptación de HU11 continúa pendiente de servicios reales; los estados anteriores de revisión se conservan como historial.
 
