@@ -8,4 +8,5 @@ Route::get('/ventas', [VentaController::class, 'index'])->middleware(AutorizarPe
 Route::post('/ventas', [VentaController::class, 'store'])->middleware(AutorizarPermisoVentas::class.':ventas.crear');
 Route::get('/ventas/{venta}', [VentaController::class, 'show'])->middleware(AutorizarPermisoVentas::class.':ventas.ver')->whereNumber('venta');
 Route::put('/ventas/{venta}', [VentaController::class, 'update'])->middleware(AutorizarPermisoVentas::class.':ventas.modificar')->whereNumber('venta');
+Route::post('/ventas/{venta}/confirmar', [VentaController::class, 'confirm'])->middleware(AutorizarPermisoVentas::class.':ventas.confirmar')->whereNumber('venta');
 Route::post('/ventas/{venta}/anular', [VentaController::class, 'cancel'])->middleware(AutorizarPermisoVentas::class.':ventas.anular')->whereNumber('venta');

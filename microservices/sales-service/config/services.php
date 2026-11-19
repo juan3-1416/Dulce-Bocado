@@ -53,4 +53,17 @@ return [
         'timeout' => (int) env('CATALOGO_TIMEOUT', 3),
     ],
 
+    'inventory' => [
+        'url' => env(
+            'INVENTORY_SERVICE_URL',
+            'http://inventory-service:8000'
+        ),
+        'sales_key' => env(
+            'INVENTORY_SALES_KEY'
+        ),
+        'timeout' => (int) env(
+            'INVENTORY_TIMEOUT',
+            3
+        ),
+    ],
 ];

@@ -6,6 +6,7 @@ use App\Http\Requests\AnularVentaRequest;
 use App\Http\Requests\GuardarVentaRequest;
 use App\Models\Venta;
 use App\Services\Ventas\VentaException;
+use App\Services\Ventas\VentaConfirmacionService;
 use App\Services\Ventas\VentaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,7 +16,7 @@ class VentaController extends Controller
     public function index(Request $request): JsonResponse
     {
         $filtros = $request->validate([
-            'estado' => ['sometimes', 'in:BORRADOR,CANCELADA'],
+            'estado' => ['sometimes', 'in:BORRADOR,CONFIRMADA,CANCELADA'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ]);
         $ventas = Venta::query()->when(isset($filtros['estado']), fn ($q) => $q->where('estado', $filtros['estado']))
@@ -41,6 +42,22 @@ class VentaController extends Controller
         return response()->json($resultado['body'], $resultado['status']);
     }
 
+    public function confirm(
+        Request $request,
+        string $venta,
+        VentaConfirmacionService $service
+    ): JsonResponse {
+        $resultado = $service->confirmar(
+            $this->buscarVenta($venta),
+            $this->actor($request),
+            $this->clave($request)
+        );
+
+        return response()->json(
+            $resultado['body'],
+            $resultado['status']
+        );
+    }
     public function cancel(AnularVentaRequest $request, string $venta, VentaService $service): JsonResponse
     {
         $resultado = $service->anular($this->buscarVenta($venta), $request->validated('motivo'), $this->actor($request), $this->clave($request));

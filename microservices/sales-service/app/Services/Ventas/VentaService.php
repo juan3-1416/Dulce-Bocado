@@ -112,8 +112,56 @@ class VentaService
     private function exigirBorrador(Venta $venta): void
     {
         if ($venta->estado !== 'BORRADOR') {
-            throw new VentaException(409, 'VENTA_NO_EDITABLE', 'Solo se puede modificar o cancelar un borrador.');
+            throw new VentaException(
+                409,
+                'VENTA_NO_EDITABLE',
+                'Solo se puede modificar o cancelar un borrador.'
+            );
         }
+
+        $confirmacion = DB::table(
+            'venta_confirmacion'
+        )
+            ->where(
+                'id_venta',
+                $venta->id_venta
+            )
+            ->first();
+
+        if (!$confirmacion) {
+            return;
+        }
+
+        if (
+            in_array(
+                $confirmacion->estado,
+                ['PENDIENTE', 'INCIERTA'],
+                true
+            )
+        ) {
+            throw new VentaException(
+                409,
+                'CONFIRMACION_EN_CURSO',
+                'La venta tiene una confirmación pendiente o incierta y no puede modificarse ni anularse.'
+            );
+        }
+
+        if (
+            $confirmacion->estado ===
+            'RECHAZADA'
+        ) {
+            throw new VentaException(
+                409,
+                'VENTA_BLOQUEADA_POR_CONFIRMACION',
+                'La confirmación fue rechazada. Reponga stock y reintente con la misma Idempotency-Key.'
+            );
+        }
+
+        throw new VentaException(
+            409,
+            'VENTA_BLOQUEADA_POR_CONFIRMACION',
+            'La venta ya inició su proceso de confirmación.'
+        );
     }
 
     private function ejecutar(string $operacion, string $clave, string $hash, int $actor, int $codigo, callable $accion): array

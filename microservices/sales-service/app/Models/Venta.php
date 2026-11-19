@@ -18,6 +18,9 @@ class Venta extends Model
         'total',
         'moneda',
         'estado',
+        'operacion_stock_id',
+        'id_usuario_confirmacion',
+        'fecha_confirmacion',
         'observaciones',
         'id_usuario_cancelacion',
         'motivo_cancelacion',
@@ -29,12 +32,26 @@ class Venta extends Model
         return [
             'fecha_venta' => 'immutable_datetime',
             'fecha_cancelacion' => 'immutable_datetime',
+            'fecha_confirmacion' => 'immutable_datetime',
             'total' => 'decimal:2',
         ];
     }
 
     public function detalles(): HasMany
     {
-        return $this->hasMany(DetalleVenta::class, 'id_venta', 'id_venta');
+        return $this->hasMany(
+            DetalleVenta::class,
+            'id_venta',
+            'id_venta'
+        );
+    }
+
+    public function confirmaciones(): HasMany
+    {
+        return $this->hasMany(
+            VentaConfirmacion::class,
+            'id_venta',
+            'id_venta'
+        );
     }
 }
