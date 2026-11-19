@@ -1,9 +1,18 @@
-# Sprint 3 — Avance completo de desarrollo e integración
+# Sprint 3 — Consolidación de avance y evidencia para el cierre
 
 **Proyecto:** Dulce Bocado  
 **Fecha de actualización:** 17 de noviembre de 2026  
 **Equipo:** Juan Pablo Montoya Salinas / Fabián Cuellar Salvatierra  
-**Estado general:** Desarrollo funcional prácticamente concluido. Pendiente cierre integral, evidencias finales y documentación Scrum.
+**Estado al 17-11-2026:** tareas T301–T314 implementadas en código; pruebas aisladas aprobadas. La aceptación integral, la evidencia de persistencia/concurrencia y el cierre Scrum siguen pendientes. **Este archivo es una base de documentación, no un acta de Sprint Review ni una declaración de Sprint terminado.**
+
+### Cómo leer la evidencia
+
+- **Implementada:** existe código en la rama integrada. No equivale por sí solo a una historia aceptada.
+- **Prueba aislada:** suite con SQLite en memoria y dobles HTTP; no demuestra comunicación real ni comportamiento concurrente en PostgreSQL.
+- **Prueba de integración reportada:** resultado anotado por el desarrollador en este archivo. Se conserva como antecedente; debe repetirse con fecha, commit, datos y comprobación de base para el cierre oficial.
+- **Cierre pendiente:** falta ejecutar y registrar los criterios PS3 aplicables, actualizar el Sprint Backlog y realizar Sprint Review y Retrospective.
+
+**Fuentes de contraste:** `Docs/SPRINT_3_PLAN_DESARROLLO_Y_PRUEBAS.md` (Sprint Backlog, PS3-01–PS3-19 y Definition of Done), `Docs/RESUMEN_AVANCE_SPRINT_3_FABIAN.md` (trabajo de Production y frontend al 16-11-2026), código y commits de `dev-jp` incorporados a `devFabian` por avance rápido el 17-11-2026. El plan conserva estados anteriores a esa integración y requiere conciliación; no usar su columna «Por hacer» como estado actual sin revisarla.
 
 ---
 
@@ -29,24 +38,24 @@ El objetivo funcional es permitir el siguiente recorrido:
 
 ## 2. Estado general de las tareas
 
-| Tarea | Descripción resumida | Estado |
-|---|---|---|
-| T301 | Base y esquema de Inventory | ✅ Terminada |
-| T302 | Base y entorno de Production | ✅ Terminada |
-| T303 | Almacenes, existencias y autorización | ✅ Terminada |
-| T304 | Interfaz React de almacenes/existencias | ✅ Terminada |
-| T305 | Ingresos de inventario | ✅ Terminada |
-| T306 | Interfaz React de movimientos | ✅ Terminada |
-| T307 | Egresos de inventario | ✅ Terminada |
-| T308 | Integración Production → Catalog | ✅ Terminada |
-| T309 | Traslados entre almacenes | ✅ Terminada |
-| T310 | Integración Production → Inventory | ✅ Terminada |
-| T311 | Interfaz React de Producción | ✅ Terminada |
-| T312 | Validaciones y pruebas de Inventory | ✅ Terminada |
-| T313 | Gateway, permisos e integración final | ✅ Funcionalmente terminada |
-| T314 | Conciliación y pruebas aisladas de Production | ✅ Terminada |
+| Tarea | Entregable en código | Evidencia disponible | Estado para documentación oficial |
+|---|---|---|---|
+| T301 | Base y esquema de Inventory | Migración y Compose presentes; suite aislada de Inventory. | Implementada; verificar migración y persistencia PostgreSQL. |
+| T302 | Base y entorno de Production | Compose y migración; evidencia previa en el plan. | Implementada; integrar en PS3-01/17. |
+| T303 | Almacenes, existencias y autorización | Código, pruebas aisladas y consulta manual de almacenes reportada. | Implementada; completar PS3-02 y autorización real. |
+| T304 | Vista React de almacenes y existencias | Componentes presentes; build aprobado. | Implementada; falta PS3-16 visual. |
+| T305 | Ingresos de inventario | Servicio, ruta y pruebas aisladas. | Implementada; faltan PS3-03/04 con PostgreSQL. |
+| T306 | Vista React de movimientos | Componentes presentes; build aprobado. | Implementada; falta PS3-16 visual. |
+| T307 | Egresos de inventario | Servicio, ruta y pruebas aisladas. | Implementada; faltan PS3-05/06 con PostgreSQL y concurrencia. |
+| T308 | Production → Catalog | Adaptador y evidencia previa de consulta real de receta. | Implementada; verificar dentro de PS3-09/11. |
+| T309 | Traslados | Servicio, ruta y pruebas aisladas. | Implementada; faltan PS3-07/08 con PostgreSQL. |
+| T310 | Production → Inventory | Coordinación, contrato y pruebas aisladas; conectividad y clave manualmente reportadas. | Implementada; falta flujo real PS3-09–14. |
+| T311 | Vista React de Producción | Componentes presentes; build aprobado. | Implementada; falta PS3-16 visual. |
+| T312 | Validaciones de Inventory | 51 pruebas aisladas, 246 aserciones aprobadas en esta consolidación. | Prueba aislada aprobada; faltan restricciones/concurrencia reales. |
+| T313 | Gateway, permisos e integración | Commit `e016d72`; pruebas manuales parciales reportadas en secciones 12–15. | Implementada; falta aceptación integral PS3-01/15/16. |
+| T314 | Conciliación y pruebas de Production | 13 pruebas aisladas, 79 aserciones aprobadas en esta consolidación. | Prueba aislada aprobada; faltan PS3-10–14/17 reales. |
 
-> **Nota:** T313 quedó completamente validada funcionalmente. Solo falta registrar el commit final si aún no se hizo.
+**Criterio de estado:** «Implementada» describe el código entregado. Ninguna fila acredita por sí sola el Definition of Done de las historias HU16–HU19 ni el cierre del Sprint Goal.
 
 ---
 
@@ -748,9 +757,9 @@ inventario.trasladar
 
 ---
 
-## 15. Resultado final de T313
+## 15. Avance implementado y reportado de T313
 
-T313 quedó funcionalmente completada con:
+El código de T313 está incorporado. El desarrollador reportó las siguientes configuraciones y comprobaciones locales; las pruebas de aceptación integral siguen identificadas en las secciones 17–18:
 
 - Inventory registrado en Gateway.
 - Rutas públicas de Inventory.
@@ -773,9 +782,9 @@ T313 quedó funcionalmente completada con:
 
 ---
 
-## 16. Archivos preparados para el commit de T313
+## 16. Commit y trazabilidad de T313
 
-Archivos incluidos:
+El commit **`e016d72`** (`feat(integration): completar T313 gateway permisos e integracion inventario`) ya existe en `dev-jp` y fue incorporado a `devFabian` por avance rápido el 17-11-2026. Contiene:
 
 ```text
 gateway/nginx.conf
@@ -793,7 +802,7 @@ Estadística observada:
 3 deletions(-)
 ```
 
-Validación:
+Validación registrada durante su preparación:
 
 ```powershell
 git diff --cached --check
@@ -805,17 +814,13 @@ Resultado:
 Sin errores
 ```
 
-Commit propuesto:
-
-```powershell
-git commit -m "feat(integration): completar T313 gateway permisos e integracion inventario"
-```
+No queda un commit de T313 por crear. La aceptación funcional completa aún requiere las pruebas de cierre del Sprint.
 
 ---
 
 ## 17. Estado actual del Sprint 3
 
-El desarrollo funcional principal puede considerarse prácticamente terminado.
+Los componentes principales están implementados en código. El Sprint 3 permanece **pendiente de aceptación integral y cierre Scrum**.
 
 Los componentes principales ya existen:
 
@@ -832,6 +837,43 @@ Los componentes principales ya existen:
 - conciliación;
 - scheduler;
 - persistencia separada.
+
+### 17.1 Evidencia contrastada el 17-11-2026
+
+| Fuente | Resultado observado | Alcance de la evidencia |
+|---|---|---|
+| Código integrado en `devFabian` | `git merge --ff-only origin/dev-jp` avanzó de `2fe6102` a `803bd0d`, incorporando ocho commits sin conflictos. `e016d72` contiene T313. | Presencia de entregables en el repositorio; no prueba su operación conjunta. Los ocho commits aún no se habían publicado en `origin/devFabian` al realizar esta revisión. |
+| Inventory aislado | Imagen construida desde `microservices/inventory-service`; **51 pruebas, 246 aserciones, 0 fallos/advertencias**. | SQLite en memoria y HTTP simulado, contenedor desechable sin red; no se usó `dulce_inventory`. |
+| Production aislado | Imagen construida desde `microservices/production-service`; **13 pruebas, 79 aserciones, 0 fallos/advertencias**. | SQLite en memoria y HTTP simulado, contenedor desechable sin red; no se usó `dulce_production`. |
+| React | Imagen construida desde `frontend`; `npm run build` aprobó, **106 módulos transformados**. | Compilación de componentes y rutas; no prueba navegación, permisos, datos ni solicitudes reales desde el navegador. |
+| Integración manual relatada en secciones 12–13 | Production → Inventory devolvió `404` para operación inexistente con clave válida y `403` con clave inválida; Gateway → Inventory devolvió tres almacenes con administrador autenticado. | Evidencia reportada por el desarrollador. No se repitió en esta consolidación ni acredita el flujo de producción/stock completo. |
+| Preparación local del conjunto | `docker compose ... config --quiet` con todos los overlays falló porque falta el `.env` local, ignorado por Git, de `inventory-service`. | Se requiere configurar el entorno antes de repetir PS3-01–17/19. No indica un fallo de la suite aislada. |
+
+Comandos usados para las verificaciones aisladas (el `.env` temporal se crea **dentro** de cada contenedor desechable):
+
+```powershell
+docker build -t dulce-bocado-inventory-service:audit microservices/inventory-service
+docker run --rm --network none dulce-bocado-inventory-service:audit sh -c 'cp .env.example .env && php artisan test --compact'
+docker build -t dulce-bocado-production-service:audit microservices/production-service
+docker run --rm --network none dulce-bocado-production-service:audit sh -c 'cp .env.example .env && php artisan test --compact'
+docker build -t dulce-bocado-frontend:audit frontend
+docker run --rm --network none dulce-bocado-frontend:audit npm run build
+```
+
+### 17.2 Matriz para la aceptación oficial
+
+Los identificadores y resultados esperados pertenecen a `Docs/SPRINT_3_PLAN_DESARROLLO_Y_PRUEBAS.md`, sección 7. Registrar allí cada ejecución con fecha, ambiente, commit, datos ficticios, respuesta, consulta de persistencia y responsable. No convertir una prueba aislada o un reporte manual en «PS3 aprobada» sin esa evidencia.
+
+| Casos | Evidencia actual | Para cerrar |
+|---|---|---|
+| PS3-01–02 | Servicios/rutas y consulta manual de almacenes reportados; consultas de existencias probadas aisladamente. | Arranque conjunto reproducible, salud y migraciones; saldos/filtros contra PostgreSQL real. |
+| PS3-03–08 | Ingreso, egreso y traslado cubiertos por la suite aislada de Inventory. | Ejecutar altas, rechazos, reintentos y concurrencia con movimientos/saldos reales; comprobar atomicidad. |
+| PS3-09–14 | Production e Inventory tienen suites aisladas y prueba manual de conectividad/clave. | Recorrer producción real con receta, insumos, consumo, terminado, rechazos, respuesta perdida y caídas; cotejar ambos servicios y bases. |
+| PS3-15 | `403` con clave interna inválida y acceso autorizado a almacenes reportados. | Registrar también `401/403` públicos por permiso y bloqueo de rutas internas vía Gateway. |
+| PS3-16 | React compila. | Recorrer y capturar todo el flujo desde navegador → Gateway → servicios con Bearer. |
+| PS3-17 | Sin evidencia de reinicio y recuperación. | Reiniciar sin borrar volúmenes y verificar saldos, movimientos, producciones e idempotencia. |
+| PS3-18 | Suites aisladas aprobadas en contenedores sin red. | Comparar y registrar conteos antes/después de bases de desarrollo; revisar especialmente aislamiento de Security. |
+| PS3-19 | Sin evidencia de dos producciones simultáneas reales. | Ejecutar competencia por último insumo en PostgreSQL y auditar saldos y terminados. |
 
 ---
 
@@ -900,7 +942,7 @@ Comprobar:
 
 ## 19. Observación importante sobre las pruebas de Security
 
-Durante el cierre se detectó que determinadas pruebas de Security podían dejar vacía la base de desarrollo.
+Durante pruebas previas se observó que determinadas ejecuciones de la suite de Security podían dejar vacía la base de desarrollo. La suite de Security **no se repitió** en la verificación aislada del 17-11-2026.
 
 Por seguridad, antes de repetir la suite completa se debe revisar:
 
@@ -921,36 +963,30 @@ de desarrollo.
 
 ## 20. Pendientes de documentación Scrum
 
-Después de completar las pruebas integrales se debe actualizar:
+Este archivo aporta hechos técnicos para la documentación oficial. Faltan los siguientes registros del equipo; **no inventar horas, fechas de reuniones, aceptación del Product Owner ni resultados de pruebas**:
 
-- Daily Meeting;
-- Scrumboard;
-- Product Increment;
-- Burndown;
-- Burnup;
-- Sprint Review;
-- Sprint Retrospective;
-- evidencias de pruebas;
-- capturas del frontend;
-- resultados de base de datos;
-- diagramas que hayan cambiado.
+| Artefacto | Datos que deben incorporarse |
+|---|---|
+| Daily Meeting | Fechas, participantes, avance, impedimentos y acuerdos reales de cada reunión. |
+| Scrumboard / Sprint Backlog | Conciliar T301–T314 en `SPRINT_3_PLAN_DESARROLLO_Y_PRUEBAS.md`; registrar responsables, estados de revisión, horas reales, commits y evidencia de aceptación. |
+| Product Increment y diagramas | Arquitectura implementada, contratos y pantallas reales; señalar funciones disponibles y límites verificados. Actualizar diagramas de clases, interfaces y secuencia que hayan cambiado. |
+| Burndown y Burnup | Tomar datos diarios del tablero/Jira; no calcular curvas con horas estimadas ni con esta tabla de código implementado. |
+| Sprint Review | Demostración del flujo completo, casos PS3 aprobados/fallidos, comentarios del Product Owner y decisión de aceptación. |
+| Sprint Retrospective | Hechos observados, mejoras, responsables y fecha de seguimiento. |
+| Anexos de prueba | Registro PS3-01–PS3-19, capturas de React/Gateway, respuestas anonimizadas, conteos/consultas de base y evidencia de reinicio/concurrencia. |
 
 ---
 
 ## 21. Conclusión
 
-El Sprint 3 llegó a un estado de desarrollo avanzado y funcional.
+El Sprint 3 tiene Inventory, Production, Gateway, permisos y vistas React implementados. La verificación de esta consolidación aprobó las suites aisladas y la compilación; las secciones 12–13 conservan pruebas manuales de conectividad y autorización reportadas por el desarrollador. Falta repetir y registrar el flujo completo con datos y bases reales para decidir la aceptación de HU16–HU19.
 
-Los microservicios de **Inventory y Production** ya se comunican correctamente con **Security, Catalog y Gateway**, y la integración interna entre Production e Inventory quedó validada tanto para credenciales correctas como incorrectas.
+Próximas acciones para un cierre verificable:
 
-El flujo de autorización también quedó verificado con el usuario administrador y los cuatro permisos de Inventory.
+1. Configurar el `.env` local de Inventory y comprobar el conjunto de Compose, salud y migraciones sin reinicializar bases existentes.
+2. Ejecutar PS3-01–PS3-19 según aplique, con datos ficticios y evidencia de API, frontend y persistencia; registrar también los fallos.
+3. Probar reinicio, concurrencia y conciliación de Production ↔ Inventory en PostgreSQL.
+4. Conciliar el Sprint Backlog del plan con los commits ya integrados, incluidos `e016d72` de T313 y las horas reales.
+5. Completar Sprint Review, Retrospective y los demás artefactos Scrum con resultados observados y decisión del Product Owner.
 
-El trabajo restante corresponde principalmente a:
-
-1. registrar el commit final de T313;
-2. ejecutar pruebas integrales de extremo a extremo;
-3. comprobar persistencia y concurrencia;
-4. validar el flujo completo desde React;
-5. documentar Sprint Review, retrospectiva y evidencias finales.
-
-> **Estado final:** Desarrollo del Sprint 3 prácticamente terminado; pendiente cierre integral y documental.
+> **Estado de consolidación:** implementación avanzada y pruebas aisladas aprobadas; **Sprint 3 aún no cerrado oficialmente**.
