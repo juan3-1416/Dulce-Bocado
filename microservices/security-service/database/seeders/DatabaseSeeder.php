@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             PedidosPermisosSeeder::class,
             AdministradorInicialSeeder::class,
             InventoryPermisosSeeder::class,
+            ProductionPermisosSeeder::class,
         ]);
     }
 }
