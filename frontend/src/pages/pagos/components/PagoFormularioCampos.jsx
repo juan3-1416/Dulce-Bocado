@@ -10,7 +10,7 @@ function PagoFormularioCampos({
   metodosPago = ['EFECTIVO', 'QR'],
   documentoSeleccionado,
   usarSaldoCompleto,
-  tipoCobro,
+  _tipoCobro,
 }) {
   const saldoPendiente = Number(documentoSeleccionado?.saldo ?? 0)
 

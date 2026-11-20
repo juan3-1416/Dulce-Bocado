@@ -1,63 +1,57 @@
-const API_URL = '/api/recibos'
+import { ApiError, obtenerToken } from './authService'
 
-function obtenerCookie(nombre) {
-  const cookies = document.cookie.split(';')
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+const API_URL = `${API_BASE}/api/recibos`
 
-  for (const cookie of cookies) {
-    const [clave, ...valor] = cookie.trim().split('=')
-
-    if (clave === nombre) {
-      return valor.join('=')
-    }
+export function generarIdempotencyKey(prefijo = 'recibo') {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `${prefijo}-${crypto.randomUUID()}`
   }
 
-  return null
+  return `${prefijo}-${Date.now()}-${Math.random().toString(36).slice(2, 14)}`
 }
 
-async function prepararCsrf() {
-  const respuesta = await fetch('/sanctum/csrf-cookie', {
-    method: 'GET',
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-    },
-  })
-
-  if (!respuesta.ok) {
-    throw new Error('No se pudo obtener el token CSRF.')
+function obtenerHeaders({ json = false, idempotencyKey = null } = {}) {
+  const token = obtenerToken()
+  const headers = {
+    Accept: 'application/json',
   }
 
-  const token = obtenerCookie('XSRF-TOKEN')
-
-  if (!token) {
-    throw new Error('No se encontró el token CSRF.')
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
   }
 
-  return decodeURIComponent(token)
+  if (json) {
+    headers['Content-Type'] = 'application/json'
+  }
+
+  if (idempotencyKey) {
+    headers['Idempotency-Key'] = idempotencyKey
+  }
+
+  return headers
 }
 
-async function procesarRespuesta(respuesta) {
-  let datos = null
+async function procesarRespuesta(response) {
+  let data = {}
 
   try {
-    datos = await respuesta.json()
+    data = await response.json()
   } catch {
-    datos = null
+    data = {}
   }
 
-  if (!respuesta.ok) {
-    const error = new Error(
-      datos?.message ||
-        'Ocurrió un error al procesar la solicitud.'
-    )
+  if (!response.ok) {
+    const errorBody = data?.error || data || {}
+    const mensaje =
+      errorBody?.message ||
+      data?.message ||
+      `Error ${response.status} en el servicio de recibos.`
 
-    error.status = respuesta.status
-    error.data = datos
-
-    throw error
+    throw new ApiError(mensaje, response.status, errorBody)
   }
 
-  return datos
+  return data
 }
 
 export async function listarRecibos(params = {}) {
@@ -75,17 +69,11 @@ export async function listarRecibos(params = {}) {
     query.append('metodo_pago', params.metodo_pago)
   }
 
-  const url =
-    query.toString() !== ''
-      ? `${API_URL}?${query.toString()}`
-      : API_URL
+  const url = query.toString() !== '' ? `${API_URL}?${query.toString()}` : API_URL
 
   const respuesta = await fetch(url, {
     method: 'GET',
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-    },
+    headers: obtenerHeaders(),
   })
 
   return procesarRespuesta(respuesta)
@@ -94,10 +82,7 @@ export async function listarRecibos(params = {}) {
 export async function obtenerRecibo(id) {
   const respuesta = await fetch(`${API_URL}/${id}`, {
     method: 'GET',
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-    },
+    headers: obtenerHeaders(),
   })
 
   return procesarRespuesta(respuesta)
@@ -106,67 +91,84 @@ export async function obtenerRecibo(id) {
 export async function obtenerCatalogosRecibo() {
   const respuesta = await fetch(`${API_URL}/catalogos`, {
     method: 'GET',
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-    },
+    headers: obtenerHeaders(),
   })
 
   return procesarRespuesta(respuesta)
 }
 
-export async function crearRecibo(datos) {
-  const token = await prepararCsrf()
+export async function crearRecibo(datos, idempotencyKey = null) {
+  const clave = idempotencyKey || generarIdempotencyKey('recibo-crear')
 
   const respuesta = await fetch(API_URL, {
     method: 'POST',
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      'X-XSRF-TOKEN': token,
-    },
+    headers: obtenerHeaders({ json: true, idempotencyKey: clave }),
     body: JSON.stringify(datos),
   })
 
   return procesarRespuesta(respuesta)
 }
 
-export async function anularRecibo(id, datos) {
-  const token = await prepararCsrf()
+export async function anularRecibo(id, datos, idempotencyKey = null) {
+  const clave = idempotencyKey || generarIdempotencyKey('recibo-anular')
 
-  const respuesta = await fetch(
-    `${API_URL}/${id}/anular`,
-    {
-      method: 'PATCH',
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        'X-XSRF-TOKEN': token,
-      },
-      body: JSON.stringify(datos),
-    }
-  )
+  const respuesta = await fetch(`${API_URL}/${id}/anular`, {
+    method: 'POST',
+    headers: obtenerHeaders({ json: true, idempotencyKey: clave }),
+    body: JSON.stringify(datos),
+  })
 
   return procesarRespuesta(respuesta)
 }
 
 export async function registrarImpresionRecibo(id) {
-  const token = await prepararCsrf()
-
-  const respuesta = await fetch(
-    `${API_URL}/${id}/imprimir`,
-    {
-      method: 'PATCH',
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        'X-XSRF-TOKEN': token,
-      },
-    }
-  )
+  const respuesta = await fetch(`${API_URL}/${id}/imprimir`, {
+    method: 'PATCH',
+    headers: obtenerHeaders({ json: true }),
+  })
 
   return procesarRespuesta(respuesta)
+}
+
+export function obtenerUrlPdfRecibo(id) {
+  return `${API_URL}/${id}/pdf`
+}
+
+export async function descargarPdfRecibo(id, nombreArchivo = '') {
+  const token = obtenerToken()
+  const headers = {}
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
+  const respuesta = await fetch(`${API_URL}/${id}/pdf`, {
+    method: 'GET',
+    headers,
+  })
+
+  if (!respuesta.ok) {
+    let mensajeError = 'No se pudo generar o descargar el PDF del recibo.'
+    try {
+      const errorJson = await respuesta.json()
+      mensajeError = errorJson?.error?.message || errorJson?.message || mensajeError
+    } catch {
+      // Ignorar si no es JSON
+    }
+    throw new ApiError(mensajeError, respuesta.status)
+  }
+
+  const blob = await respuesta.blob()
+  const urlBlob = window.URL.createObjectURL(blob)
+
+  const enlace = document.createElement('a')
+  enlace.href = urlBlob
+  enlace.download = nombreArchivo || `recibo-${id}.pdf`
+  document.body.appendChild(enlace)
+  enlace.click()
+  document.body.removeChild(enlace)
+
+  window.URL.revokeObjectURL(urlBlob)
+
+  return true
 }

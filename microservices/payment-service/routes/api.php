@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\PagoController;
+use App\Http\Controllers\ReciboController;
 use App\Http\Middleware\AutorizarPermisoPagos;
 use Illuminate\Support\Facades\Route;
 
@@ -18,4 +19,67 @@ Route::get(
 )->middleware(
     AutorizarPermisoPagos::class.
         ':pagos.ver'
+);
+
+/*
+|--------------------------------------------------------------------------
+| Rutas de Recibos Internos (HU13 / T411)
+|--------------------------------------------------------------------------
+*/
+Route::get(
+    '/recibos',
+    [ReciboController::class, 'index']
+)->middleware(
+    AutorizarPermisoPagos::class.
+        ':recibos.ver'
+);
+
+Route::get(
+    '/recibos/catalogos',
+    [ReciboController::class, 'catalogos']
+)->middleware(
+    AutorizarPermisoPagos::class.
+        ':recibos.crear'
+);
+
+Route::post(
+    '/recibos',
+    [ReciboController::class, 'store']
+)->middleware(
+    AutorizarPermisoPagos::class.
+        ':recibos.crear'
+);
+
+Route::get(
+    '/recibos/{id}',
+    [ReciboController::class, 'show']
+)->where('id', '[0-9]+')->middleware(
+    AutorizarPermisoPagos::class.
+        ':recibos.ver'
+);
+
+Route::get(
+    '/recibos/{id}/pdf',
+    [ReciboController::class, 'pdf']
+)->where('id', '[0-9]+')->middleware(
+    AutorizarPermisoPagos::class.
+        ':recibos.ver'
+);
+
+Route::match(
+    ['POST', 'PATCH'],
+    '/recibos/{id}/anular',
+    [ReciboController::class, 'anular']
+)->where('id', '[0-9]+')->middleware(
+    AutorizarPermisoPagos::class.
+        ':recibos.anular'
+);
+
+Route::match(
+    ['POST', 'PATCH'],
+    '/recibos/{id}/imprimir',
+    [ReciboController::class, 'imprimir']
+)->where('id', '[0-9]+')->middleware(
+    AutorizarPermisoPagos::class.
+        ':recibos.ver'
 );

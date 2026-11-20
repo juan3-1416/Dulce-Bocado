@@ -34,4 +34,16 @@ return [
             3
         ),
     ],
+
+    'customer' => [
+        'url' => env(
+            'CUSTOMER_SERVICE_URL',
+            'http://customer-service:8000'
+        ),
+        'key' => env('INTERNAL_SERVICE_KEY'),
+        'timeout' => (int) env(
+            'CUSTOMER_TIMEOUT',
+            3
+        ),
+    ],
 ];
