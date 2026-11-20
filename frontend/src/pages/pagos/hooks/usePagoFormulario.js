@@ -1,478 +1,312 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 
-import { crearPago } from '../../../services/pagoService'
-import { crearPagoInternet } from '../../../services/pagoInternetService'
+import {
+  consultarPagosOrigen,
+  generarIdempotencyKey,
+  registrarPagoEfectivo,
+} from '../../../services/pagoService'
 
 /**
- * Gestiona el estado del formulario de pago y la lógica de submit.
- *
- * Para el flujo QR, llama a `onIniciarQr(transaccion)` en lugar de
- * modificar estado propio, de modo que el hook usePagoQr tome el control.
- *
- * @param {object} params
- * @param {boolean}      params.abierto
- * @param {Array}        params.ventas
- * @param {Array}        params.pedidos
- * @param {Array}        params.metodosPago
- * @param {number|null}  params.ventaInicialId
- * @param {object|null}  params.pedidoSeleccionadoInicial
- * @param {Function}     params.onGuardado
- * @param {Function}     params.onCerrar
- * @param {Function}     params.onIniciarQr
- * @param {Function}     params.setError — setter compartido del PagoModal
+ * Gestiona el estado del formulario de pago y la lógica de submit adaptada a microservicios.
+ * En Sprint 4 (HU11 - T409), el cobro en efectivo y cálculo de saldo se realizan contra payment-service.
+ * Los pagos QR se integrarán al cierre del Sprint 4 con la API oficial provista por el Product Owner.
  */
 export function usePagoFormulario({
   abierto,
-  ventas,
-  pedidos,
-  metodosPago,
-  ventaInicialId,
-  pedidoSeleccionadoInicial,
+  ventas = [],
+  pedidos = [],
+  metodosPago = ['EFECTIVO', 'QR'],
+  ventaInicialId = null,
+  pedidoSeleccionadoInicial = null,
   onGuardado,
   onCerrar,
-  onIniciarQr,
   setError,
 }) {
-  const [tipoCobro, setTipoCobro] =
-    useState('venta')
+  const [tipoCobro, setTipoCobro] = useState('venta')
+  const [idVenta, setIdVenta] = useState('')
+  const [idPedido, setIdPedido] = useState('')
+  const [monto, setMonto] = useState('')
+  const [metodoPago, setMetodoPago] = useState('EFECTIVO')
+  const [referencia, setReferencia] = useState('')
+  const [observaciones, setObservaciones] = useState('')
+  const [guardando, setGuardando] = useState(false)
+  const [cargandoSaldo, setCargandoSaldo] = useState(false)
+  const [resumenSaldo, setResumenSaldo] = useState(null)
 
-  const [idVenta, setIdVenta] =
-    useState('')
+  const intentoPago = useRef(null)
 
-  const [idPedido, setIdPedido] =
-    useState('')
+  // Consultar saldo autorizado directamente en payment-service
+  const consultarSaldoServidor = useCallback(async (tipo, id) => {
+    if (!id || Number(id) <= 0) {
+      setResumenSaldo(null)
+      return
+    }
 
-  const [monto, setMonto] =
-    useState('')
-
-  const [metodoPago, setMetodoPago] =
-    useState('EFECTIVO')
-
-  const [referencia, setReferencia] =
-    useState('')
-
-  const [observaciones, setObservaciones] =
-    useState('')
-
-  const [guardando, setGuardando] =
-    useState(false)
+    try {
+      setCargandoSaldo(true)
+      const data = await consultarPagosOrigen(tipo, id)
+      setResumenSaldo({
+        total: Number(data.total ?? 0),
+        pagado: Number(data.pagado ?? 0),
+        saldo: Number(data.saldo ?? 0),
+        estado_origen: data.estado_origen,
+        moneda: data.moneda || 'BOB',
+      })
+    } catch {
+      // Si payment-service falla al consultar, se mantendrá el saldo preliminar del documento
+      setResumenSaldo(null)
+    } finally {
+      setCargandoSaldo(false)
+    }
+  }, [])
 
   useEffect(() => {
-    if (!abierto) return
+    if (!abierto) {
+      setIdVenta('')
+      setIdPedido('')
+      setMonto('')
+      setMetodoPago('EFECTIVO')
+      setReferencia('')
+      setObservaciones('')
+      setError('')
+      setResumenSaldo(null)
+      intentoPago.current = null
+      return
+    }
 
-    setIdVenta('')
-    setIdPedido('')
-    setMonto('')
-
-    setMetodoPago(
-      metodosPago?.[0] || 'EFECTIVO'
-    )
-
-    setReferencia('')
-    setObservaciones('')
+    intentoPago.current = null
     setError('')
 
     if (pedidoSeleccionadoInicial) {
       setTipoCobro('pedido')
-
-      setIdPedido(
-        String(
-          pedidoSeleccionadoInicial.id_pedido
-        )
-      )
-
-      setMonto(
-        String(
-          pedidoSeleccionadoInicial.saldo
-        )
-      )
-
+      const id = String(pedidoSeleccionadoInicial.id_pedido)
+      setIdPedido(id)
+      setMonto(String(pedidoSeleccionadoInicial.saldo ?? pedidoSeleccionadoInicial.total ?? ''))
+      void consultarSaldoServidor('PEDIDO', id)
       return
     }
 
     if (ventaInicialId) {
-      const ventaInicial = ventas.find(
-        (venta) =>
-          Number(venta.id_venta) ===
-          Number(ventaInicialId)
-      )
-
       setTipoCobro('venta')
-      setIdVenta(String(ventaInicialId))
-
+      const id = String(ventaInicialId)
+      setIdVenta(id)
+      const ventaInicial = ventas.find((v) => Number(v.id_venta) === Number(id))
       if (ventaInicial) {
-        setMonto(
-          String(ventaInicial.saldo)
-        )
+        setMonto(String(ventaInicial.total ?? ''))
       }
-
+      void consultarSaldoServidor('VENTA', id)
       return
     }
 
-    if (
-      pedidos.length > 0 &&
-      ventas.length === 0
-    ) {
+    if (pedidos.length > 0 && ventas.length === 0) {
       setTipoCobro('pedido')
     } else {
       setTipoCobro('venta')
     }
   }, [
     abierto,
-    metodosPago,
     ventaInicialId,
     pedidoSeleccionadoInicial,
     ventas,
     pedidos,
     setError,
+    consultarSaldoServidor,
   ])
 
   const ventaSeleccionada = useMemo(
-    () =>
-      ventas.find(
-        (venta) =>
-          Number(venta.id_venta) ===
-          Number(idVenta)
-      ) ?? null,
-    [ventas, idVenta]
+    () => ventas.find((v) => Number(v.id_venta) === Number(idVenta)) ?? null,
+    [ventas, idVenta],
   )
 
   const pedidoSeleccionado = useMemo(
-    () =>
-      pedidos.find(
-        (pedido) =>
-          Number(pedido.id_pedido) ===
-          Number(idPedido)
-      ) ?? null,
-    [pedidos, idPedido]
+    () => pedidos.find((p) => Number(p.id_pedido) === Number(idPedido)) ?? null,
+    [pedidos, idPedido],
   )
 
-  const documentoSeleccionado =
-    tipoCobro === 'venta'
-      ? ventaSeleccionada
-      : pedidoSeleccionado
+  const documentoBase = tipoCobro === 'venta' ? ventaSeleccionada : pedidoSeleccionado
 
-  const obtenerNombreCliente = (
-    documento
-  ) => {
+  const documentoSeleccionado = useMemo(() => {
+    if (!documentoBase) return null
+
+    const total = resumenSaldo?.total ?? Number(documentoBase.total ?? 0)
+    const pagado = resumenSaldo?.pagado ?? Number(documentoBase.total_pagado ?? 0)
+    const saldo = resumenSaldo?.saldo ?? (total - pagado)
+
+    return {
+      ...documentoBase,
+      total,
+      total_pagado: pagado,
+      saldo: Math.max(0, saldo),
+    }
+  }, [documentoBase, resumenSaldo])
+
+  const obtenerNombreCliente = (documento) => {
     if (!documento) return ''
-
     if (documento.cliente) {
-      return [
-        documento.cliente.nombre,
-        documento.cliente.apellido,
-      ]
+      return [documento.cliente.nombre, documento.cliente.apellido]
         .filter(Boolean)
         .join(' ')
     }
-
-    return (
-      documento
-        .nombre_cliente_ocasional ||
-      'Cliente ocasional'
-    )
+    return documento.nombre_cliente_ocasional || 'Cliente ocasional'
   }
 
-  const obtenerMensajeError = (
-    errorPeticion
-  ) => {
-    const errores =
-      errorPeticion.data?.errors
-
-    if (errores) {
-      const primerError =
-        Object.values(errores)[0]
-
-      if (
-        Array.isArray(
-          primerError
-        )
-      ) {
-        return primerError[0]
-      }
-    }
-
-    return (
-      errorPeticion.message ||
-      'No se pudo procesar el pago.'
-    )
-  }
-
-  const manejarCambioVenta = (
-    event
-  ) => {
-    const nuevoId =
-      event.target.value
-
+  const manejarCambioVenta = (event) => {
+    const nuevoId = event.target.value
     setIdVenta(nuevoId)
     setError('')
+    intentoPago.current = null
 
-    const venta = ventas.find(
-      (item) =>
-        Number(item.id_venta) ===
-        Number(nuevoId)
-    )
-
-    setMonto(
-      venta
-        ? String(venta.saldo)
-        : ''
-    )
+    if (nuevoId) {
+      void consultarSaldoServidor('VENTA', nuevoId)
+    } else {
+      setResumenSaldo(null)
+      setMonto('')
+    }
   }
 
-  const manejarCambioPedido = (
-    event
-  ) => {
-    setIdPedido(
-      event.target.value
-    )
-    setMonto('')
+  const manejarCambioPedido = (event) => {
+    const nuevoId = event.target.value
+    setIdPedido(nuevoId)
     setError('')
+    intentoPago.current = null
+
+    if (nuevoId) {
+      void consultarSaldoServidor('PEDIDO', nuevoId)
+    } else {
+      setResumenSaldo(null)
+      setMonto('')
+    }
   }
 
   const usarSaldoCompleto = () => {
     if (documentoSeleccionado) {
-      setMonto(
-        String(
-          documentoSeleccionado.saldo
-        )
-      )
+      setMonto(String(Number(documentoSeleccionado.saldo).toFixed(2)))
     }
   }
 
-  const manejarSubmit = async (
-    event
-  ) => {
+  const manejarSubmit = async (event) => {
     event.preventDefault()
 
-    if (
-      tipoCobro === 'venta' &&
-      !idVenta
-    ) {
+    if (tipoCobro === 'venta' && !idVenta) {
+      setError('Debe seleccionar una venta.')
+      return
+    }
+
+    if (tipoCobro === 'pedido' && !idPedido) {
+      setError('Debe seleccionar un pedido.')
+      return
+    }
+
+    const montoNumero = Number(monto)
+    if (!Number.isFinite(montoNumero) || montoNumero <= 0) {
+      setError('El monto del pago debe ser mayor a cero.')
+      return
+    }
+
+    const saldoPendiente = Number(documentoSeleccionado?.saldo ?? 0)
+
+    if (saldoPendiente <= 0) {
+      setError('La operación seleccionada no tiene saldo pendiente por cobrar.')
+      return
+    }
+
+    if (montoNumero > saldoPendiente + 0.001) {
       setError(
-        'Debe seleccionar una venta.'
+        `El monto ingresado (Bs ${montoNumero.toFixed(2)}) supera el saldo pendiente de Bs ${saldoPendiente.toFixed(2)}.`,
       )
       return
     }
 
-    if (
-      tipoCobro === 'pedido' &&
-      !idPedido
-    ) {
+    // Validación según acuerdo PO: QR diferido para pasarela oficial
+    if (metodoPago === 'QR') {
       setError(
-        'Debe seleccionar un pedido.'
+        'La integración de pagos QR se realizará al cierre del Sprint 4 con la API oficial de la pasarela de pagos. Por favor, seleccione Efectivo para registrar este cobro.',
       )
       return
     }
 
-    const montoNumero =
-      Number(monto)
-
-    if (
-      !Number.isFinite(
-        montoNumero
-      ) ||
-      montoNumero <= 0
-    ) {
-      setError(
-        'El monto debe ser mayor a cero.'
-      )
+    if (metodoPago !== 'EFECTIVO') {
+      setError('Seleccione un método de pago válido (Efectivo).')
       return
     }
 
-    const saldo = Number(
-      documentoSeleccionado
-        ?.saldo ?? 0
-    )
+    const origenTipo = tipoCobro === 'venta' ? 'VENTA' : 'PEDIDO'
+    const origenId = tipoCobro === 'venta' ? Number(idVenta) : Number(idPedido)
 
-    if (
-      tipoCobro === 'venta' &&
-      Math.abs(
-        montoNumero - saldo
-      ) > 0.001
-    ) {
-      setError(
-        `La venta debe pagarse por el total pendiente de Bs ${saldo.toFixed(
-          2
-        )}.`
-      )
-      return
-    }
-
-    if (
-      tipoCobro === 'pedido' &&
-      montoNumero > saldo
-    ) {
-      setError(
-        `El monto no puede superar el saldo pendiente de Bs ${saldo.toFixed(
-          2
-        )}.`
-      )
-      return
-    }
-
-    if (
-      ![
-        'EFECTIVO',
-        'QR',
-      ].includes(
-        metodoPago
-      )
-    ) {
-      setError(
-        'Seleccione un método de pago válido.'
-      )
-      return
-    }
-
-    if (
-      metodoPago === 'QR'
-    ) {
-      try {
-        setGuardando(true)
-        setError('')
-
-        const payloadQr = {
-          monto:
-            montoNumero,
-        }
-
-        if (
-          tipoCobro ===
-          'venta'
-        ) {
-          payloadQr.id_venta =
-            Number(idVenta)
-        } else {
-          payloadQr.id_pedido =
-            Number(idPedido)
-        }
-
-        const respuesta =
-          await crearPagoInternet(
-            payloadQr
-          )
-
-        const transaccion =
-          respuesta.transaccion
-
-        if (
-          !transaccion
-            ?.qr_simple_url
-        ) {
-          throw new Error(
-            'Libélula no devolvió una imagen QR válida.'
-          )
-        }
-
-        onIniciarQr(
-          transaccion
-        )
-
-        setReferencia('')
-      } catch (
-        errorPeticion
-      ) {
-        setError(
-          obtenerMensajeError(
-            errorPeticion
-          )
-        )
-      } finally {
-        setGuardando(false)
+    // Gestión de Idempotencia estricta
+    const claveEsperada = `${origenTipo}:${origenId}:${montoNumero.toFixed(2)}`
+    if (intentoPago.current?.clavePayload !== claveEsperada) {
+      intentoPago.current = {
+        clavePayload: claveEsperada,
+        idempotencyKey: generarIdempotencyKey('pago-efec'),
       }
-
-      return
     }
 
     try {
       setGuardando(true)
       setError('')
 
-      const payload = {
-        monto:
-          montoNumero,
-
-        metodo_pago:
-          'EFECTIVO',
-
-        referencia:
-          referencia.trim() ||
-          null,
-
-        observaciones:
-          observaciones.trim() ||
-          null,
-      }
-
-      if (
-        tipoCobro ===
-        'venta'
-      ) {
-        payload.id_venta =
-          Number(idVenta)
-      } else {
-        payload.id_pedido =
-          Number(idPedido)
-      }
-
-      const respuesta =
-        await crearPago(
-          payload
-        )
-
-      const pago =
-        respuesta?.pago ??
-        null
-
-      const recibo =
-        respuesta?.recibo ??
-        null
-
-      if (
-        !pago?.id_pago
-      ) {
-        throw new Error(
-          'El pago fue procesado, pero el servidor no devolvió el pago registrado.'
-        )
-      }
-
-      if (
-        !recibo?.id_recibo
-      ) {
-        throw new Error(
-          'El pago fue procesado, pero el servidor no devolvió el recibo generado.'
-        )
-      }
-
-      await onGuardado(
-        respuesta?.message ||
-          'Pago y recibo registrados correctamente.',
-        pago,
+      const respuesta = await registrarPagoEfectivo(
         {
-          flujo:
-            'EFECTIVO',
-
-          recibo_generado:
-            true,
-
-          recibo,
-        }
+          origen_tipo: origenTipo,
+          origen_id: origenId,
+          monto: montoNumero,
+          moneda: 'BOB',
+        },
+        intentoPago.current.idempotencyKey,
       )
+
+      intentoPago.current = null
+
+      const mensajeExito =
+        respuesta?.message ||
+        `Pago en efectivo de Bs ${montoNumero.toFixed(2)} registrado correctamente.`
+
+      await onGuardado(mensajeExito, respuesta?.pago, {
+        flujo: 'EFECTIVO',
+        resumen: respuesta?.resumen,
+      })
 
       onCerrar()
-    } catch (
-      errorPeticion
-    ) {
-      setError(
-        obtenerMensajeError(
-          errorPeticion
+    } catch (err) {
+      const code = err.data?.error?.code
+
+      if (code === 'SOBREPAGO') {
+        const details = err.data?.error?.details
+        setError(
+          `Sobrepago rechazado: El monto supera el saldo disponible (Saldo actual: Bs ${Number(details?.saldo ?? 0).toFixed(2)}).`,
         )
-      )
+      } else if (code === 'VENTA_NO_CONFIRMADA') {
+        setError(
+          'La venta debe estar en estado CONFIRMADA antes de poder registrar pagos.',
+        )
+      } else if (code === 'PEDIDO_NO_PAGABLE') {
+        setError(
+          'El pedido no se encuentra en un estado que admita cobros.',
+        )
+      } else if (code === 'ORIGEN_CANCELADO') {
+        setError(
+          'La operación se encuentra cancelada y no admite nuevos pagos.',
+        )
+      } else if (code === 'CLAVE_IDEMPOTENTE_CONFLICTIVA') {
+        setError(
+          'La solicitud fue rechazada por conflicto con otra clave de idempotencia.',
+        )
+      } else if (err.status === 403) {
+        setError(
+          'No tienes permiso para registrar pagos (se requiere pagos.crear).',
+        )
+      } else {
+        setError(
+          err.message || 'No se pudo registrar el pago en efectivo.',
+        )
+      }
     } finally {
       setGuardando(false)
     }
@@ -492,6 +326,7 @@ export function usePagoFormulario({
     observaciones,
     setObservaciones,
     guardando,
+    cargandoSaldo,
     documentoSeleccionado,
     ventaSeleccionada,
     pedidoSeleccionado,

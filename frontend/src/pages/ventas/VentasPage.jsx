@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { Link } from 'react-router-dom'
 
 import {
   anularVenta,
@@ -615,6 +616,15 @@ function VentasPage() {
                               </button>}
                             </>
                           )}
+
+                          {venta.estado === 'CONFIRMADA' && tienePermiso('pagos.crear') && (
+                            <Link
+                              to="/pagos"
+                              className="rounded-lg border border-pink-200 bg-pink-50 px-3 py-2 text-sm font-semibold text-pink-700 hover:bg-pink-100"
+                            >
+                              Cobrar
+                            </Link>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -892,6 +902,17 @@ function VentasPage() {
                       Confirmar Venta y Descontar Stock
                     </button>
                   )}
+                </div>
+              )}
+
+              {ventaSeleccionada.estado === 'CONFIRMADA' && tienePermiso('pagos.crear') && (
+                <div className="flex items-center justify-end border-t border-gray-200 pt-4">
+                  <Link
+                    to="/pagos"
+                    className="rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-pink-700"
+                  >
+                    Ir a Pagos y Cobros
+                  </Link>
                 </div>
               )}
             </div>

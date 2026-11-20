@@ -121,8 +121,8 @@ Capacidad semanal: **80 horas**; **70** estimadas para T401–T414, **35 por des
 | T405 | HU12 | Validar callback QR y conciliar transacciones | Juan Pablo | 6 | Por hacer |
 | T406 | HU10–HU13 | Configurar Gateway, permisos y credenciales internas | Juan Pablo | 3 | En curso |
 | T407 | HU10–HU13 | Revisar contratos y pruebas de servicios para el cierre | Juan Pablo | 2 | Por hacer |
-| T408 | HU12 | Implementar adaptador QR y simulador de pruebas | Fabián | 6 | Por hacer |
-| T409 | HU11–HU12 | Construir interfaz de efectivo, QR y saldo | Fabián | 5 | Por hacer |
+| T408 | HU12 | Integrar pasarela de pago QR oficial (pendiente entrega de API al cierre de sprint) | Fabián | 6 | Pendiente de API |
+| T409 | HU11–HU12 | Construir interfaz de efectivo y saldo | Fabián | 5 | Completado |
 | T410 | HU10 | Construir interfaz de confirmación y disponibilidad | Fabián | 4 | Completado |
 | T411 | HU13 | Implementar API de recibos, PDF, consulta y anulación | Fabián | 6 | Por hacer |
 | T412 | HU13 | Construir interfaz de impresión y reimpresión | Fabián | 4 | Por hacer |
@@ -130,6 +130,8 @@ Capacidad semanal: **80 horas**; **70** estimadas para T401–T414, **35 por des
 | T414 | HU10–HU13 | Ejecutar pruebas integradas y documentar resultados | Fabián | 6 | Por hacer |
 
 **Revisión del 2026-11-19:** estados sustentados en [el informe de avance recibido](AVANCE_SPRINT_4_DEV_JP.md). T401 refleja ajustes preparatorios de Producción; T406, middleware y conexiones parciales. T402/T403 pasan a revisión por código incorporado, con pruebas y aceptación pendientes. Las estimaciones no son horas ejecutadas y la matriz PS4 continúa sin resultados.
+
+**Acuerdo sobre HU12 / T408 (2026-11-19):** A solicitud del Product Owner, se descarta el desarrollo de un simulador temporal de QR para evitar código descartable. La tarea T408 queda programada para integrar directamente la documentación y API de la pasarela de pagos oficial que se suministrará al finalizar el Sprint 4. Mientras tanto, en T409 se construye la interfaz completa de pagos en efectivo y consulta de saldo de operaciones contra `payment-service`.
 
 **Secuencia crítica:** verificar Sprint 3 → acordar contratos → crear Payment y operación de stock → confirmar ventas → pagos en efectivo → intención/callback QR → recibos → interfaces → pruebas de extremo a extremo. El trabajo paralelo comienza con contratos compartidos y respuestas de prueba; la aceptación usa servicios reales. Una tarea cambia de `Por hacer` a `En curso`, `En revisión` y `Terminada` con commit y evidencia, sin confundir código escrito con historia aceptada.
 
@@ -153,6 +155,8 @@ Cada subtarea se marca **Completado** con su evidencia; la tarea principal solo 
 | --- | --- | --- | --- |
 | 2026-11-19 | T406 — Rutas de Gateway para consulta de pagos y efectivo | Completado | `gateway/nginx.conf`: rutas exactas `/api/pagos` y `/api/pagos/efectivo` dirigidas a Payment, preservan Bearer e Idempotency-Key y eliminan encabezados internos del cliente. `nginx:alpine nginx -t` exitoso. Pendiente aceptación con Payment real; no cierra T406. |
 | 2026-11-19 | T410 — Interfaz de confirmación y disponibilidad de ventas | Completado | Frontend adaptado a microservicios: `ConfirmarVentaModal` con verificación de existencias en Mostrador (`inventarioConsultaService.consultarStockMostrador`), confirmación idempotente vía `POST /api/ventas/{id}/confirmar` (`ventaService.confirmarVenta`) con `Idempotency-Key` y Bearer Sanctum, soporte de estado `CONFIRMADA` en filtros y modal de detalle en `VentasPage`, bloqueo de edición/anulación para confirmadas, advertencia visual preventiva de stock insuficiente y captura de respuestas 409 (`STOCK_INSUFICIENTE`), 422 y 503 (`INVENTORY_NO_DISPONIBLE`, `CONFIRMACION_INCIERTA`). Build y lint limpios. |
+| 2026-11-19 | T408 — Adaptador QR y conexión con pasarela | Pendiente de API oficial | Acuerdo con el Product Owner: no se desarrollará un simulador QR temporal de prueba. La integración se realizará al cierre del Sprint 4 directamente con la API y documentación oficial de la pasarela provista por el PO. |
+| 2026-11-19 | T409 — Interfaz de efectivo y saldo de operaciones | Completado | Adaptación de vistas de pago a microservicios: `pagoService.js` actualizado con `registrarPagoEfectivo` (`POST /api/pagos/efectivo`), `consultarPagosOrigen` (`GET /api/pagos?origen=&origen_id=`), Bearer Sanctum e `Idempotency-Key` (16-128 chars). Eliminada dependencia de cookies/CSRF del monolito. `PagosPage.jsx` renovado con panel de consulta en tiempo real de saldos por Venta/Pedido (`resumenOperacion`), historial de pagos registrados en Payment Service, y cobro directo de saldo pendiente. `PagoModal.jsx` y `usePagoFormulario.js` admiten pagos parciales sin restricción de 100% en ventas, con advertencia informativa de QR oficial diferido al cierre del sprint. Build y lint limpios. |
 
 **Actualización de desarrollo 2026-11-19:** T402 y T403 completadas en alcance técnico con 18 pruebas y 93 aserciones, migración, salud HTTP y persistencia comprobadas. Ver [evidencia y límites](SPRINT_4_PRUEBAS_PAYMENT.md). La aceptación de HU11 continúa pendiente de servicios reales; los estados anteriores de revisión se conservan como historial.
 
@@ -211,4 +215,4 @@ En la Sprint Review se inspeccionan los resultados y el Product Backlog con inte
 
 | Fecha | Decisión o cambio de contrato | Motivo | Tareas y pruebas afectadas | Acordado por |
 | --- | --- | --- | --- | --- |
-| — | — | — | — | — |
+| 2026-11-19 | Diferir simulación QR en favor de integración directa con pasarela oficial al cierre del Sprint 4 | El PO proporcionará la API y documentación oficial de la pasarela de pagos al finalizar el sprint, evitando la creación de simuladores o código descartable | T408, T405, T409, T413 | Fabián Cuellar (PO) y equipo |

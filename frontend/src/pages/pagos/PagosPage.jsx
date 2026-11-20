@@ -6,940 +6,528 @@ import {
 
 import PagoModal from './PagoModal'
 import ReciboDetalleModal from '../recibos/ReciboDetalleModal'
+import { useAuth } from '../../context/AuthContext'
 
 import {
   anularPago,
-  listarPagos,
+  consultarPagosOrigen,
   obtenerCatalogosPago,
 } from '../../services/pagoService'
 
 function PagosPage() {
-  const [pagos, setPagos] = useState([])
-  const [buscar, setBuscar] = useState('')
-  const [estado, setEstado] = useState('')
+  const { tienePermiso } = useAuth()
 
-  const [
-    metodoPagoFiltro,
-    setMetodoPagoFiltro,
-  ] = useState('')
+  const [tipoOperacion, setTipoOperacion] = useState('VENTA')
+  const [origenSeleccionadoId, setOrigenSeleccionadoId] = useState('')
+
+  const [resumenOperacion, setResumenOperacion] = useState(null)
+  const [pagosOperacion, setPagosOperacion] = useState([])
+  const [cargandoOperacion, setCargandoOperacion] = useState(false)
 
   const [ventas, setVentas] = useState([])
   const [pedidos, setPedidos] = useState([])
+  const [metodosPago, setMetodosPago] = useState(['EFECTIVO', 'QR'])
 
-  const [
-    metodosPago,
-    setMetodosPago,
-  ] = useState([
-    'EFECTIVO',
-    'QR',
-  ])
+  const [reciboSeleccionado, setReciboSeleccionado] = useState(null)
+  const [modalAbierto, setModalAbierto] = useState(false)
+  const [pagoParaAnular, setPagoParaAnular] = useState(null)
+  const [motivoAnulacion, setMotivoAnulacion] = useState('')
 
-  const [
-    reciboSeleccionado,
-    setReciboSeleccionado,
-  ] = useState(null)
+  const [cargandoCatalogos, setCargandoCatalogos] = useState(true)
+  const [anulando, setAnulando] = useState(false)
+  const [error, setError] = useState('')
+  const [mensaje, setMensaje] = useState('')
 
-  const [
-    modalAbierto,
-    setModalAbierto,
-  ] = useState(false)
+  // Carga las ventas confirmadas y pedidos pagables desde sus microservicios
+  const cargarCatalogos = useCallback(async () => {
+    try {
+      setCargandoCatalogos(true)
+      const respuesta = await obtenerCatalogosPago()
+      setVentas(respuesta.ventas ?? [])
+      setPedidos(respuesta.pedidos ?? [])
+      setMetodosPago(respuesta.metodos_pago ?? ['EFECTIVO', 'QR'])
 
-  const [
-    pagoParaAnular,
-    setPagoParaAnular,
-  ] = useState(null)
-
-  const [
-    motivoAnulacion,
-    setMotivoAnulacion,
-  ] = useState('')
-
-  const [cargando, setCargando] =
-    useState(true)
-
-  const [
-    cargandoCatalogos,
-    setCargandoCatalogos,
-  ] = useState(false)
-
-  const [anulando, setAnulando] =
-    useState(false)
-
-  const [error, setError] =
-    useState('')
-
-  const [mensaje, setMensaje] =
-    useState('')
-
-  const cargarPagos =
-    useCallback(async () => {
-      try {
-        setCargando(true)
-        setError('')
-
-        const respuesta =
-          await listarPagos({
-            buscar,
-            estado,
-            metodo_pago:
-              metodoPagoFiltro,
-          })
-
-        setPagos(
-          respuesta.pagos ?? []
-        )
-      } catch (errorPeticion) {
-        if (
-          errorPeticion.status ===
-          403
-        ) {
-          setError(
-            'No tienes permiso para gestionar pagos.'
-          )
-        } else if (
-          errorPeticion.status ===
-          401
-        ) {
-          setError(
-            'Tu sesión ha expirado.'
-          )
-        } else {
-          setError(
-            errorPeticion.message ||
-              'No se pudieron cargar los pagos.'
-          )
-        }
-      } finally {
-        setCargando(false)
+      // Si no hay origen seleccionado y hay ventas confirmadas, seleccionar la primera por defecto
+      if (!origenSeleccionadoId && (respuesta.ventas?.length ?? 0) > 0) {
+        setTipoOperacion('VENTA')
+        setOrigenSeleccionadoId(String(respuesta.ventas[0].id_venta))
       }
-    }, [
-      buscar,
-      estado,
-      metodoPagoFiltro,
-    ])
+    } catch (err) {
+      setError(err.message || 'No se pudieron cargar los documentos para cobro.')
+    } finally {
+      setCargandoCatalogos(false)
+    }
+  }, [origenSeleccionadoId])
 
-  const cargarCatalogos =
-    useCallback(async () => {
-      const respuesta =
-        await obtenerCatalogosPago()
+  // Consulta saldo y pagos en tiempo real en payment-service
+  const cargarPagosOperacion = useCallback(async (tipo, id) => {
+    if (!id || Number(id) <= 0) {
+      setResumenOperacion(null)
+      setPagosOperacion([])
+      return
+    }
 
-      setVentas(
-        respuesta.ventas ?? []
-      )
-
-      setPedidos(
-        respuesta.pedidos ?? []
-      )
-
-      setMetodosPago(
-        respuesta.metodos_pago ??
-          [
-            'EFECTIVO',
-            'QR',
-          ]
-      )
-    }, [])
+    try {
+      setCargandoOperacion(true)
+      setError('')
+      const data = await consultarPagosOrigen(tipo, id)
+      setResumenOperacion({
+        origen_tipo: data.origen_tipo,
+        origen_id: data.origen_id,
+        estado_origen: data.estado_origen,
+        total: Number(data.total ?? 0),
+        pagado: Number(data.pagado ?? 0),
+        saldo: Number(data.saldo ?? 0),
+        moneda: data.moneda || 'BOB',
+      })
+      setPagosOperacion(data.pagos ?? [])
+    } catch (err) {
+      if (err.status === 403) {
+        setError('No tienes permiso para consultar pagos (se requiere pagos.ver).')
+      } else if (err.status === 404) {
+        setError(`La operación ${tipo} #${id} no fue encontrada en su servicio propietario.`)
+      } else {
+        setError(err.message || 'No se pudo consultar el saldo y pagos de la operación.')
+      }
+      setResumenOperacion(null)
+      setPagosOperacion([])
+    } finally {
+      setCargandoOperacion(false)
+    }
+  }, [])
 
   useEffect(() => {
-    const temporizador =
-      setTimeout(() => {
-        cargarPagos()
-      }, 300)
+    cargarCatalogos()
+  }, [cargarCatalogos])
 
-    return () =>
-      clearTimeout(temporizador)
-  }, [cargarPagos])
-
-  const abrirNuevoPago =
-    async () => {
-      try {
-        setCargandoCatalogos(true)
-        setError('')
-        setMensaje('')
-
-        await cargarCatalogos()
-
-        setModalAbierto(true)
-      } catch (errorPeticion) {
-        setError(
-          errorPeticion.message ||
-            'No se pudieron cargar las ventas y pedidos disponibles.'
-        )
-      } finally {
-        setCargandoCatalogos(false)
-      }
+  useEffect(() => {
+    if (origenSeleccionadoId) {
+      cargarPagosOperacion(tipoOperacion, origenSeleccionadoId)
     }
+  }, [tipoOperacion, origenSeleccionadoId, cargarPagosOperacion])
+
+  const abrirNuevoPago = (tipo = tipoOperacion, id = origenSeleccionadoId) => {
+    setError('')
+    setMensaje('')
+    setTipoOperacion(tipo)
+    setOrigenSeleccionadoId(id ? String(id) : '')
+    setModalAbierto(true)
+  }
 
   const cerrarModal = () => {
     setModalAbierto(false)
   }
 
-  const manejarGuardado = async (
-    mensajeRespuesta
-  ) => {
-    setMensaje(
-      mensajeRespuesta
-    )
-
-    await cargarPagos()
+  const manejarGuardado = async (mensajeRespuesta) => {
+    setMensaje(mensajeRespuesta)
+    if (origenSeleccionadoId) {
+      await cargarPagosOperacion(tipoOperacion, origenSeleccionadoId)
+    }
+    await cargarCatalogos()
   }
 
-  const abrirModalAnular = (
-    pago
-  ) => {
-    if (
-      pago.estado ===
-      'ANULADO'
-    ) {
-      setError(
-        'El pago ya se encuentra anulado.'
-      )
-      return
-    }
-
+  const abrirModalAnular = (pago) => {
     setError('')
     setMensaje('')
-
     setPagoParaAnular(pago)
     setMotivoAnulacion('')
   }
 
   const cerrarModalAnular = () => {
-    if (anulando) {
-      return
-    }
-
+    if (anulando) return
     setPagoParaAnular(null)
     setMotivoAnulacion('')
   }
 
-  const confirmarAnulacion =
-    async () => {
-      const motivo =
-        motivoAnulacion.trim()
-
-      if (motivo.length < 5) {
-        setError(
-          'El motivo de anulación debe tener al menos 5 caracteres.'
-        )
-        return
-      }
-
-      try {
-        setAnulando(true)
-        setError('')
-
-        await anularPago(
-          pagoParaAnular.id_pago,
-          motivo
-        )
-
-        setMensaje(
-          'Pago anulado correctamente.'
-        )
-
-        setPagoParaAnular(null)
-        setMotivoAnulacion('')
-
-        await cargarPagos()
-      } catch (errorPeticion) {
-        const errores =
-          errorPeticion.data?.errors
-
-        if (errores) {
-          const primerError =
-            Object.values(
-              errores
-            )[0]
-
-          if (
-            Array.isArray(
-              primerError
-            )
-          ) {
-            setError(
-              primerError[0]
-            )
-          } else {
-            setError(
-              errorPeticion.message
-            )
-          }
-        } else {
-          setError(
-            errorPeticion.message ||
-              'No se pudo anular el pago.'
-          )
-        }
-      } finally {
-        setAnulando(false)
-      }
-    }
-
-  const obtenerNombreCliente = (
-    pago
-  ) => {
-    const documento =
-      pago.venta || pago.pedido
-
-    if (!documento) {
-      return '—'
-    }
-
-    if (documento.cliente) {
-      return [
-        documento.cliente.nombre,
-        documento.cliente.apellido,
-      ]
-        .filter(Boolean)
-        .join(' ')
-    }
-
-    return (
-      documento.nombre_cliente_ocasional ||
-      'Cliente ocasional'
-    )
-  }
-
-  const obtenerDocumentoPago = (
-    pago
-  ) => {
-    if (pago.venta) {
-      return {
-        tipo: 'Venta',
-        numero: pago.id_venta,
-        documento: pago.venta,
-      }
-    }
-
-    if (pago.pedido) {
-      return {
-        tipo: 'Pedido',
-        numero: pago.id_pedido,
-        documento: pago.pedido,
-      }
-    }
-
-    return {
-      tipo: '—',
-      numero: null,
-      documento: null,
-    }
-  }
-
-  const abrirReciboPago = (
-    pago
-  ) => {
-    const recibos =
-      pago.recibos ?? []
-
-    const recibo =
-      recibos.find(
-        (item) =>
-          item.estado === 'EMITIDO'
-      ) ?? recibos[0]
-
-    if (!recibo?.id_recibo) {
-      setError(
-        'No se encontró un recibo asociado a este pago.'
-      )
+  const confirmarAnulacion = async () => {
+    const motivo = motivoAnulacion.trim()
+    if (motivo.length < 5) {
+      setError('El motivo de anulación debe tener al menos 5 caracteres.')
       return
     }
 
-    setError('')
-    setReciboSeleccionado(
-      recibo.id_recibo
-    )
-  }
-
-  const obtenerResumenPago = (
-    pago
-  ) => {
-    const { documento } =
-      obtenerDocumentoPago(pago)
-
-    if (!documento) {
-      return {
-        total: 0,
-        pagadoHastaPago: null,
-        saldoDespuesPago: null,
+    try {
+      setAnulando(true)
+      setError('')
+      await anularPago(pagoParaAnular.id_pago, motivo)
+      setMensaje('Pago anulado correctamente.')
+      setPagoParaAnular(null)
+      setMotivoAnulacion('')
+      if (origenSeleccionadoId) {
+        await cargarPagosOperacion(tipoOperacion, origenSeleccionadoId)
       }
-    }
-
-    return {
-      total: Number(
-        documento.total ?? 0
-      ),
-
-      pagadoHastaPago:
-        pago.total_pagado_hasta_pago !== null &&
-        pago.total_pagado_hasta_pago !== undefined
-          ? Number(
-              pago.total_pagado_hasta_pago
-            )
-          : null,
-
-      saldoDespuesPago:
-        pago.saldo_despues_pago !== null &&
-        pago.saldo_despues_pago !== undefined
-          ? Number(
-              pago.saldo_despues_pago
-            )
-          : null,
+    } catch (err) {
+      setError(err.message || 'No se pudo anular el pago.')
+    } finally {
+      setAnulando(false)
     }
   }
 
-  const obtenerNombreUsuario = (
-    usuario
-  ) => {
-    if (!usuario) {
-      return '—'
-    }
-
-    return (
-      usuario.nombre ||
-      usuario.nombre_usuario ||
-      '—'
-    )
+  const formatearFecha = (fecha) => {
+    if (!fecha) return '—'
+    return new Date(fecha).toLocaleString('es-BO')
   }
 
-  const formatearFecha = (
-    fecha
-  ) => {
-    if (!fecha) {
-      return '—'
+  const obtenerNombreClienteDoc = (doc) => {
+    if (!doc) return 'Cliente ocasional'
+    if (doc.cliente) {
+      return [doc.cliente.nombre, doc.cliente.apellido].filter(Boolean).join(' ')
     }
-
-    return new Date(
-      fecha
-    ).toLocaleString(
-      'es-BO'
-    )
-  }
-
-  const formatearMetodo = (
-    metodo
-  ) => {
-    switch (metodo) {
-      case 'EFECTIVO':
-        return 'Efectivo'
-
-      case 'QR':
-        return 'QR'
-
-      case 'ONLINE':
-        return 'QR - Libélula'
-
-      default:
-        return metodo
-    }
+    return doc.nombre_cliente_ocasional || 'Cliente ocasional'
   }
 
   return (
     <section className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            Gestión de Pagos
+            Gestión de Pagos y Saldos
           </h1>
-
           <p className="mt-1 text-sm text-gray-600">
-            Registra y controla los pagos asociados a ventas y pedidos.
+            Control de cobros en efectivo, cálculo atómico de saldos y auditoría por operación (Payment Service).
           </p>
         </div>
 
         <button
           type="button"
-          onClick={
-            abrirNuevoPago
-          }
-          disabled={
-            cargandoCatalogos
-          }
-          className="rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold text-white hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-50"
+          onClick={() => abrirNuevoPago()}
+          disabled={cargandoCatalogos || !tienePermiso('pagos.crear')}
+          className="rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {cargandoCatalogos
-            ? 'Cargando...'
-            : 'Nuevo Pago'}
+          {cargandoCatalogos ? 'Cargando comprobantes...' : 'Nuevo Cobro'}
         </button>
       </div>
 
       {mensaje && (
-        <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+        <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
           {mensaje}
         </div>
       )}
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           {error}
         </div>
       )}
 
-      <div className="grid gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm md:grid-cols-3">
-        <div>
-          <label
-            htmlFor="buscar_pago"
-            className="mb-1 block text-sm font-medium text-gray-700"
-          >
-            Buscar
-          </label>
+      {/* Selector de Operación para consulta en Payment Service */}
+      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-600">
+          Consultar Pagos y Saldo por Operación
+        </h2>
 
-          <input
-            id="buscar_pago"
-            type="text"
-            value={buscar}
-            onChange={(event) =>
-              setBuscar(
-                event.target.value
-              )
-            }
-            placeholder="Cliente o referencia..."
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
-          />
-        </div>
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+          {/* Tipo de Operación */}
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-gray-500 uppercase">
+              Tipo de Operación
+            </label>
+            <div className="flex gap-4 pt-1">
+              <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-800">
+                <input
+                  type="radio"
+                  name="tipo_operacion"
+                  value="VENTA"
+                  checked={tipoOperacion === 'VENTA'}
+                  onChange={(e) => {
+                    setTipoOperacion(e.target.value)
+                    const primeraVenta = ventas[0]?.id_venta
+                    setOrigenSeleccionadoId(primeraVenta ? String(primeraVenta) : '')
+                  }}
+                  className="text-pink-600 focus:ring-pink-500"
+                />
+                Venta Confirmada
+              </label>
 
-        <div>
-          <label
-            htmlFor="estado_pago"
-            className="mb-1 block text-sm font-medium text-gray-700"
-          >
-            Estado
-          </label>
+              <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-800">
+                <input
+                  type="radio"
+                  name="tipo_operacion"
+                  value="PEDIDO"
+                  checked={tipoOperacion === 'PEDIDO'}
+                  onChange={(e) => {
+                    setTipoOperacion(e.target.value)
+                    const primerPedido = pedidos[0]?.id_pedido
+                    setOrigenSeleccionadoId(primerPedido ? String(primerPedido) : '')
+                  }}
+                  className="text-pink-600 focus:ring-pink-500"
+                />
+                Pedido
+              </label>
+            </div>
+          </div>
 
-          <select
-            id="estado_pago"
-            value={estado}
-            onChange={(event) =>
-              setEstado(
-                event.target.value
-              )
-            }
-            className="w-full rounded-lg border border-gray-300 px-3 py-2"
-          >
-            <option value="">
-              Todos
-            </option>
-
-            <option value="REGISTRADO">
-              Registrados
-            </option>
-
-            <option value="ANULADO">
-              Anulados
-            </option>
-          </select>
-        </div>
-
-        <div>
-          <label
-            htmlFor="metodo_pago_filtro"
-            className="mb-1 block text-sm font-medium text-gray-700"
-          >
-            Método
-          </label>
-
-          <select
-            id="metodo_pago_filtro"
-            value={
-              metodoPagoFiltro
-            }
-            onChange={(event) =>
-              setMetodoPagoFiltro(
-                event.target.value
-              )
-            }
-            className="w-full rounded-lg border border-gray-300 px-3 py-2"
-          >
-            <option value="">
-              Todos
-            </option>
-
-            <option value="EFECTIVO">
-              Efectivo
-            </option>
-
-            <option value="QR">
-              QR
-            </option>
-
-            <option value="ONLINE">
-              QR - Libélula
-            </option>
-          </select>
+          {/* Selector de Venta o Pedido */}
+          <div className="sm:col-span-2">
+            <label
+              htmlFor="origen_id_selector"
+              className="mb-1 block text-xs font-semibold text-gray-500 uppercase"
+            >
+              Seleccionar {tipoOperacion === 'VENTA' ? 'Venta Confirmada' : 'Pedido'}
+            </label>
+            <select
+              id="origen_id_selector"
+              value={origenSeleccionadoId}
+              onChange={(e) => setOrigenSeleccionadoId(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500"
+            >
+              <option value="">-- Seleccionar comprobante para consultar saldo --</option>
+              {tipoOperacion === 'VENTA'
+                ? ventas.map((v) => (
+                    <option key={v.id_venta} value={v.id_venta}>
+                      Venta #{v.id_venta} — {obtenerNombreClienteDoc(v)} — Total Bs {Number(v.total ?? 0).toFixed(2)}
+                    </option>
+                  ))
+                : pedidos.map((p) => (
+                    <option key={p.id_pedido} value={p.id_pedido}>
+                      Pedido #{p.id_pedido} — {obtenerNombreClienteDoc(p)} — Total Bs {Number(p.total ?? p.monto_total ?? 0).toFixed(2)}
+                    </option>
+                  ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        {cargando ? (
-          <div className="p-8 text-center text-gray-500">
-            Cargando pagos...
+      {/* KPI Card de Saldo Oficial (Calculado por Payment Service) */}
+      {cargandoOperacion ? (
+        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-gray-500">
+          Consultando saldo y pagos en Payment Service...
+        </div>
+      ) : resumenOperacion ? (
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-4">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-pink-600">
+                Comprobante Oficial
+              </span>
+              <h2 className="text-xl font-bold text-gray-900">
+                {resumenOperacion.origen_tipo} #{resumenOperacion.origen_id}
+              </h2>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">Estado del comprobante:</span>
+              <span className="inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 border border-emerald-200">
+                {resumenOperacion.estado_origen}
+              </span>
+            </div>
           </div>
-        ) : pagos.length === 0 ? (
+
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div className="rounded-lg bg-gray-50 p-4 border border-gray-100">
+              <p className="text-xs font-semibold uppercase text-gray-500">Total Operación</p>
+              <p className="mt-1 text-lg font-bold text-gray-900">
+                Bs {resumenOperacion.total.toFixed(2)}
+              </p>
+            </div>
+
+            <div className="rounded-lg bg-emerald-50 p-4 border border-emerald-100">
+              <p className="text-xs font-semibold uppercase text-emerald-700">Total Pagado</p>
+              <p className="mt-1 text-lg font-bold text-emerald-800">
+                Bs {resumenOperacion.pagado.toFixed(2)}
+              </p>
+            </div>
+
+            <div
+              className={`rounded-lg p-4 border ${
+                resumenOperacion.saldo > 0
+                  ? 'bg-amber-50 border-amber-200'
+                  : 'bg-green-50 border-green-200'
+              }`}
+            >
+              <p
+                className={`text-xs font-semibold uppercase ${
+                  resumenOperacion.saldo > 0 ? 'text-amber-800' : 'text-green-800'
+                }`}
+              >
+                Saldo Pendiente
+              </p>
+              <p
+                className={`mt-1 text-lg font-bold ${
+                  resumenOperacion.saldo > 0 ? 'text-pink-600' : 'text-green-700'
+                }`}
+              >
+                Bs {resumenOperacion.saldo.toFixed(2)}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-center p-2">
+              {resumenOperacion.saldo > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => abrirNuevoPago(resumenOperacion.origen_tipo, resumenOperacion.origen_id)}
+                  disabled={!tienePermiso('pagos.crear')}
+                  className="w-full rounded-lg bg-emerald-600 py-3 px-4 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  Cobrar Saldo (Bs {resumenOperacion.saldo.toFixed(2)})
+                </button>
+              ) : (
+                <div className="text-center text-xs font-semibold text-emerald-700 bg-emerald-50 rounded-lg py-3 px-4 w-full border border-emerald-200">
+                  ✓ Pagado en su totalidad
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Tabla de Pagos de la Operación */}
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="border-b border-gray-200 bg-gray-50 px-6 py-3">
+          <h3 className="text-sm font-semibold text-gray-700">
+            Historial de Pagos Registrados en Payment Service
+            {resumenOperacion ? ` para ${resumenOperacion.origen_tipo} #${resumenOperacion.origen_id}` : ''}
+          </h3>
+        </div>
+
+        {cargandoOperacion ? (
+          <div className="p-8 text-center text-gray-500">Cargando pagos...</div>
+        ) : pagosOperacion.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
-            No existen pagos registrados.
+            {resumenOperacion
+              ? `No se han registrado pagos para ${resumenOperacion.origen_tipo} #${resumenOperacion.origen_id}.`
+              : 'Selecciona una operación para consultar sus pagos registrados.'}
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <thead className="bg-gray-50 text-xs font-semibold uppercase text-gray-600">
                 <tr>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
-                    N.º
-                  </th>
-
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
-                    Origen
-                  </th>
-
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
-                    Cliente
-                  </th>
-
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
-                    Monto
-                  </th>
-
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
-                    Método
-                  </th>
-
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
-                    Fecha
-                  </th>
-
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
-                    Estado
-                  </th>
-
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
-                    Acciones
-                  </th>
+                  <th className="px-5 py-3 text-left">N.º Pago</th>
+                  <th className="px-5 py-3 text-left">Operación UUID</th>
+                  <th className="px-5 py-3 text-left">Medio</th>
+                  <th className="px-5 py-3 text-right">Monto</th>
+                  <th className="px-5 py-3 text-left">Fecha de Confirmación</th>
+                  <th className="px-5 py-3 text-center">Estado</th>
+                  <th className="px-5 py-3 text-right">Acciones</th>
                 </tr>
               </thead>
 
               <tbody className="divide-y divide-gray-200">
-                {pagos.map(
-                  (pago) => {
-                    const origen =
-                      obtenerDocumentoPago(
-                        pago
-                      )
+                {pagosOperacion.map((pago) => (
+                  <tr key={pago.id_pago} className="hover:bg-gray-50">
+                    <td className="px-5 py-4 font-bold text-gray-900">
+                      #{pago.id_pago}
+                    </td>
 
-                    const resumen =
-                      obtenerResumenPago(
-                        pago
-                      )
+                    <td className="px-5 py-4 font-mono text-xs text-gray-600">
+                      {pago.operacion_id || '—'}
+                    </td>
 
-                    return (
-                      <tr
-                        key={
-                          pago.id_pago
-                        }
-                        className="align-top hover:bg-gray-50"
-                      >
-                        <td className="px-5 py-4 text-sm font-semibold text-gray-900">
-                          #{pago.id_pago}
-                        </td>
+                    <td className="px-5 py-4 font-medium text-gray-800">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 border border-blue-200">
+                        {pago.medio || 'EFECTIVO'}
+                      </span>
+                    </td>
 
-                        <td className="px-5 py-4">
-                          <p className="text-sm font-semibold text-gray-900">
-                            {origen.tipo}
-                            {origen.numero
-                              ? ` #${origen.numero}`
-                              : ''}
-                          </p>
+                    <td className="px-5 py-4 text-right font-bold text-gray-900">
+                      Bs {Number(pago.monto ?? 0).toFixed(2)}
+                    </td>
 
-                          <div className="mt-2 space-y-1 text-xs text-gray-500">
-                            <p>
-                              Total: Bs{' '}
-                              {resumen.total.toFixed(
-                                2
-                              )}
-                            </p>
+                    <td className="px-5 py-4 text-gray-600">
+                      {formatearFecha(pago.confirmado_at || pago.fecha_pago || pago.created_at)}
+                    </td>
 
-                            {pago.estado ===
-                            'REGISTRADO' ? (
-                              <>
-                                <p className="text-green-700">
-                                  Pagado hasta este pago: Bs{' '}
-                                  {resumen.pagadoHastaPago !==
-                                  null
-                                    ? resumen.pagadoHastaPago.toFixed(
-                                        2
-                                      )
-                                    : '0.00'}
-                                </p>
+                    <td className="px-5 py-4 text-center">
+                      <span className="inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 border border-emerald-200">
+                        {pago.estado}
+                      </span>
+                    </td>
 
-                                <p
-                                  className={
-                                    resumen.saldoDespuesPago >
-                                    0
-                                      ? 'font-semibold text-amber-700'
-                                      : 'font-semibold text-green-700'
-                                  }
-                                >
-                                  Saldo después del pago: Bs{' '}
-                                  {resumen.saldoDespuesPago !==
-                                  null
-                                    ? resumen.saldoDespuesPago.toFixed(
-                                        2
-                                      )
-                                    : '0.00'}
-                                </p>
-                              </>
-                            ) : (
-                              <p className="text-red-600">
-                                Pago anulado — no afecta el saldo vigente
-                              </p>
-                            )}
-                          </div>
-                        </td>
-
-                        <td className="px-5 py-4">
-                          <p className="text-sm font-medium text-gray-900">
-                            {obtenerNombreCliente(
-                              pago
-                            )}
-                          </p>
-
-                          <p className="mt-1 text-xs text-gray-500">
-                            Registrado por:{' '}
-                            {obtenerNombreUsuario(
-                              pago.usuario
-                            )}
-                          </p>
-                        </td>
-
-                        <td className="px-5 py-4">
-                          <p className="text-sm font-bold text-gray-900">
-                            Bs{' '}
-                            {Number(
-                              pago.monto
-                            ).toFixed(
-                              2
-                            )}
-                          </p>
-                        </td>
-
-                        <td className="px-5 py-4">
-                          <p className="text-sm font-medium text-gray-700">
-                            {formatearMetodo(
-                              pago.metodo_pago
-                            )}
-                          </p>
-
-                          {pago.referencia && (
-                            <p className="mt-1 max-w-[220px] break-all text-xs text-gray-500">
-                              Ref:{' '}
-                              {pago.referencia}
-                            </p>
-                          )}
-                        </td>
-
-                        <td className="px-5 py-4 text-sm text-gray-600">
-                          {formatearFecha(
-                            pago.fecha_pago
-                          )}
-                        </td>
-
-                        <td className="px-5 py-4">
-                          {pago.estado ===
-                          'REGISTRADO' ? (
-                            <span className="inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
-                              Registrado
-                            </span>
-                          ) : (
-                            <div>
-                              <span className="inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
-                                Anulado
-                              </span>
-
-                              {pago.motivo_anulacion && (
-                                <p className="mt-2 max-w-xs text-xs text-gray-500">
-                                  {
-                                    pago.motivo_anulacion
-                                  }
-                                </p>
-                              )}
-
-                              {pago.fecha_anulacion && (
-                                <p className="mt-1 text-xs text-gray-400">
-                                  {formatearFecha(
-                                    pago.fecha_anulacion
-                                  )}
-                                </p>
-                              )}
-                            </div>
-                          )}
-                        </td>
-
-                        <td className="px-5 py-4">
-                          <div className="flex flex-wrap gap-2">
-                            {(pago.recibos
-                              ?.length ??
-                              0) > 0 ? (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  abrirReciboPago(
-                                    pago
-                                  )
-                                }
-                                className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-                              >
-                                Ver recibo
-                              </button>
-                            ) : (
-                              <span className="inline-flex items-center text-xs text-gray-400">
-                                Sin recibo
-                              </span>
-                            )}
-
-                            {pago.estado ===
-                              'REGISTRADO' && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  abrirModalAnular(
-                                    pago
-                                  )
-                                }
-                                className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
-                              >
-                                Anular
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  }
-                )}
+                    <td className="px-5 py-4 text-right">
+                      {pago.estado === 'REGISTRADO' && tienePermiso('pagos.anular') && (
+                        <button
+                          type="button"
+                          onClick={() => abrirModalAnular(pago)}
+                          className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50"
+                        >
+                          Anular
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         )}
       </div>
 
+      {/* Modal para Registrar Pago en Efectivo */}
       <PagoModal
         abierto={modalAbierto}
         onCerrar={cerrarModal}
-        onGuardado={
-          manejarGuardado
-        }
+        onGuardado={manejarGuardado}
         ventas={ventas}
         pedidos={pedidos}
-        metodosPago={
-          metodosPago
+        metodosPago={metodosPago}
+        ventaInicialId={tipoOperacion === 'VENTA' ? origenSeleccionadoId : null}
+        pedidoSeleccionadoInicial={
+          tipoOperacion === 'PEDIDO' && origenSeleccionadoId
+            ? pedidos.find((p) => Number(p.id_pedido) === Number(origenSeleccionadoId))
+            : null
         }
       />
 
       <ReciboDetalleModal
-        abierto={Boolean(
-          reciboSeleccionado
-        )}
-        reciboId={
-          reciboSeleccionado
-        }
-        onCerrar={() =>
-          setReciboSeleccionado(
-            null
-          )
-        }
-        onActualizado={
-          cargarPagos
-        }
+        abierto={Boolean(reciboSeleccionado)}
+        reciboId={reciboSeleccionado}
+        onCerrar={() => setReciboSeleccionado(null)}
+        onActualizado={() => {
+          if (origenSeleccionadoId) {
+            cargarPagosOperacion(tipoOperacion, origenSeleccionadoId)
+          }
+        }}
       />
 
+      {/* Modal de Anulación */}
       {pagoParaAnular && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
             <div className="border-b border-gray-200 px-6 py-4">
-              <h2 className="text-xl font-bold text-gray-900">
-                Anular Pago
-              </h2>
-
+              <h2 className="text-xl font-bold text-gray-900">Anular Pago</h2>
               <p className="mt-1 text-sm text-gray-500">
-                Pago #
-                {
-                  pagoParaAnular.id_pago
-                }
-                {' — '}
-                {pagoParaAnular.id_pedido
-                  ? `Pedido #${pagoParaAnular.id_pedido}`
-                  : `Venta #${pagoParaAnular.id_venta}`}
-                {' — Bs '}
-                {Number(
-                  pagoParaAnular.monto
-                ).toFixed(
-                  2
-                )}
+                Pago #{pagoParaAnular.id_pago} — Bs {Number(pagoParaAnular.monto).toFixed(2)}
               </p>
             </div>
 
-            <div className="space-y-5 p-6">
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                El pago dejará de formar parte del total pagado y el saldo pendiente de la venta o pedido será recalculado automáticamente.
+            <div className="space-y-4 p-6">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                El pago dejará de computarse y el saldo de la operación se actualizará en Payment Service.
               </div>
 
               <div>
-                <label
-                  htmlFor="motivo_anulacion_pago"
-                  className="mb-1 block text-sm font-medium text-gray-700"
-                >
+                <label htmlFor="motivo_anulacion_pago" className="mb-1 block text-sm font-medium text-gray-700">
                   Motivo de anulación
                 </label>
-
                 <textarea
                   id="motivo_anulacion_pago"
-                  value={
-                    motivoAnulacion
-                  }
-                  onChange={(event) =>
-                    setMotivoAnulacion(
-                      event.target.value
-                    )
-                  }
+                  value={motivoAnulacion}
+                  onChange={(e) => setMotivoAnulacion(e.target.value)}
                   rows={4}
                   maxLength={500}
                   placeholder="Explique el motivo de la anulación..."
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                 />
-
-                <p className="mt-1 text-xs text-gray-400">
-                  Mínimo 5 caracteres.
-                </p>
               </div>
 
-              <div className="flex justify-end gap-3 border-t border-gray-200 pt-5">
+              <div className="flex justify-end gap-3 border-t border-gray-200 pt-4">
                 <button
                   type="button"
-                  onClick={
-                    cerrarModalAnular
-                  }
+                  onClick={cerrarModalAnular}
                   disabled={anulando}
                   className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700"
                 >
                   Cancelar
                 </button>
-
                 <button
                   type="button"
-                  onClick={
-                    confirmarAnulacion
-                  }
-                  disabled={
-                    anulando ||
-                    motivoAnulacion
-                      .trim()
-                      .length < 5
-                  }
-                  className="rounded-lg bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={confirmarAnulacion}
+                  disabled={anulando || motivoAnulacion.trim().length < 5}
+                  className="rounded-lg bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
                 >
-                  {anulando
-                    ? 'Anulando...'
-                    : 'Confirmar Anulación'}
+                  {anulando ? 'Anulando...' : 'Confirmar Anulación'}
                 </button>
               </div>
             </div>

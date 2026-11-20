@@ -25,7 +25,7 @@ function PagoDocumentoSelector({
                 onChange={(e) => setTipoCobro(e.target.value)}
                 className="text-pink-600 focus:ring-pink-500"
               />
-              <span className="text-sm font-medium text-gray-800">Venta</span>
+              <span className="text-sm font-medium text-gray-800">Venta Confirmada</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -47,7 +47,7 @@ function PagoDocumentoSelector({
             htmlFor="venta_pago"
             className="mb-1 block text-sm font-medium text-gray-700"
           >
-            Venta
+            Venta Confirmada
           </label>
           <select
             id="venta_pago"
@@ -56,13 +56,18 @@ function PagoDocumentoSelector({
             required
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500"
           >
-            <option value="">Seleccionar venta</option>
+            <option value="">Seleccionar venta confirmada</option>
             {ventas.map((venta) => (
               <option key={venta.id_venta} value={venta.id_venta}>
-                Venta #{venta.id_venta} — {obtenerNombreCliente(venta)} — Saldo Bs {Number(venta.saldo).toFixed(2)}
+                Venta #{venta.id_venta} — {obtenerNombreCliente(venta)} — Total Bs {Number(venta.total ?? 0).toFixed(2)}
               </option>
             ))}
           </select>
+          {ventas.length === 0 && (
+            <p className="mt-1 text-xs text-amber-700">
+              No hay ventas confirmadas registradas disponibles para cobrar.
+            </p>
+          )}
         </div>
       )}
 
@@ -84,10 +89,15 @@ function PagoDocumentoSelector({
             <option value="">Seleccionar pedido</option>
             {pedidos.map((pedido) => (
               <option key={pedido.id_pedido} value={pedido.id_pedido}>
-                Pedido #{pedido.id_pedido} — {obtenerNombreCliente(pedido)} — Saldo Bs {Number(pedido.saldo).toFixed(2)}
+                Pedido #{pedido.id_pedido} — {obtenerNombreCliente(pedido)} — Total Bs {Number(pedido.total ?? pedido.monto_total ?? 0).toFixed(2)}
               </option>
             ))}
           </select>
+          {pedidos.length === 0 && (
+            <p className="mt-1 text-xs text-amber-700">
+              No hay pedidos registrados disponibles para cobrar.
+            </p>
+          )}
         </div>
       )}
     </div>

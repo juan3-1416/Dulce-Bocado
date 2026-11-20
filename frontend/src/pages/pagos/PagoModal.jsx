@@ -142,14 +142,16 @@ function PagoModal({
               </>
             )}
 
-{form.metodoPago === 'QR' && (
-  <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-    Al continuar se generará un QR real de Libélula. El pago solo será registrado cuando Libélula confirme la transacción.
-  </div>
-)}
+            {form.metodoPago === 'QR' && (
+              <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+                <p className="font-semibold">Integración de Pasarela Oficial de Pagos QR</p>
+                <p className="mt-1 text-xs text-blue-800">
+                  La pasarela oficial de pagos QR se integrará al cierre del Sprint 4 con la documentación y API provistas por el Product Owner. Para procesar este pago de forma inmediata, seleccione el método <strong>Efectivo</strong>.
+                </p>
+              </div>
+            )}
 
             <div className="flex justify-end gap-3 border-t border-gray-200 pt-5">
-
               <button
                 type="button"
                 onClick={onCerrar}
@@ -162,17 +164,15 @@ function PagoModal({
               <button
                 type="submit"
                 disabled={
-                  form.guardando || sinDocumentos
+                  form.guardando || sinDocumentos || form.metodoPago === 'QR'
                 }
                 className="rounded-lg bg-pink-600 px-5 py-2 text-sm font-semibold text-white hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {form.guardando
-                  ? form.metodoPago === 'QR'
-                    ? 'Generando QR...'
-                    : 'Registrando...'
+                  ? 'Registrando pago...'
                   : form.metodoPago === 'QR'
-                    ? 'Generar QR'
-                    : 'Registrar Pago'}
+                    ? 'QR disponible al cierre de sprint'
+                    : 'Registrar Pago en Efectivo'}
               </button>
             </div>
           </form>
