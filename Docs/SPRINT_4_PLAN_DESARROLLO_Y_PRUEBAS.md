@@ -124,7 +124,7 @@ sequenceDiagram
 ### 3.3 HU12 — Pagos por Internet con Pasarela QR Oficial Libélula
 - **Problema de Negocio:** Brindar la opción de cobrar mediante QR interoperable bancario en Bolivia, cumpliendo con la especificación técnica de la pasarela **Libélula**, cuyo aviso llega por método **GET** sin cuerpo y donde el identificador de la deuda viaja en el parámetro `transaction_id`.
 - **Credenciales y Configuración ([config/libelula.php](file:///c:/Materias_FINOR/TecnoWeb/Dulce-Bocado/microservices/payment-service/config/libelula.php)):**
-  - `app_key`: `11bb10ce-68ba-4af1-8eb7-4e6624fed729` (AppKey oficial de pruebas del Product Owner).
+  - `app_key`: `[configurada mediante LIBELULA_APP_KEY]` (AppKey oficial de pruebas del Product Owner).
   - Endpoint de registro: `https://api.libelula.bo/rest/deuda/registrar`.
   - Callback URL: `http://localhost:8080/api/pagos/qr/callback`.
 - **Implementación Backend:**
