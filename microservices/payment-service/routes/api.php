@@ -23,6 +23,34 @@ Route::get(
 
 /*
 |--------------------------------------------------------------------------
+| Rutas de Pagos QR Libélula (HU12 / T408)
+|--------------------------------------------------------------------------
+*/
+Route::post(
+    '/pagos/qr',
+    [PagoController::class, 'storeQr']
+)->middleware(
+    AutorizarPermisoPagos::class.
+        ':pagos.crear'
+);
+
+Route::get(
+    '/pagos/qr/{id}',
+    [PagoController::class, 'showQr']
+)->where('id', '[0-9]+')->middleware(
+    AutorizarPermisoPagos::class.
+        ':pagos.ver'
+);
+
+// Callback público de Libélula (aviso por GET o POST con transaction_id)
+Route::match(
+    ['GET', 'POST'],
+    '/pagos/qr/callback',
+    [PagoController::class, 'callbackQr']
+);
+
+/*
+|--------------------------------------------------------------------------
 | Rutas de Recibos Internos (HU13 / T411)
 |--------------------------------------------------------------------------
 */

@@ -92,6 +92,42 @@ export async function registrarPagoEfectivo(
 }
 
 /**
+ * Inicia la intención de cobro QR en la pasarela Libélula mediante Payment Service.
+ * POST /api/pagos/qr
+ */
+export async function iniciarPagoQr(
+  { origen_tipo, origen_id, monto, moneda = 'BOB' },
+  idempotencyKey = generarIdempotencyKey('pago-qr'),
+) {
+  const payload = {
+    origen_tipo: String(origen_tipo).toUpperCase(),
+    origen_id: Number(origen_id),
+    monto: Number(monto).toFixed(2),
+    moneda: String(moneda).toUpperCase(),
+  }
+
+  return solicitarPago(`${API_URL}/qr`, {
+    method: 'POST',
+    headers: obtenerHeaders({
+      json: true,
+      idempotencyKey,
+    }),
+    body: JSON.stringify(payload),
+  })
+}
+
+/**
+ * Consulta el estado de un intento de cobro QR en Payment Service.
+ * GET /api/pagos/qr/{id}
+ */
+export async function consultarEstadoQr(idIntentoQr) {
+  return solicitarPago(`${API_URL}/qr/${idIntentoQr}`, {
+    method: 'GET',
+    headers: obtenerHeaders(),
+  })
+}
+
+/**
  * Consulta pagos y saldo en tiempo real de una Venta o Pedido desde Payment Service.
  * GET /api/pagos?origen=VENTA|PEDIDO&origen_id=ID
  */

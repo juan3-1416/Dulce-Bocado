@@ -5,13 +5,13 @@ import {
 } from 'react'
 
 import {
-  obtenerPagoInternet,
-} from '../../../services/pagoInternetService'
+  consultarEstadoQr,
+} from '../../../services/pagoService'
 
 /**
- * Gestiona el ciclo de vida de un pago QR (Libélula):
- * — estado de la transacción
- * — polling periódico del estado vía backend (obtenerPagoInternet)
+ * Gestiona el ciclo de vida de un pago QR (Libélula) en microservicios:
+ * — estado del intento de pago QR
+ * — polling periódico del estado vía payment-service (consultarEstadoQr)
  * — exposición de `iniciarQr` para que el formulario
  *   entregue el control cuando la pasarela responde
  *
@@ -27,33 +27,27 @@ export function usePagoQr({
   onCerrar,
   setError,
 }) {
-  const [transaccionQr, setTransaccionQr] =
-    useState(null)
-
-  const [estadoQr, setEstadoQr] =
-    useState(null)
-
-  const [consultandoQr, setConsultandoQr] =
-    useState(false)
+  const [transaccionQr, setTransaccionQr] = useState(null)
+  const [estadoQr, setEstadoQr] = useState(null)
+  const [consultandoQr, setConsultandoQr] = useState(false)
 
   const timeoutQrRef = useRef(null)
   const qrNotificadoRef = useRef(false)
 
   /*
-   * Limpia el estado QR cada vez que el modal se abre.
+   * Limpia el estado QR cada vez que el modal se abre o cierra.
    */
   useEffect(() => {
-    if (!abierto) return
-
-    if (timeoutQrRef.current) {
-      clearTimeout(timeoutQrRef.current)
-      timeoutQrRef.current = null
+    if (!abierto) {
+      if (timeoutQrRef.current) {
+        clearTimeout(timeoutQrRef.current)
+        timeoutQrRef.current = null
+      }
+      setTransaccionQr(null)
+      setEstadoQr(null)
+      setConsultandoQr(false)
+      qrNotificadoRef.current = false
     }
-
-    setTransaccionQr(null)
-    setEstadoQr(null)
-    setConsultandoQr(false)
-    qrNotificadoRef.current = false
   }, [abierto])
 
   /*
@@ -70,21 +64,17 @@ export function usePagoQr({
   /*
    * Polling QR.
    *
-   * El frontend consulta periódicamente a nuestro backend,
-   * el cual se actualiza cuando Libélula confirma el pago
-   * vía webhook o aviso público.
+   * El frontend consulta periódicamente a nuestro payment-service,
+   * el cual se actualiza cuando Libélula envía el aviso GET de pago confirmado.
    */
   useEffect(() => {
-    if (
-      !abierto ||
-      !transaccionQr?.id_pago_internet ||
-      estadoQr !== 'PENDIENTE'
-    ) {
+    const idIntento = transaccionQr?.id_intento_qr || transaccionQr?.id_pago_internet
+
+    if (!abierto || !idIntento || estadoQr !== 'PENDIENTE') {
       return
     }
 
     let cancelado = false
-    const idTransaccion = transaccionQr.id_pago_internet
 
     const verificarEstado = async () => {
       let continuar = true
@@ -92,33 +82,27 @@ export function usePagoQr({
       try {
         setConsultandoQr(true)
 
-        const detalle = await obtenerPagoInternet(idTransaccion)
+        const respuesta = await consultarEstadoQr(idIntento)
 
         if (cancelado) return
 
-        const transaccion = detalle?.transaccion
-        const nuevoEstado = transaccion?.estado
+        const intento = respuesta?.intento_qr ?? respuesta
+        const nuevoEstado = intento?.estado
 
         if (!nuevoEstado) return
 
-        if (nuevoEstado === 'APROBADO') {
+        if (nuevoEstado === 'CONFIRMADA' || nuevoEstado === 'APROBADO') {
           continuar = false
 
           if (qrNotificadoRef.current) return
           qrNotificadoRef.current = true
 
-          const pago = transaccion?.pago ?? null
-
-          if (!pago?.id_pago) {
-            throw new Error(
-              'El pago QR fue aprobado, pero no se pudo recuperar el pago generado.'
-            )
-          }
+          const pago = intento?.pago ?? null
 
           await onGuardado(
-            'Pago QR confirmado correctamente. El recibo fue generado automáticamente.',
+            'Pago QR confirmado correctamente por Libélula.',
             pago,
-            { flujo: 'QR', recibo_generado: true }
+            { flujo: 'QR', recibo_generado: Boolean(pago?.recibo) }
           )
 
           setEstadoQr('APROBADO')
@@ -126,20 +110,24 @@ export function usePagoQr({
           return
         }
 
-        setEstadoQr(nuevoEstado)
-
-        if (nuevoEstado === 'RECHAZADO') {
+        if (nuevoEstado === 'RECHAZADA' || nuevoEstado === 'RECHAZADO') {
           continuar = false
+          setEstadoQr('RECHAZADO')
           setError(
-            transaccion?.motivo_rechazo ||
-            'El pago QR fue rechazado.'
+            intento?.motivo_rechazo ||
+            'El pago QR fue rechazado por la pasarela.'
           )
+          return
         }
 
-        if (nuevoEstado === 'VENCIDO') {
+        if (nuevoEstado === 'EXPIRADA' || nuevoEstado === 'VENCIDO') {
           continuar = false
-          setError('La transacción QR ya no está disponible.')
+          setEstadoQr('VENCIDO')
+          setError('El código QR ha expirado. Por favor, genere un nuevo cobro.')
+          return
         }
+
+        setEstadoQr(nuevoEstado)
       } catch (errorPeticion) {
         console.error(
           'Error al consultar el estado del pago QR:',
@@ -154,7 +142,7 @@ export function usePagoQr({
       if (!cancelado && continuar) {
         timeoutQrRef.current = setTimeout(
           verificarEstado,
-          5000
+          3500
         )
       }
     }
@@ -179,8 +167,8 @@ export function usePagoQr({
   ])
 
   /**
-   * Recibe la transacción devuelta por Libélula y activa el
-   * panel QR. Es llamado por usePagoFormulario tras `crearPagoInternet`.
+   * Recibe el intento de pago devuelto por payment-service y activa la
+   * vista QR.
    *
    * @param {object} transaccion
    */
@@ -191,8 +179,8 @@ export function usePagoQr({
   }
 
   const qrPendiente = estadoQr === 'PENDIENTE'
-  const qrAprobado = estadoQr === 'APROBADO'
-  const qrVencido = estadoQr === 'VENCIDO'
+  const qrAprobado = estadoQr === 'APROBADO' || estadoQr === 'CONFIRMADA'
+  const qrVencido = estadoQr === 'VENCIDO' || estadoQr === 'EXPIRADA'
 
   return {
     transaccionQr,

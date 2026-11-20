@@ -13,6 +13,7 @@ import {
 import PedidoModal from './PedidoModal.jsx';
 import PedidoDetalleModal from './PedidoDetalleModal.jsx';
 import CancelarPedidoModal from './CancelarPedidoModal.jsx';
+import PagoModal from '../pagos/PagoModal';
 import { useAuth } from '../../context/AuthContext';
 
 function PedidosPage() {
@@ -22,6 +23,8 @@ function PedidosPage() {
         tienePermiso(
             'pedidos.gestionar_estado_entrega'
         );
+    const puedeCrearPago = tienePermiso('pagos.crear');
+
     const [pedidos, setPedidos] =
         useState([]);
 
@@ -30,6 +33,8 @@ function PedidosPage() {
 
     const [error, setError] =
         useState('');
+    const [mensajeExito, setMensajeExito] =
+        useState('');
 
     const [filtros, setFiltros] =
         useState({
@@ -37,6 +42,21 @@ function PedidosPage() {
             estado: '',
             fecha_entrega: ''
         });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Modal pago / anticipo
+    |--------------------------------------------------------------------------
+    */
+    const [
+        modalPagoAbierto,
+        setModalPagoAbierto
+    ] = useState(false);
+
+    const [
+        pedidoParaPagar,
+        setPedidoParaPagar
+    ] = useState(null);
 
     /*
     |--------------------------------------------------------------------------
@@ -470,6 +490,20 @@ function PedidosPage() {
                 </button>
             </div>
 
+            {/* Mensajes */}
+            {mensajeExito && (
+                <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+                    <span>{mensajeExito}</span>
+                    <button
+                        type="button"
+                        onClick={() => setMensajeExito('')}
+                        className="text-green-500 hover:text-green-800"
+                    >
+                        ✕
+                    </button>
+                </div>
+            )}
+
             {/* Error */}
             {error && (
                 <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -790,6 +824,19 @@ function PedidosPage() {
                                                             Ver detalle
                                                         </button>
 
+                                                        {puedeCrearPago && pedido.estado !== 'CANCELADO' && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setPedidoParaPagar(pedido);
+                                                                    setModalPagoAbierto(true);
+                                                                }}
+                                                                className="rounded border border-pink-200 bg-pink-50 px-3 py-1 text-xs font-semibold text-pink-700 hover:bg-pink-100"
+                                                            >
+                                                                Cobrar / Anticipo
+                                                            </button>
+                                                        )}
+
                                                         {puedeGestionarEstado && pedido.estado === 'PROGRAMADO' && (
                                                             <button
                                                                 type="button"
@@ -916,6 +963,10 @@ function PedidosPage() {
                 pedido={
                     pedidoDetalle
                 }
+                onPagoRegistrado={(msg) => {
+                    setMensajeExito(msg);
+                    void cargarPedidos();
+                }}
             />
 
             {/* Modal de cancelación */}
@@ -928,6 +979,25 @@ function PedidosPage() {
                 pedido={pedidoParaCancelar}
                 onConfirm={confirmarCancelacion}
             />
+
+            {/* Modal registrar cobro / anticipo */}
+            {modalPagoAbierto && (
+                <PagoModal
+                    abierto={modalPagoAbierto}
+                    onCerrar={() => {
+                        setModalPagoAbierto(false);
+                        setPedidoParaPagar(null);
+                    }}
+                    onGuardado={async (msg) => {
+                        setModalPagoAbierto(false);
+                        setPedidoParaPagar(null);
+                        setMensajeExito(msg);
+                        await cargarPedidos();
+                    }}
+                    pedidos={pedidoParaPagar ? [pedidoParaPagar] : []}
+                    pedidoSeleccionadoInicial={pedidoParaPagar}
+                />
+            )}
         </section>
     );
 }

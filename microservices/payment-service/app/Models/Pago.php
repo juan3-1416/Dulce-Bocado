@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Pago extends Model
@@ -30,6 +31,11 @@ class Pago extends Model
     public function recibo(): HasOne
     {
         return $this->hasOne(Recibo::class, 'pago_id', 'id_pago');
+    }
+
+    public function intentoQr(): BelongsTo
+    {
+        return $this->belongsTo(IntentoQr::class, 'intento_qr_id', 'id_intento_qr');
     }
 
     public function getIdVentaAttribute(): ?int

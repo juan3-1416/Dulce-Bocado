@@ -1,8 +1,70 @@
+import { useCallback, useEffect, useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { consultarPagosOrigen } from '../../services/pagoService';
+import PagoModal from '../pagos/PagoModal';
+import ReciboDetalleModal from '../recibos/ReciboDetalleModal';
+
 function PedidoDetalleModal({
     isOpen,
     onClose,
     pedido,
+    onPagoRegistrado,
 }) {
+    const { tienePermiso } = useAuth();
+    const puedeCrearPago = tienePermiso('pagos.crear');
+
+    const [resumenPagos, setResumenPagos] = useState(null);
+    const [listaPagos, setListaPagos] = useState([]);
+    const [cargandoPagos, setCargandoPagos] = useState(false);
+    const [errorPagos, setErrorPagos] = useState('');
+
+    const [modalPagoAbierto, setModalPagoAbierto] = useState(false);
+    const [reciboSeleccionado, setReciboSeleccionado] = useState(null);
+
+    const cargarPagosPedido = useCallback(async () => {
+        if (!pedido?.id_pedido) return;
+        try {
+            setCargandoPagos(true);
+            setErrorPagos('');
+            const data = await consultarPagosOrigen('PEDIDO', pedido.id_pedido);
+            setResumenPagos({
+                total: Number(data.total ?? 0),
+                pagado: Number(data.pagado ?? 0),
+                saldo: Number(data.saldo ?? 0),
+                estado_origen: data.estado_origen,
+                moneda: data.moneda || 'BOB',
+            });
+            setListaPagos(data.pagos ?? []);
+        } catch (err) {
+            // Si el pedido aún no tiene registros en payment-service
+            setResumenPagos({
+                total: Number(pedido.total ?? 0),
+                pagado: 0,
+                saldo: Number(pedido.total ?? 0),
+                estado_origen: pedido.estado,
+                moneda: 'BOB',
+            });
+            setListaPagos([]);
+            if (err.status !== 404) {
+                setErrorPagos(err.message || 'No se pudieron consultar los pagos del pedido.');
+            }
+        } finally {
+            setCargandoPagos(false);
+        }
+    }, [pedido?.id_pedido, pedido?.total, pedido?.estado]);
+
+    useEffect(() => {
+        if (isOpen && pedido?.id_pedido) {
+            void cargarPagosPedido();
+        } else {
+            setResumenPagos(null);
+            setListaPagos([]);
+            setErrorPagos('');
+            setModalPagoAbierto(false);
+            setReciboSeleccionado(null);
+        }
+    }, [isOpen, pedido?.id_pedido, cargarPagosPedido]);
+
     if (!isOpen || !pedido) {
         return null;
     }
@@ -46,6 +108,12 @@ function PedidoDetalleModal({
 
         return numero.toFixed(2);
     };
+
+    const total = resumenPagos?.total ?? Number(pedido.total ?? 0);
+    const pagado = resumenPagos?.pagado ?? 0;
+    const saldo = resumenPagos?.saldo ?? total;
+    const esPagadoTotal = saldo <= 0.001;
+    const tieneAnticipo = pagado > 0 && !esPagadoTotal;
 
     const obtenerNombreCliente = () => {
         if (pedido.cliente) {
@@ -128,7 +196,7 @@ function PedidoDetalleModal({
                         </div>
 
                         <p className="mt-1 text-sm text-gray-500">
-                            Detalle completo del pedido registrado.
+                            Detalle completo del pedido registrado y gestión de cobros.
                         </p>
                     </div>
 
@@ -358,8 +426,7 @@ function PedidoDetalleModal({
                                         )
                                         .map(
                                             (
-                                                detalle,
-                                                indice
+                                                detalle
                                             ) => (
                                                 <div
                                                     key={
@@ -408,17 +475,158 @@ function PedidoDetalleModal({
                             </p>
                         </section>
 
-                        {/* Total */}
+                        {/* Gestión de Cobros, Anticipos y Saldos (Option 1 / T413) */}
                         <section className="rounded-xl border border-pink-200 bg-pink-50 p-5">
-                            <h3 className="mb-4 font-semibold text-pink-900">
-                                Total del pedido
-                            </h3>
-                            <div>
-                                <div className="rounded-lg bg-white p-4 shadow-sm border border-pink-100">
-                                    <p className="mt-1 text-2xl font-bold text-gray-900">
-                                        Bs {formatearMonto(pedido.total)}
+                            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                                <div>
+                                    <h3 className="font-semibold text-pink-900 text-base">
+                                        Estado de Pagos y Anticipos
+                                    </h3>
+                                    <p className="text-xs text-pink-700">
+                                        Información de cobros y anticipos registrada en Payment Service.
                                     </p>
                                 </div>
+
+                                {puedeCrearPago && pedido.estado !== 'CANCELADO' && !esPagadoTotal && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setModalPagoAbierto(true)}
+                                        className="inline-flex items-center gap-1.5 rounded-lg bg-pink-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-pink-700 transition"
+                                    >
+                                        <span>💳</span>
+                                        {tieneAnticipo ? 'Cobrar Saldo Pendiente' : 'Registrar Anticipo / Pago'}
+                                    </button>
+                                )}
+                            </div>
+
+                            {errorPagos && (
+                                <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+                                    {errorPagos}
+                                </div>
+                            )}
+
+                            {/* Tarjetas de Resumen */}
+                            <div className="grid gap-4 sm:grid-cols-3">
+                                <div className="rounded-lg border border-pink-100 bg-white p-4 shadow-sm">
+                                    <p className="text-xs font-semibold uppercase text-gray-500">
+                                        Total del Pedido
+                                    </p>
+                                    <p className="mt-1 text-2xl font-bold text-gray-900">
+                                        Bs {formatearMonto(total)}
+                                    </p>
+                                </div>
+
+                                <div className="rounded-lg border border-green-100 bg-white p-4 shadow-sm">
+                                    <p className="text-xs font-semibold uppercase text-green-700">
+                                        Anticipo / Pagado
+                                    </p>
+                                    <p className="mt-1 text-2xl font-bold text-green-700">
+                                        Bs {formatearMonto(pagado)}
+                                    </p>
+                                </div>
+
+                                <div className="rounded-lg border border-amber-100 bg-white p-4 shadow-sm">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-xs font-semibold uppercase text-amber-700">
+                                            Saldo Pendiente
+                                        </p>
+                                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                            esPagadoTotal
+                                                ? 'bg-green-100 text-green-800'
+                                                : tieneAnticipo
+                                                    ? 'bg-yellow-100 text-yellow-800'
+                                                    : 'bg-orange-100 text-orange-800'
+                                        }`}>
+                                            {esPagadoTotal
+                                                ? 'PAGADO TOTAL'
+                                                : tieneAnticipo
+                                                    ? 'ANTICIPO PARCIAL'
+                                                    : 'SIN ANTICIPO'}
+                                        </span>
+                                    </div>
+                                    <p className="mt-1 text-2xl font-bold text-amber-800">
+                                        Bs {formatearMonto(saldo)}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Historial de pagos / anticipos realizados */}
+                            <div className="mt-5 rounded-lg border border-gray-200 bg-white overflow-hidden">
+                                <div className="border-b px-4 py-3 bg-gray-50 flex items-center justify-between">
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700">
+                                        Historial de Pagos Registrados ({listaPagos.length})
+                                    </h4>
+                                    {cargandoPagos && (
+                                        <span className="text-xs text-gray-400">Actualizando...</span>
+                                    )}
+                                </div>
+
+                                {listaPagos.length === 0 ? (
+                                    <div className="p-4 text-center text-xs text-gray-500">
+                                        No existen pagos o anticipos registrados para este pedido.
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto">
+                                        <table className="min-w-full divide-y divide-gray-200 text-left text-xs">
+                                            <thead className="bg-gray-50 text-gray-600 font-semibold uppercase">
+                                                <tr>
+                                                    <th className="px-4 py-2.5">Fecha</th>
+                                                    <th className="px-4 py-2.5">Medio</th>
+                                                    <th className="px-4 py-2.5 text-right">Monto</th>
+                                                    <th className="px-4 py-2.5">Referencia</th>
+                                                    <th className="px-4 py-2.5 text-center">Estado</th>
+                                                    <th className="px-4 py-2.5 text-center">Recibo</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100">
+                                                {listaPagos.map((pago) => (
+                                                    <tr key={pago.id_pago} className="hover:bg-gray-50">
+                                                        <td className="px-4 py-2.5 text-gray-700">
+                                                            {formatearFecha(pago.fecha)} {formatearHora(pago.fecha?.split('T')[1])}
+                                                        </td>
+                                                        <td className="px-4 py-2.5">
+                                                            <span className={`rounded px-2 py-0.5 text-[10px] font-bold ${
+                                                                pago.medio === 'QR'
+                                                                    ? 'bg-blue-100 text-blue-700'
+                                                                    : 'bg-emerald-100 text-emerald-700'
+                                                            }`}>
+                                                                {pago.medio}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-2.5 text-right font-bold text-gray-900">
+                                                            Bs {formatearMonto(pago.monto)}
+                                                        </td>
+                                                        <td className="px-4 py-2.5 text-gray-600 font-mono text-[11px]">
+                                                            {pago.referencia || '—'}
+                                                        </td>
+                                                        <td className="px-4 py-2.5 text-center">
+                                                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                                                pago.estado === 'CONFIRMADO'
+                                                                    ? 'bg-green-100 text-green-700'
+                                                                    : 'bg-red-100 text-red-700'
+                                                            }`}>
+                                                                {pago.estado}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-2.5 text-center">
+                                                            {pago.recibo || pago.id_pago ? (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setReciboSeleccionado(pago.recibo || pago.id_pago)}
+                                                                    className="text-pink-600 hover:text-pink-800 font-semibold underline text-[11px]"
+                                                                >
+                                                                    Ver recibo
+                                                                </button>
+                                                            ) : (
+                                                                <span className="text-gray-400">—</span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
                             </div>
                         </section>
 
@@ -482,6 +690,35 @@ function PedidoDetalleModal({
                     </button>
                 </div>
             </div>
+
+            {/* Modal de cobro de anticipo o saldo */}
+            {modalPagoAbierto && (
+                <PagoModal
+                    abierto={modalPagoAbierto}
+                    onCerrar={() => setModalPagoAbierto(false)}
+                    onGuardado={async (msg) => {
+                        setModalPagoAbierto(false);
+                        await cargarPagosPedido();
+                        if (onPagoRegistrado) onPagoRegistrado(msg);
+                    }}
+                    pedidos={[pedido]}
+                    pedidoSeleccionadoInicial={{
+                        ...pedido,
+                        saldo: resumenPagos?.saldo ?? pedido.total,
+                        total: resumenPagos?.total ?? pedido.total,
+                    }}
+                />
+            )}
+
+            {/* Modal de visualización de recibo */}
+            {reciboSeleccionado && (
+                <ReciboDetalleModal
+                    abierto={Boolean(reciboSeleccionado)}
+                    reciboId={reciboSeleccionado?.id_recibo || reciboSeleccionado}
+                    onCerrar={() => setReciboSeleccionado(null)}
+                    onActualizado={cargarPagosPedido}
+                />
+            )}
         </div>
     );
 }

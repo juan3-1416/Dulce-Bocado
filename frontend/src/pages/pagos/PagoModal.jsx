@@ -144,9 +144,9 @@ function PagoModal({
 
             {form.metodoPago === 'QR' && (
               <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
-                <p className="font-semibold">Integración de Pasarela Oficial de Pagos QR</p>
+                <p className="font-semibold">Cobro mediante Pasarela QR (Libélula)</p>
                 <p className="mt-1 text-xs text-blue-800">
-                  La pasarela oficial de pagos QR se integrará al cierre del Sprint 4 con la documentación y API provistas por el Product Owner. Para procesar este pago de forma inmediata, seleccione el método <strong>Efectivo</strong>.
+                  Al presionar <strong>Generar Código QR</strong> se solicitará a la pasarela Libélula el código QR correspondiente al monto indicado. El cliente podrá escanearlo y el pago se confirmará en tiempo real.
                 </p>
               </div>
             )}
@@ -163,15 +163,15 @@ function PagoModal({
 
               <button
                 type="submit"
-                disabled={
-                  form.guardando || sinDocumentos || form.metodoPago === 'QR'
-                }
+                disabled={form.guardando || sinDocumentos}
                 className="rounded-lg bg-pink-600 px-5 py-2 text-sm font-semibold text-white hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {form.guardando
-                  ? 'Registrando pago...'
+                  ? form.metodoPago === 'QR'
+                    ? 'Generando QR...'
+                    : 'Registrando pago...'
                   : form.metodoPago === 'QR'
-                    ? 'QR disponible al cierre de sprint'
+                    ? 'Generar Código QR'
                     : 'Registrar Pago en Efectivo'}
               </button>
             </div>

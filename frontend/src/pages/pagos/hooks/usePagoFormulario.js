@@ -9,6 +9,7 @@ import {
 import {
   consultarPagosOrigen,
   generarIdempotencyKey,
+  iniciarPagoQr,
   registrarPagoEfectivo,
 } from '../../../services/pagoService'
 
@@ -26,6 +27,7 @@ export function usePagoFormulario({
   pedidoSeleccionadoInicial = null,
   onGuardado,
   onCerrar,
+  onIniciarQr,
   setError,
 }) {
   const [tipoCobro, setTipoCobro] = useState('venta')
@@ -223,23 +225,73 @@ export function usePagoFormulario({
       return
     }
 
-    // Validación según acuerdo PO: QR diferido para pasarela oficial
+    const origenTipo = tipoCobro === 'venta' ? 'VENTA' : 'PEDIDO'
+    const origenId = tipoCobro === 'venta' ? Number(idVenta) : Number(idPedido)
+
+    // Flujo de cobro QR con Pasarela Libélula
     if (metodoPago === 'QR') {
-      setError(
-        'La integración de pagos QR se realizará al cierre del Sprint 4 con la API oficial de la pasarela de pagos. Por favor, seleccione Efectivo para registrar este cobro.',
-      )
+      const claveEsperada = `qr:${origenTipo}:${origenId}:${montoNumero.toFixed(2)}`
+      if (intentoPago.current?.clavePayload !== claveEsperada) {
+        intentoPago.current = {
+          clavePayload: claveEsperada,
+          idempotencyKey: generarIdempotencyKey('pago-qr'),
+        }
+      }
+
+      try {
+        setGuardando(true)
+        setError('')
+
+        const respuesta = await iniciarPagoQr(
+          {
+            origen_tipo: origenTipo,
+            origen_id: origenId,
+            monto: montoNumero,
+            moneda: 'BOB',
+          },
+          intentoPago.current.idempotencyKey,
+        )
+
+        intentoPago.current = null
+
+        const intento = respuesta?.intento_qr ?? respuesta
+        if (onIniciarQr && intento) {
+          onIniciarQr(intento)
+        }
+      } catch (err) {
+        const code = err.data?.error?.code
+        if (code === 'SOBREPAGO') {
+          const details = err.data?.error?.details
+          setError(
+            `Sobrepago rechazado: El monto supera el saldo disponible (Saldo actual: Bs ${Number(details?.saldo ?? 0).toFixed(2)}).`,
+          )
+        } else if (code === 'VENTA_NO_CONFIRMADA') {
+          setError('La venta debe estar en estado CONFIRMADA antes de poder cobrar por QR.')
+        } else if (code === 'PEDIDO_NO_PAGABLE') {
+          setError('El pedido no se encuentra en un estado que admita cobros.')
+        } else if (code === 'ORIGEN_CANCELADO') {
+          setError('La operación se encuentra cancelada y no admite pagos.')
+        } else if (code === 'PASARELA_LIBELULA_ERROR') {
+          setError(
+            `Error de pasarela Libélula: ${err.data?.error?.message || 'No se pudo generar el cobro QR.'}`,
+          )
+        } else if (err.status === 403) {
+          setError('No tienes permiso para generar cobros QR (se requiere pagos.crear).')
+        } else {
+          setError(err.message || 'No se pudo generar el código QR.')
+        }
+      } finally {
+        setGuardando(false)
+      }
       return
     }
 
     if (metodoPago !== 'EFECTIVO') {
-      setError('Seleccione un método de pago válido (Efectivo).')
+      setError('Seleccione un método de pago válido (Efectivo o QR).')
       return
     }
 
-    const origenTipo = tipoCobro === 'venta' ? 'VENTA' : 'PEDIDO'
-    const origenId = tipoCobro === 'venta' ? Number(idVenta) : Number(idPedido)
-
-    // Gestión de Idempotencia estricta
+    // Gestión de Idempotencia estricta para Efectivo
     const claveEsperada = `${origenTipo}:${origenId}:${montoNumero.toFixed(2)}`
     if (intentoPago.current?.clavePayload !== claveEsperada) {
       intentoPago.current = {
