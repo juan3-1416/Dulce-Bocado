@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
-import { listarRecibos } from '../../services/reciboService'
+import { useCallback, useEffect, useState } from 'react'
+import { descargarPdfRecibo, listarRecibos } from '../../services/reciboService'
 import ReciboDetalleModal from './ReciboDetalleModal'
 import ReciboModal from './ReciboModal'
 
-function numeroRecibo(id) {
-  return `REC-${String(id).padStart(6, '0')}`
+function numeroRecibo(recibo) {
+  if (recibo?.numero) return recibo.numero
+  const id = recibo?.id_recibo ?? recibo
+  return `REC-${String(id || 0).padStart(6, '0')}`
 }
 
 function formatearFecha(fecha) {
@@ -22,21 +24,13 @@ export default function RecibosPage() {
   const [estado, setEstado] = useState('')
   const [metodoPago, setMetodoPago] = useState('')
   const [cargando, setCargando] = useState(false)
+  const [descargandoId, setDescargandoId] = useState(null)
   const [error, setError] = useState('')
 
-  const [modalNuevo, setModalNuevo] =
-    useState(false)
+  const [modalNuevo, setModalNuevo] = useState(false)
+  const [reciboSeleccionado, setReciboSeleccionado] = useState(null)
 
-  const [
-    reciboSeleccionado,
-    setReciboSeleccionado,
-  ] = useState(null)
-
-  useEffect(() => {
-    cargarRecibos()
-  }, [estado, metodoPago])
-
-  async function cargarRecibos() {
+  const cargarRecibos = useCallback(async () => {
     try {
       setCargando(true)
       setError('')
@@ -49,29 +43,40 @@ export default function RecibosPage() {
 
       setRecibos(respuesta.recibos ?? [])
     } catch (err) {
-      setError(
-        err.message ||
-          'No se pudieron cargar los recibos.'
-      )
+      setError(err.message || 'No se pudieron cargar los recibos.')
     } finally {
       setCargando(false)
     }
-  }
+  }, [buscar, estado, metodoPago])
+
+  useEffect(() => {
+    cargarRecibos()
+  }, [estado, metodoPago, cargarRecibos])
 
   function manejarBusqueda(event) {
     event.preventDefault()
     cargarRecibos()
   }
 
+  async function manejarDescargarPdf(recibo) {
+    try {
+      setDescargandoId(recibo.id_recibo)
+      setError('')
+      const nombre = `recibo-${numeroRecibo(recibo)}.pdf`
+      await descargarPdfRecibo(recibo.id_recibo, nombre)
+    } catch (err) {
+      setError(err.message || 'No se pudo descargar el PDF.')
+    } finally {
+      setDescargandoId(null)
+    }
+  }
+
   async function manejarGuardado(recibo) {
     setModalNuevo(false)
-
     await cargarRecibos()
 
     if (recibo?.id_recibo) {
-      setReciboSeleccionado(
-        recibo.id_recibo
-      )
+      setReciboSeleccionado(recibo.id_recibo)
     }
   }
 
@@ -84,12 +89,11 @@ export default function RecibosPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Recibos
+            Recibos Internos
           </h1>
 
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Generación, consulta, impresión y
-            anulación de recibos internos.
+            Control documental de cobros, generación de comprobantes, descarga PDF y anulación.
           </p>
         </div>
 
@@ -110,55 +114,29 @@ export default function RecibosPage() {
           <input
             type="text"
             value={buscar}
-            onChange={(event) =>
-              setBuscar(event.target.value)
-            }
-            placeholder="Buscar por recibo, pago, cliente, CI/NIT o referencia..."
+            onChange={(event) => setBuscar(event.target.value)}
+            placeholder="Buscar por número, pago, cliente o CI/NIT..."
             className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none focus:border-gray-500 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
           />
 
           <select
             value={estado}
-            onChange={(event) =>
-              setEstado(event.target.value)
-            }
+            onChange={(event) => setEstado(event.target.value)}
             className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
           >
-            <option value="">
-              Todos los estados
-            </option>
-
-            <option value="EMITIDO">
-              Emitidos
-            </option>
-
-            <option value="ANULADO">
-              Anulados
-            </option>
+            <option value="">Todos los estados</option>
+            <option value="EMITIDO">Emitidos</option>
+            <option value="ANULADO">Anulados</option>
           </select>
 
           <select
             value={metodoPago}
-            onChange={(event) =>
-              setMetodoPago(event.target.value)
-            }
+            onChange={(event) => setMetodoPago(event.target.value)}
             className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
           >
-            <option value="">
-              Todos los métodos
-            </option>
-
-            <option value="EFECTIVO">
-              Efectivo
-            </option>
-
-            <option value="QR">
-              QR
-            </option>
-
-            <option value="ONLINE">
-              Online
-            </option>
+            <option value="">Todos los métodos</option>
+            <option value="EFECTIVO">Efectivo</option>
+            <option value="QR">QR</option>
           </select>
 
           <button
@@ -171,7 +149,7 @@ export default function RecibosPage() {
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
           {error}
         </div>
       )}
@@ -181,15 +159,15 @@ export default function RecibosPage() {
           <table className="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-900">
               <tr>
-                <Th>Recibo</Th>
-                <Th>Pago / Venta</Th>
+                <Th>N° Recibo</Th>
+                <Th>Operación / Pago</Th>
                 <Th>Cliente</Th>
                 <Th>Monto</Th>
                 <Th>Método</Th>
                 <Th>Estado</Th>
                 <Th>Impresiones</Th>
                 <Th>Emisión</Th>
-                <Th>Acciones</Th>
+                <Th className="text-right">Acciones</Th>
               </tr>
             </thead>
 
@@ -209,96 +187,102 @@ export default function RecibosPage() {
                     colSpan="9"
                     className="px-4 py-12 text-center text-gray-500 dark:text-gray-400"
                   >
-                    No se encontraron recibos.
+                    No se encontraron recibos registrados.
                   </td>
                 </tr>
               ) : (
-                recibos.map((recibo) => (
-                  <tr
-                    key={recibo.id_recibo}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-900/50"
-                  >
-                    <Td>
-                      <span className="font-semibold text-gray-900 dark:text-white">
-                        {numeroRecibo(
-                          recibo.id_recibo
-                        )}
-                      </span>
-                    </Td>
+                recibos.map((recibo) => {
+                  const origenTipo = recibo.snapshot?.origen_tipo || (recibo.pago?.id_venta ? 'Venta' : 'Pedido')
+                  const origenId = recibo.snapshot?.origen_id || (recibo.pago?.id_venta ?? recibo.pago?.id_pedido ?? '-')
+                  const numImpresiones = recibo.cantidad_impresiones ?? 0
 
-                    <Td>
-                      <div>
+                  return (
+                    <tr
+                      key={recibo.id_recibo}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-900/50"
+                    >
+                      <Td>
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                          {numeroRecibo(recibo)}
+                        </span>
+                      </Td>
+
+                      <Td>
                         <div>
-                          Pago #{recibo.id_pago}
-                        </div>
-
-                        <div className="text-xs text-gray-500">
-                          Venta #
-                          {recibo.pago
-                            ?.id_venta ?? '-'}
-                        </div>
-                      </div>
-                    </Td>
-
-                    <Td>
-                      <div>
-                        <div className="font-medium text-gray-900 dark:text-white">
-                          {recibo.nombre_cliente}
-                        </div>
-
-                        {recibo.ci_nit_cliente && (
-                          <div className="text-xs text-gray-500">
-                            CI/NIT:{' '}
-                            {recibo.ci_nit_cliente}
+                          <div className="font-medium text-gray-900 dark:text-gray-100">
+                            {origenTipo} #{origenId}
                           </div>
-                        )}
-                      </div>
-                    </Td>
 
-                    <Td>
-                      <span className="font-medium text-gray-900 dark:text-white">
-                        Bs{' '}
-                        {Number(
-                          recibo.monto
-                        ).toFixed(2)}
-                      </span>
-                    </Td>
+                          <div className="text-xs text-gray-500">
+                            Pago #{recibo.id_pago || recibo.pago_id}
+                          </div>
+                        </div>
+                      </Td>
 
-                    <Td>
-                      {recibo.metodo_pago}
-                    </Td>
+                      <Td>
+                        <div>
+                          <div className="font-medium text-gray-900 dark:text-white">
+                            {recibo.nombre_cliente}
+                          </div>
 
-                    <Td>
-                      <Estado
-                        estado={recibo.estado}
-                      />
-                    </Td>
+                          {recibo.ci_nit_cliente && (
+                            <div className="text-xs text-gray-500">
+                              CI/NIT: {recibo.ci_nit_cliente}
+                            </div>
+                          )}
+                        </div>
+                      </Td>
 
-                    <Td>
-                      {recibo.cantidad_impresiones}
-                    </Td>
+                      <Td>
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                          Bs {Number(recibo.monto).toFixed(2)}
+                        </span>
+                      </Td>
 
-                    <Td>
-                      {formatearFecha(
-                        recibo.fecha_emision
-                      )}
-                    </Td>
+                      <Td>
+                        <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+                          {recibo.metodo_pago}
+                        </span>
+                      </Td>
 
-                    <Td>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setReciboSeleccionado(
-                            recibo.id_recibo
-                          )
-                        }
-                        className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
-                      >
-                        Ver
-                      </button>
-                    </Td>
-                  </tr>
-                ))
+                      <Td>
+                        <Estado estado={recibo.estado} />
+                      </Td>
+
+                      <Td>
+                        <span className="text-gray-600 dark:text-gray-300">
+                          {numImpresiones} {numImpresiones === 1 ? 'vez' : 'veces'}
+                        </span>
+                      </Td>
+
+                      <Td>
+                        {formatearFecha(recibo.fecha_emision || recibo.emitido_at)}
+                      </Td>
+
+                      <Td className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => manejarDescargarPdf(recibo)}
+                            disabled={descargandoId === recibo.id_recibo}
+                            className="rounded-lg border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                            title="Descargar documento PDF"
+                          >
+                            {descargandoId === recibo.id_recibo ? 'PDF...' : 'PDF'}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setReciboSeleccionado(recibo.id_recibo)}
+                            className="rounded-lg bg-gray-900 px-3 py-1 text-xs font-medium text-white hover:bg-gray-700 dark:bg-white dark:text-gray-900"
+                          >
+                            Ver
+                          </button>
+                        </div>
+                      </Td>
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>
@@ -307,39 +291,35 @@ export default function RecibosPage() {
 
       <ReciboModal
         abierto={modalNuevo}
-        onCerrar={() =>
-          setModalNuevo(false)
-        }
+        onCerrar={() => setModalNuevo(false)}
         onGuardado={manejarGuardado}
       />
 
       <ReciboDetalleModal
-        abierto={Boolean(
-          reciboSeleccionado
-        )}
+        abierto={Boolean(reciboSeleccionado)}
         reciboId={reciboSeleccionado}
-        onCerrar={() =>
-          setReciboSeleccionado(null)
-        }
-        onActualizado={
-          manejarActualizacion
-        }
+        onCerrar={() => setReciboSeleccionado(null)}
+        onActualizado={manejarActualizacion}
       />
     </div>
   )
 }
 
-function Th({ children }) {
+function Th({ children, className = '' }) {
   return (
-    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+    <th
+      className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300 ${className}`}
+    >
       {children}
     </th>
   )
 }
 
-function Td({ children }) {
+function Td({ children, className = '' }) {
   return (
-    <td className="whitespace-nowrap px-4 py-3 text-gray-600 dark:text-gray-300">
+    <td
+      className={`px-4 py-3.5 text-gray-700 dark:text-gray-300 ${className}`}
+    >
       {children}
     </td>
   )
@@ -348,12 +328,12 @@ function Td({ children }) {
 function Estado({ estado }) {
   const clases =
     estado === 'EMITIDO'
-      ? 'bg-green-100 text-green-700'
-      : 'bg-red-100 text-red-700'
+      ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+      : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
 
   return (
     <span
-      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${clases}`}
+      className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${clases}`}
     >
       {estado}
     </span>

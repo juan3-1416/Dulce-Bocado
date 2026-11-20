@@ -161,16 +161,20 @@ export default function ReciboModal({
                     Seleccione un pago
                   </option>
 
-                  {pagos.map((pago) => (
-                    <option
-                      key={pago.id_pago}
-                      value={pago.id_pago}
-                    >
-                      Pago #{pago.id_pago} - Venta #{pago.id_venta} -{' '}
-                      {pago.nombre_cliente} - Bs{' '}
-                      {Number(pago.monto).toFixed(2)}
-                    </option>
-                  ))}
+                  {pagos.map((pago) => {
+                    const origen = pago.origen_tipo || (pago.id_pedido ? 'Pedido' : 'Venta')
+                    const numOrigen = pago.origen_id || pago.id_venta || pago.id_pedido || '-'
+                    return (
+                      <option
+                        key={pago.id_pago}
+                        value={pago.id_pago}
+                      >
+                        Pago #{pago.id_pago} - {origen} #{numOrigen} -{' '}
+                        {pago.nombre_cliente} - Bs{' '}
+                        {Number(pago.monto).toFixed(2)}
+                      </option>
+                    )
+                  })}
                 </select>
               </div>
 
@@ -187,8 +191,8 @@ export default function ReciboModal({
                     />
 
                     <Dato
-                      etiqueta="Venta"
-                      valor={`#${pagoSeleccionado.id_venta}`}
+                      etiqueta={pagoSeleccionado.origen_tipo || (pagoSeleccionado.id_pedido ? 'Pedido' : 'Venta')}
+                      valor={`#${pagoSeleccionado.origen_id || pagoSeleccionado.id_venta || pagoSeleccionado.id_pedido || '-'}`}
                     />
 
                     <Dato

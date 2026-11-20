@@ -21,7 +21,7 @@ export function usePagoFormulario({
   abierto,
   ventas = [],
   pedidos = [],
-  metodosPago = ['EFECTIVO', 'QR'],
+  _metodosPago = ['EFECTIVO', 'QR'],
   ventaInicialId = null,
   pedidoSeleccionadoInicial = null,
   onGuardado,
