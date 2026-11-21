@@ -19,11 +19,11 @@ use Illuminate\Support\Facades\DB;
 class DashboardController extends Controller
 {
     /**
-     * Devuelve el resumen general de métricas, KPIs, gráficos y accesos rápidos del dashboard.
+     * Devuelve el resumen general de mÃ©tricas, KPIs, grÃ¡ficos y accesos rÃ¡pidos del dashboard.
      */
     public function index(Request $request): JsonResponse
     {
-        // 1. Determinar rango de fechas según período seleccionado
+        // 1. Determinar rango de fechas segÃºn perÃ­odo seleccionado
         $periodo = $request->query('periodo', 'mes'); // hoy, 7d, mes, anio, personalizado
         $ahora = Carbon::now();
 
@@ -47,14 +47,14 @@ class DashboardController extends Controller
         }
 
         // 2. KPIs Globales
-        // Ventas del período (excluyendo anuladas)
+        // Ventas del perÃ­odo (excluyendo anuladas)
         $ventasPeriodo = Venta::where('estado', '!=', 'ANULADA')
             ->whereBetween('fecha_venta', [$fechaInicio, $fechaFin]);
 
         $ventasTotal = (float) $ventasPeriodo->sum('total');
         $ventasCantidad = $ventasPeriodo->count();
-        // Rentabilidad de ventas con costo histórico disponible
-// Costo estimado por receta para presentaciones sin costo histórico
+        // Rentabilidad de ventas con costo histÃ³rico disponible
+// Costo estimado por receta para presentaciones sin costo histÃ³rico
 $costosReceta = DB::table('receta as r')
     ->join(
         'detalle_receta as dr',
@@ -219,13 +219,13 @@ $coberturaCostos =
         $pedidosListosEntrega = Pedido::where('estado', 'EN_PROCESO')->count(); // En proceso / listos
         $pedidosProgramados = Pedido::where('estado', 'PROGRAMADO')->count();
 
-        // Producción activa
+        // ProducciÃ³n activa
         $produccionActiva = Produccion::whereIn('estado', ['PROGRAMADA', 'EN_PROCESO'])->count();
         $produccionFinalizadaPeriodo = Produccion::where('estado', 'COMPLETADA')
             ->whereBetween('fecha_produccion', [$fechaInicio, $fechaFin])
             ->count();
 
-        // Alertas de Stock Bajo (cantidad <= 5 unidades o umbral crítico)
+        // Alertas de Stock Bajo (cantidad <= 5 unidades o umbral crÃ­tico)
         $alertasStockCritico = Inventario::where('cantidad', '<=', 5)->count();
 
         // Clientes registrados activos (campo estado en tabla cliente)
@@ -234,12 +234,12 @@ $coberturaCostos =
         // Total de visitas acumuladas a la plataforma
         $totalVisitas = (int) Visita::sum('cantidad');
 
-        // 3. Gráficos Interactivos
+        // 3. GrÃ¡ficos Interactivos
 
-        // A) Tendencia de Ventas (por hora si es hoy, por día si es semana/mes, o por mes si es año)
+        // A) Tendencia de Ventas (por hora si es hoy, por dÃ­a si es semana/mes, o por mes si es aÃ±o)
         $tendenciaVentas = $this->calcularTendenciaVentas($fechaInicio, $fechaFin, $periodo);
 
-        // B) Top 5 Productos / Presentaciones Más Vendidos en el período
+        // B) Top 5 Productos / Presentaciones MÃ¡s Vendidos en el perÃ­odo
         $topProductos = DetalleVenta::select(
                 'producto_presentacion.id_producto_presentacion',
                 'producto.nombre as producto_nombre',
@@ -272,7 +272,7 @@ $coberturaCostos =
                 ];
             });
 
-        // C) Distribución de Estados de Pedidos en el período
+        // C) DistribuciÃ³n de Estados de Pedidos en el perÃ­odo
         $estadosPedidos = Pedido::select('estado', DB::raw('COUNT(*) as total'), DB::raw('SUM(total) as monto_total'))
             ->whereBetween('fecha_pedido', [$fechaInicio, $fechaFin])
             ->groupBy('estado')
@@ -302,9 +302,9 @@ $coberturaCostos =
             ];
         });
 
-        // 4. Tablas y Monitoreo Rápido
+        // 4. Tablas y Monitoreo RÃ¡pido
 
-        // A) Últimas 5 Ventas
+        // A) Ãšltimas 5 Ventas
         $ultimasVentas = Venta::with(['cliente', 'usuario'])
             ->orderByDesc('fecha_venta')
             ->limit(5)
@@ -320,9 +320,10 @@ $coberturaCostos =
                 ];
             });
 
-        // B) Próximos Pedidos a Entregar
+        // B) PrÃ³ximos Pedidos a Entregar
         $proximosPedidos = Pedido::with(['cliente'])
             ->whereNotIn('estado', ['ENTREGADO', 'CANCELADO'])
+            ->whereDate('fecha_entrega', '>=', $ahora->toDateString())
             ->orderBy('fecha_entrega', 'asc')
             ->orderBy('hora_entrega', 'asc')
             ->limit(5)
@@ -339,7 +340,7 @@ $coberturaCostos =
                 ];
             });
 
-        // C) Insumos y Productos con Stock Bajo / Crítico (hasta 6 items)
+        // C) Insumos y Productos con Stock Bajo / CrÃ­tico (hasta 6 items)
         $itemsStockBajo = Inventario::with([
                 'almacen',
                 'productoPresentacion.producto',
@@ -356,7 +357,7 @@ $coberturaCostos =
 
                 if ($item->productoPresentacion) {
                     $prod = $item->productoPresentacion->producto->nombre ?? 'Producto';
-                    $pres = $item->productoPresentacion->presentacion->nombre ?? 'Presentación';
+                    $pres = $item->productoPresentacion->presentacion->nombre ?? 'PresentaciÃ³n';
                     $nombre = $prod;
                     $detalle = $pres;
                 } elseif ($item->materiaPrima) {
@@ -366,7 +367,7 @@ $coberturaCostos =
 
                 return [
                     'id_inventario' => $item->id_inventario,
-                    'almacen' => $item->almacen->nombre ?? 'Almacén',
+                    'almacen' => $item->almacen->nombre ?? 'AlmacÃ©n',
                     'nombre' => $nombre,
                     'detalle' => $detalle,
                     'cantidad' => (float) $item->cantidad,
@@ -414,14 +415,14 @@ $coberturaCostos =
     }
 
     /**
-     * Calcula la serie temporal de ventas según el rango y período.
+     * Calcula la serie temporal de ventas segÃºn el rango y perÃ­odo.
      */
     private function calcularTendenciaVentas(Carbon $fechaInicio, Carbon $fechaFin, string $periodo): array
     {
         $dias = [];
 
         if ($periodo === 'hoy') {
-            // Agrupación horaria (cada 2 horas durante el horario comercial/día)
+            // AgrupaciÃ³n horaria (cada 2 horas durante el horario comercial/dÃ­a)
             for ($h = 6; $h <= 22; $h += 2) {
                 $inicioHora = $fechaInicio->copy()->setHour($h)->setMinute(0)->setSecond(0);
                 $finHora = $inicioHora->copy()->addHours(2)->subSecond();
@@ -442,7 +443,7 @@ $coberturaCostos =
                 ];
             }
         } elseif ($periodo === 'anio') {
-            // Agrupación mensual
+            // AgrupaciÃ³n mensual
             $nombresMeses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
             for ($m = 1; $m <= 12; $m++) {
                 $inicioMes = Carbon::create($fechaInicio->year, $m, 1, 0, 0, 0);
@@ -464,8 +465,8 @@ $coberturaCostos =
                 ];
             }
         } else {
-            // Agrupación diaria
-            $diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+            // AgrupaciÃ³n diaria
+            $diasSemana = ['Dom', 'Lun', 'Mar', 'MiÃ©', 'Jue', 'Vie', 'SÃ¡b'];
             $cursor = $fechaInicio->copy();
 
             while ($cursor->lte($fechaFin)) {
@@ -498,7 +499,7 @@ $coberturaCostos =
     }
 
     /**
-     * Devuelve una descripción legible del período.
+     * Devuelve una descripciÃ³n legible del perÃ­odo.
      */
     private function obtenerDescripcionPeriodo(string $periodo, Carbon $fechaInicio, Carbon $fechaFin): string
     {
@@ -506,9 +507,9 @@ $coberturaCostos =
             case 'hoy':
                 return 'Hoy (' . $fechaInicio->format('d/m/Y') . ')';
             case '7d':
-                return 'Últimos 7 días (' . $fechaInicio->format('d/m') . ' - ' . $fechaFin->format('d/m/Y') . ')';
+                return 'Ãšltimos 7 dÃ­as (' . $fechaInicio->format('d/m') . ' - ' . $fechaFin->format('d/m/Y') . ')';
             case 'anio':
-                return 'Año ' . $fechaInicio->format('Y');
+                return 'AÃ±o ' . $fechaInicio->format('Y');
             case 'mes':
             default:
                 $meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];

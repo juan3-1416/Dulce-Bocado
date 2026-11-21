@@ -1,3 +1,5 @@
+import { obtenerToken } from './authService'
+
 const API_URL = '/api/dashboard'
 
 async function procesarRespuesta(respuesta) {
@@ -11,8 +13,11 @@ async function procesarRespuesta(respuesta) {
 
   if (!respuesta.ok) {
     const error = new Error(
-      datos?.message || 'Ocurrió un error al cargar los datos del dashboard.'
+      datos?.message ||
+        datos?.error?.message ||
+        'Ocurrió un error al cargar los datos del dashboard.'
     )
+
     error.status = respuesta.status
     error.data = datos
     throw error
@@ -23,7 +28,10 @@ async function procesarRespuesta(respuesta) {
 
 /**
  * Obtiene el resumen general de métricas, KPIs y gráficos para el dashboard.
- * @param {Object} params - { periodo: 'hoy'|'7d'|'mes'|'anio', fecha_inicio, fecha_fin }
+ * @param {Object} params
+ * @param {'hoy'|'7d'|'mes'|'anio'|'personalizado'} params.periodo
+ * @param {string} params.fecha_inicio
+ * @param {string} params.fecha_fin
  */
 export async function obtenerResumenDashboard(params = {}) {
   const query = new URLSearchParams()
@@ -41,14 +49,24 @@ export async function obtenerResumenDashboard(params = {}) {
   }
 
   const queryString = query.toString()
-  const url = queryString ? `${API_URL}/resumen?${queryString}` : `${API_URL}/resumen`
+
+  const url = queryString
+    ? `${API_URL}/resumen?${queryString}`
+    : `${API_URL}/resumen`
+
+  const token = obtenerToken()
+
+  const headers = {
+    Accept: 'application/json',
+  }
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
 
   const respuesta = await fetch(url, {
     method: 'GET',
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-    },
+    headers,
   })
 
   return procesarRespuesta(respuesta)

@@ -49,7 +49,7 @@ Route::get('/health', function () {
     } catch (\Throwable $exception) {
         return response()->json([
             'status' => 'error',
-            'message' => 'No se pudo establecer conexión con PostgreSQL.',
+            'message' => 'No se pudo establecer conexiÃ³n con PostgreSQL.',
         ], 500);
     }
 });
@@ -210,7 +210,7 @@ Route::prefix('seguridad')
     });
 
 Route::middleware(['auth:sanctum'])->prefix('productos')->group(function () {
-    // Categorías y Productos (gestión de producto)
+    // CategorÃ­as y Productos (gestiÃ³n de producto)
     Route::middleware('permiso:productos.gestionar_producto')->group(function () {
         Route::get('/categorias', [CategoriaController::class, 'index']);
         Route::post('/categorias', [CategoriaController::class, 'store']);
@@ -223,7 +223,7 @@ Route::middleware(['auth:sanctum'])->prefix('productos')->group(function () {
         Route::patch('/{id}/estado', [ProductoController::class, 'updateEstado'])->whereNumber('id');
     });
 
-    // Presentaciones (gestión de presentaciones, asignaciones y precios)
+    // Presentaciones (gestiÃ³n de presentaciones, asignaciones y precios)
     Route::middleware('permiso:productos.gestionar_presentacion')->group(function () {
         Route::get('/presentaciones', [PresentacionController::class, 'index']);
         Route::post('/presentaciones', [PresentacionController::class, 'store']);
@@ -406,11 +406,11 @@ Route::prefix('pagos')
     });
     /*
 |--------------------------------------------------------------------------
-| Libélula - Aviso de transacción
+| LibÃ©lula - Aviso de transacciÃ³n
 |--------------------------------------------------------------------------
 |
-| Endpoint público utilizado por Libélula para informar
-| el resultado de una transacción.
+| Endpoint pÃºblico utilizado por LibÃ©lula para informar
+| el resultado de una transacciÃ³n.
 |
 | El aviso llega mediante GET con:
 | - transaction_id
@@ -424,11 +424,11 @@ Route::get(
 );
     /*
 |--------------------------------------------------------------------------
-| Pago QR público - Simulación académica
+| Pago QR pÃºblico - SimulaciÃ³n acadÃ©mica
 |--------------------------------------------------------------------------
 |
-| Estas rutas no requieren autenticación.
-| El token QR funciona como identificador temporal de la operación.
+| Estas rutas no requieren autenticaciÃ³n.
+| El token QR funciona como identificador temporal de la operaciÃ³n.
 |
 | No exponen las rutas administrativas del CU12.
 |
@@ -559,7 +559,7 @@ Route::prefix('pedidos')
         );
 
         /*
-         * Catálogos debe ir antes de /{id}
+         * CatÃ¡logos debe ir antes de /{id}
          */
         Route::get(
             '/catalogos',
@@ -591,7 +591,7 @@ Route::prefix('pedidos')
 
 /*
 |--------------------------------------------------------------------------
-| CU16 - Gestionar Producción
+| CU16 - Gestionar ProducciÃ³n
 |--------------------------------------------------------------------------
 */
 
@@ -682,7 +682,7 @@ Route::prefix('almacenes')
         )
             ->middleware('permiso:inventario.ver_existencias')
             ->whereNumber('id');
-    }); // <-- ESTA LÍNEA FALTABA
+    }); // <-- ESTA LÃNEA FALTABA
 
 
 // CU19 - INGRESOS
@@ -730,7 +730,6 @@ Route::prefix('visitas')->group(function () {
 
 Route::prefix('dashboard')
     ->middleware([
-        'auth:sanctum',
         'permiso:dashboard.consultar',
     ])
     ->group(function () {

@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
             CatalogoPermisosSeeder::class,
             VentasPermisosSeeder::class,
             PedidosPermisosSeeder::class,
+            DashboardPermisosSeeder::class,
             AdministradorInicialSeeder::class,
             Sprint4PermisosSeeder::class,
             InventoryPermisosSeeder::class,
