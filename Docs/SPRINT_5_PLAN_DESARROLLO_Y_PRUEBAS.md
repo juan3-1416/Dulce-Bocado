@@ -237,9 +237,37 @@ En este Sprint 5 se realizó la migración y desacoplamiento de la inteligencia 
 
 ---
 
-## 5. Conclusiones y Estado del Incremento
+## 5. Guía de Tareas Restantes para el Desarrollador (Paso a Paso)
 
-1. **Sprint 5 completado:** Se ha migrado exitosamente el flujo de Dashboard (HU22) y Reportes (HU23) a la arquitectura de microservicios con total desacoplamiento de bases de datos.
+Para llevar el Sprint 5 de **85% - 90%** (desarrollo terminado) al **100% de Definition of Done (DoD)**, el desarrollador que reciba los cambios debe realizar:
+
+1. **Sincronización:**
+   ```bash
+   git pull origin devFabian
+   ```
+2. **Levantamiento del entorno:**
+   ```bash
+   docker compose -f docker-compose.yml -f docker-compose.sprint5.report.yml up -d --build
+   ```
+3. **Migración en el microservicio `report-service`:**
+   ```bash
+   docker compose exec report-service php artisan migrate --force
+   ```
+4. **Sembrado de permisos de reportes en `security-service`:**
+   ```bash
+   docker compose exec security-service php artisan db:seed --class=ReportesPermisosSeeder --force
+   ```
+5. **Verificación visual y de descarga (TP-01 a TP-06):**
+   * Dashboard interactivo en `http://localhost:5173/dashboard`.
+   * Reportes con filtros y descarga de PDF en `http://localhost:5173/reportes`.
+   * Envío de correos y verificación en el buzón local de Mailpit `http://localhost:8025`.
+
+---
+
+## 6. Conclusiones y Estado del Incremento
+
+1. **Sprint 5 completado en desarrollo:** Se ha migrado exitosamente el flujo de Dashboard (HU22) y Reportes (HU23) a la arquitectura de microservicios con total desacoplamiento de bases de datos.
 2. **Reutilización de vistas:** Se aprovecharon íntegramente los componentes del frontend y las plantillas Blade del monolito, adaptándolas a la nueva infraestructura.
 3. **Frontend moderno:** `reporteService.js` opera de manera segura y limpia mediante cabeceras Bearer Sanctum, eliminando cookies y tokens CSRF.
 4. **Respaldo en Docker Compose:** El archivo `docker-compose.sprint5.report.yml` define el despliegue del servicio junto a su base de datos Postgres `report-db` y red compartida `dulce_bocado_net`.
+5. **Guía ejecutiva:** Consultar también [sprint5.md](sprint5.md) para el resumen rápido de entrega.
