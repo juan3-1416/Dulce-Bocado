@@ -21,6 +21,8 @@ El Sprint 4 completa el flujo de **venta presencial, cobro y recibo interno** so
 
 HU20 Contador de visitas, HU21 Temas, HU22 Dashboard y HU23 Reportes permanecen en el Product Backlog. No se incorporan silenciosamente a la capacidad de esta semana ni se presentan como entregados. Si surge capacidad adicional, su selección requiere ajustar el Sprint Backlog y conservar el Sprint Goal.
 
+**Decisión de alcance posterior (2026-11-22):** la nueva precisión de HU23 exige reportes parametrizados enviados a varios correos desde un servicio de Reportes independiente. El dashboard HU22 y su migración también se planifican para un Sprint 5 propuesto en [ROADMAP_SPRINT_5_REPORTES_DASHBOARD.md](ROADMAP_SPRINT_5_REPORTES_DASHBOARD.md). Las pantallas actuales del monolito sirven de referencia; su presencia no completa estas historias en microservicios. El estado y la evidencia del Sprint 4 se concilian en [CONTEXTO_AVANCE_SPRINT_4.md](CONTEXTO_AVANCE_SPRINT_4.md).
+
 **Sprint Goal:** completar una venta presencial con stock consistente, pagos parciales controlados y recibo interno, además de registrar el resultado del pago QR mediante un adaptador. El objetivo se comprueba con servicios reales y datos persistidos. Un QR generado por el simulador demuestra el contrato de la aplicación, **no** una transacción financiera real.
 
 ## 2. Estado inicial que debe respetarse
@@ -117,9 +119,9 @@ Capacidad semanal: **80 horas**; **70** estimadas para T401–T414, **35 por des
 | T401 | HU16–HU19 | Verificar flujo integrado de Inventario y Producción con bases reales | Juan Pablo | 6 | En curso |
 | T402 | HU11–HU12 | Preparar payment-service, esquema PostgreSQL y contenedores | Juan Pablo | 5 | Completado |
 | T403 | HU11 | Implementar pagos en efectivo, saldo e idempotencia | Juan Pablo | 6 | Completado |
-| T404 | HU10 | Confirmar venta con egreso idempotente de mostrador | Juan Pablo | 7 | En curso |
-| T405 | HU12 | Validar callback QR y conciliar transacciones | Juan Pablo | 6 | Por hacer |
-| T406 | HU10–HU13 | Configurar Gateway, permisos y credenciales internas | Juan Pablo | 3 | En curso |
+| T404 | HU10 | Confirmar venta con egreso idempotente de mostrador | Juan Pablo | 7 | En revisión |
+| T405 | HU12 | Validar callback QR y conciliar transacciones | Juan Pablo | 6 | En revisión |
+| T406 | HU10–HU13 | Configurar Gateway, permisos y credenciales internas | Juan Pablo | 3 | En revisión |
 | T407 | HU10–HU13 | Revisar contratos y pruebas de servicios para el cierre | Juan Pablo | 2 | Por hacer |
 | T408 | HU12 | Integrar pasarela de pago QR oficial Libélula | Fabián | 6 | Completado |
 | T409 | HU11–HU12 | Construir interfaz de efectivo y saldo | Fabián | 5 | Completado |
@@ -127,9 +129,11 @@ Capacidad semanal: **80 horas**; **70** estimadas para T401–T414, **35 por des
 | T411 | HU13 | Implementar API de recibos, PDF, consulta y anulación | Fabián | 6 | Completado |
 | T412 | HU13 | Construir interfaz de impresión y reimpresión | Fabián | 4 | Completado |
 | T413 | HU12 | Asociar anticipo QR a pedido y consultar resultado | Fabián | 4 | Completado |
-| T414 | HU10–HU13 | Ejecutar pruebas integradas y documentar resultados | Fabián | 6 | Completado |
+| T414 | HU10–HU13 | Ejecutar pruebas integradas y documentar resultados | Fabián | 6 | En revisión |
 
 **Revisión del 2026-11-19:** estados sustentados en [el informe de avance recibido](AVANCE_SPRINT_4_DEV_JP.md). T401 refleja ajustes preparatorios de Producción; T406, middleware y conexiones parciales. T402/T403 pasan a revisión por código incorporado, con pruebas y aceptación pendientes. Las estimaciones no son horas ejecutadas y la matriz PS4 continúa sin resultados.
+
+**Conciliación del 2026-11-22:** T404/T405/T406 pasan a **En revisión** por código integrado de Sales, QR, Gateway y el seeder de permisos recibido. T414 vuelve a **En revisión** porque TP-01 a TP-10 y los resultados integrales PS4 permanecen abiertos; la compilación y las suites aisladas no cierran por sí solas esa tarea. Ver [CONTEXTO_AVANCE_SPRINT_4.md](CONTEXTO_AVANCE_SPRINT_4.md) para el estado sustentado y los pendientes de aceptación.
 
 **Acuerdo sobre HU12 / T408 (2026-11-19):** A solicitud del Product Owner, se descarta el desarrollo de un simulador temporal de QR para evitar código descartable. La tarea T408 queda programada para integrar directamente la documentación y API de la pasarela de pagos oficial que se suministrará al finalizar el Sprint 4. Mientras tanto, en T409 se construye la interfaz completa de pagos en efectivo y consulta de saldo de operaciones contra `payment-service`.
 

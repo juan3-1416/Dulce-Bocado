@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             Sprint4PermisosSeeder::class,
             InventoryPermisosSeeder::class,
             ProductionPermisosSeeder::class,
+            ReportesPermisosSeeder::class,
         ]);
     }
 }

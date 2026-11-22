@@ -1,5 +1,7 @@
 # Sprint 4 — Plan de Desarrollo, Implementación y Evidencia Scrum
 
+> **Nota de conciliación, 2026-11-22:** este documento contiene declaraciones de desarrollo completo, Review, aceptación y velocidad que requieren actas y resultados verificables. La guía `SPRINT_4_PRUEBAS_CONSOLIDACION_MICROSERVICIOS.md` aún tiene TP-01 a TP-10 sin marcar. Para la documentación oficial, consultar [CONTEXTO_AVANCE_SPRINT_4.md](CONTEXTO_AVANCE_SPRINT_4.md) y confirmar cada afirmación antes de trasladarla al acta Scrum.
+
 **Proyecto:** Dulce Bocado — Sistema de Información Web para Gestión de Ventas, Pedidos, Producción e Inventario en Arquitectura de Microservicios  
 **Sprint:** 4 (Ventas de Mostrador, Pagos en Efectivo, Pasarela QR Libélula, Recibos Internos y Anticipos de Pedidos)  
 **Equipo Scrum:**  
@@ -18,7 +20,7 @@ El Sprint 4 concluye exitosamente la implementación del flujo comercial crític
 ### 1.1 Objetivo del Sprint (Sprint Goal)
 > *"Completar una venta presencial con stock consistente de mostrador, registrar cobros en efectivo y pagos QR adaptados a la pasarela oficial Libélula con cálculo de saldo exacto, emitir el recibo interno oficial y asociar anticipos a pedidos sin mutar descontroladamente su estado de entrega, verificando el incremento en microservicios independientes."*
 
-### 1.2 Estado Consolidado del Sprint Backlog (100% Desarrollo Completado)
+### 1.2 Estado técnico declarado al 2026-11-19 (pendiente de conciliación con pruebas integrales)
 
 | ID | Historia de Usuario | Tarea | Responsable | Estimado | Estado Técnico | Entregable Clave |
 |---|---|---|---|:---:|:---:|---|

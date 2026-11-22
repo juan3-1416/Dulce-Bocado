@@ -413,6 +413,7 @@ Las **HU1–HU23** corresponden a **R1–R23** por número. Los criterios siguie
 
 - Aceptación: mínimo tres reportes parametrizados; los filtros aparecen aplicados al PDF; validar destinatarios y enviar a una o varias direcciones válidas.
 - Implementación: reportes mínimos de ventas, pedidos e inventario; datos obtenidos por APIs propietarias, generación reproducible y estado de envío verificable.
+- Precisión funcional para el incremento posterior al Sprint 4 (2026-11-22): una solicitud permite indicar **varios destinatarios**; el servidor valida cada dirección, elimina duplicados y aplica exactamente los mismos parámetros a la consulta, el PDF y el correo. La respuesta diferencia PDF generado, envío aceptado por el transporte y entrega real cuando exista confirmación del proveedor. Los destinatarios no autorizan acceso a datos por sí mismos: la operación requiere permiso del actor y debe quedar auditada sin registrar secretos ni contenido sensible en logs. Esta precisión amplía la aceptación de HU23/R23; no crea una historia numerada nueva ni altera el objetivo cerrado del Sprint 4.
 
 ### Alcance técnico adicional sin nueva historia
 

@@ -1,0 +1,79 @@
+services:
+  report-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dulce_report
+      POSTGRES_USER: dulce_report_user
+      POSTGRES_PASSWORD: ${REPORT_DB_PASSWORD:-dulce_report_local_only}
+    volumes:
+      - report_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dulce_report_user -d dulce_report"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - dulce_bocado_net
+
+  report-service:
+    build:
+      context: ./microservices/report-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    working_dir: /var/www/html
+
+    volumes:
+      - ./microservices/report-service:/var/www/html
+      - report_vendor:/var/www/html/vendor
+
+    environment:
+      APP_NAME: "Dulce Bocado Report"
+      APP_ENV: local
+      APP_DEBUG: "true"
+
+      DB_CONNECTION: pgsql
+      DB_HOST: report-db
+      DB_PORT: 5432
+      DB_DATABASE: dulce_report
+      DB_USERNAME: dulce_report_user
+      DB_PASSWORD: ${REPORT_DB_PASSWORD:-dulce_report_local_only}
+
+      SESSION_DRIVER: file
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
+
+      SECURITY_SERVICE_URL: http://security-service:8000
+      SALES_SERVICE_URL: http://sales-service:8000
+      ORDER_SERVICE_URL: http://order-service:8000
+      PAYMENT_SERVICE_URL: http://payment-service:8000
+      INVENTORY_SERVICE_URL: http://inventory-service:8000
+      PRODUCTION_SERVICE_URL: http://production-service:8000
+      CATALOG_SERVICE_URL: http://catalog-service:8000
+
+      MAIL_MAILER: smtp
+      MAIL_HOST: ${MAIL_HOST:-mailpit}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_USERNAME: ${MAIL_USERNAME:-null}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-null}
+      MAIL_ENCRYPTION: ${MAIL_ENCRYPTION:-null}
+      MAIL_FROM_ADDRESS: "reportes@dulcebocado.com"
+      MAIL_FROM_NAME: "Dulce Bocado"
+
+    depends_on:
+      report-db:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(file_get_contents('http://127.0.0.1:8000/up') === false ? 1 : 0);"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+    networks:
+      - dulce_bocado_net
+
+volumes:
+  report_postgres_data:
+  report_vendor:

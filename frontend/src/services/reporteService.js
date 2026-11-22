@@ -1,4 +1,20 @@
+import { obtenerToken } from './authService'
+
 const API_URL = '/api/reportes'
+
+function obtenerCabeceras(extraHeaders = {}) {
+  const token = obtenerToken()
+  const cabeceras = {
+    Accept: 'application/json',
+    ...extraHeaders,
+  }
+
+  if (token) {
+    cabeceras.Authorization = `Bearer ${token}`
+  }
+
+  return cabeceras
+}
 
 async function procesarRespuesta(respuesta) {
   let datos = null
@@ -11,7 +27,7 @@ async function procesarRespuesta(respuesta) {
 
   if (!respuesta.ok) {
     const error = new Error(
-      datos?.message || 'Ocurrió un error al consultar el reporte.'
+      datos?.message || datos?.error?.message || 'Ocurrió un error al consultar el reporte.'
     )
 
     error.status = respuesta.status
@@ -49,10 +65,7 @@ export async function obtenerReporteVentas(params = {}) {
     `${API_URL}/ventas${construirQuery(params)}`,
     {
       method: 'GET',
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json',
-      },
+      headers: obtenerCabeceras(),
     }
   )
 
@@ -64,10 +77,7 @@ export async function obtenerReportePedidos(params = {}) {
     `${API_URL}/pedidos${construirQuery(params)}`,
     {
       method: 'GET',
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json',
-      },
+      headers: obtenerCabeceras(),
     }
   )
 
@@ -79,24 +89,21 @@ export async function obtenerReporteInventario(params = {}) {
     `${API_URL}/inventario${construirQuery(params)}`,
     {
       method: 'GET',
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json',
-      },
+      headers: obtenerCabeceras(),
     }
   )
 
   return procesarRespuesta(respuesta)
 }
+
 export async function descargarReportePdf(tipo, params = {}) {
   const respuesta = await fetch(
     `${API_URL}/${tipo}/pdf${construirQuery(params)}`,
     {
       method: 'GET',
-      credentials: 'include',
-      headers: {
+      headers: obtenerCabeceras({
         Accept: 'application/pdf',
-      },
+      }),
     }
   )
 
@@ -110,7 +117,7 @@ export async function descargarReportePdf(tipo, params = {}) {
     }
 
     const error = new Error(
-      datos?.message || 'No se pudo generar el PDF.'
+      datos?.message || datos?.error?.message || 'No se pudo generar el PDF.'
     )
 
     error.status = respuesta.status
@@ -120,85 +127,31 @@ export async function descargarReportePdf(tipo, params = {}) {
   }
 
   const blob = await respuesta.blob()
-
   const url = window.URL.createObjectURL(blob)
-
   const enlace = document.createElement('a')
 
   enlace.href = url
-
-  enlace.download =
-    `reporte_${tipo}_${new Date()
-      .toISOString()
-      .slice(0, 10)}.pdf`
+  enlace.download = `reporte_${tipo}_${new Date().toISOString().slice(0, 10)}.pdf`
 
   document.body.appendChild(enlace)
-
   enlace.click()
   enlace.remove()
 
   window.URL.revokeObjectURL(url)
 }
-function obtenerCookie(nombre) {
-  const cookies = document.cookie.split(';')
 
-  for (const cookie of cookies) {
-    const [clave, ...valor] = cookie.trim().split('=')
-
-    if (clave === nombre) {
-      return valor.join('=')
-    }
-  }
-
-  return null
-}
-
-function obtenerTokenCsrf() {
-  const token = obtenerCookie('XSRF-TOKEN')
-
-  return token
-    ? decodeURIComponent(token)
-    : null
-}
-
-async function prepararCsrf() {
-  const response = await fetch(
-    '/sanctum/csrf-cookie',
-    {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json',
-      },
-    }
-  )
-
-  if (!response.ok) {
-    throw new Error(
-      'No se pudo preparar la protección CSRF.'
-    )
-  }
-}
 export async function enviarReporteCorreo(
   tipo,
   correos,
   params = {}
 ) {
-  await prepararCsrf()
-
-  const token = obtenerTokenCsrf()
-
   const respuesta = await fetch(
     `${API_URL}/${tipo}/enviar${construirQuery(params)}`,
     {
       method: 'POST',
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type':
-          'application/json; charset=utf-8',
-        'X-XSRF-TOKEN': token ?? '',
-      },
+      headers: obtenerCabeceras({
+        'Content-Type': 'application/json; charset=utf-8',
+      }),
       body: JSON.stringify({
         correos,
       }),
@@ -215,8 +168,7 @@ export async function enviarReporteCorreo(
 
   if (!respuesta.ok) {
     const error = new Error(
-      datos?.message ||
-        'No se pudo enviar el reporte por correo.'
+      datos?.message || datos?.error?.message || 'No se pudo enviar el reporte por correo.'
     )
 
     error.status = respuesta.status

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { useAuth } from '../../context/AuthContext'
 import { obtenerResumenDashboard } from '../../services/dashboardService'
 import DashboardKpiCard from '../../components/dashboard/DashboardKpiCard'
 import GraficoTendenciaVentas from '../../components/dashboard/GraficoTendenciaVentas'
@@ -8,7 +7,6 @@ import GraficoTopProductos from '../../components/dashboard/GraficoTopProductos'
 import GraficoEstadosPedidos from '../../components/dashboard/GraficoEstadosPedidos'
 
 export default function DashboardPage() {
-  const { tienePermiso } = useAuth()
   const [periodo, setPeriodo] = useState('mes')
   const [datos, setDatos] = useState(null)
   const [cargando, setCargando] = useState(true)
