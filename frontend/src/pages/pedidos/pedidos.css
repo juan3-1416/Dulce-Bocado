@@ -1,0 +1,69 @@
+@media (max-width: 1439px) {
+  .pedidos-table,
+  .pedidos-table tbody,
+  .pedidos-table tr,
+  .pedidos-table td,
+  .pedido-detalle-table,
+  .pedido-detalle-table tbody,
+  .pedido-detalle-table tr,
+  .pedido-detalle-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .pedidos-table thead,
+  .pedido-detalle-table thead {
+    display: none;
+  }
+
+  .pedidos-table tbody,
+  .pedido-detalle-table tbody {
+    padding: 0.75rem;
+  }
+
+  .pedidos-table tr,
+  .pedido-detalle-table tr {
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--border-subtle);
+    border-radius: 0.75rem;
+    overflow: hidden;
+  }
+
+  .pedidos-table tr:last-child,
+  .pedido-detalle-table tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .pedidos-table td,
+  .pedido-detalle-table td {
+    padding: 0.65rem 1rem;
+    text-align: left;
+  }
+
+  .pedidos-table td[data-label]::before,
+  .pedido-detalle-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.2rem;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .pedidos-table td + td,
+  .pedido-detalle-table td + td {
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .pedidos-table td.pedidos-actions > div,
+  .pedidos-table td.pedidos-actions > div > div {
+    align-items: stretch;
+    justify-content: flex-start;
+    max-width: none;
+    width: 100%;
+  }
+
+  .pedidos-table td.pedidos-actions button {
+    min-height: 2.5rem;
+  }
+}

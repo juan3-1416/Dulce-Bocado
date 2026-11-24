@@ -764,19 +764,19 @@ function PedidoModal({
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="flex max-h-[95vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl bg-white shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4">
+            <div role="dialog" aria-modal="true" aria-labelledby="pedido-form-titulo" className="flex max-h-[calc(100dvh-1rem)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-theme-surface shadow-xl sm:max-h-[calc(100dvh-2rem)]">
 
                 {/* Encabezado */}
-                <div className="flex items-center justify-between border-b px-6 py-4">
+                <div className="flex items-start justify-between gap-4 border-b border-theme-border-subtle px-4 py-4 sm:px-6">
                     <div>
-                        <h2 className="text-xl font-bold text-gray-900">
+                        <h2 id="pedido-form-titulo" className="text-xl font-semibold tracking-tight text-theme-heading sm:text-2xl">
                             {pedidoEditando
                                 ? `Editar Pedido #${pedidoEditando.id_pedido}`
                                 : 'Nuevo Pedido'}
                         </h2>
 
-                        <p className="mt-1 text-sm text-gray-500">
+                        <p className="mt-1 text-sm text-theme-muted">
                             Registra productos, cliente y fecha de entrega.
                         </p>
                     </div>
@@ -789,9 +789,10 @@ function PedidoModal({
                         disabled={
                             guardando
                         }
-                        className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                        aria-label="Cerrar"
+                        className="rounded-lg px-2 py-1 text-theme-muted hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:opacity-50"
                     >
-                        ✕
+                        Cerrar
                     </button>
                 </div>
 
@@ -800,30 +801,30 @@ function PedidoModal({
                     onSubmit={
                         manejarSubmit
                     }
-                    className="overflow-y-auto"
+                    className="min-h-0 overflow-y-auto"
                 >
-                    <div className="space-y-6 p-6">
+                    <div className="space-y-7 p-4 sm:p-6">
 
                         {/* Error */}
                         {error && (
-                            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                            <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
                                 {error}
                             </div>
                         )}
 
                         {cargandoCatalogos && (
-                            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
+                            <div role="status" className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
                                 Cargando clientes y presentaciones...
                             </div>
                         )}
 
                         {/* Cliente */}
-                        <section className="rounded-xl border border-gray-200 p-5">
-                            <h3 className="mb-4 font-semibold text-gray-900">
+                        <section className="border-b border-theme-border-subtle pb-7">
+                            <h3 className="mb-4 text-base font-semibold text-theme-heading">
                                 Cliente
                             </h3>
 
-                            <div className="mb-4 flex flex-wrap gap-3">
+                            <div className="mb-4 flex flex-wrap gap-2">
                                 <button
                                     type="button"
                                     onClick={() =>
@@ -831,11 +832,12 @@ function PedidoModal({
                                             'REGISTRADO'
                                         )
                                     }
-                                    className={`rounded-lg px-4 py-2 text-sm font-semibold ${
+                                    aria-pressed={formulario.tipo_cliente === 'REGISTRADO'}
+                                    className={`min-h-10 rounded-lg px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 ${
                                         formulario.tipo_cliente ===
                                         'REGISTRADO'
                                             ? 'bg-pink-600 text-white'
-                                            : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                                            : 'border border-theme-border-subtle bg-theme-surface text-theme-body hover:bg-theme-hover'
                                     }`}
                                 >
                                     Cliente registrado
@@ -848,11 +850,12 @@ function PedidoModal({
                                             'OCASIONAL'
                                         )
                                     }
-                                    className={`rounded-lg px-4 py-2 text-sm font-semibold ${
+                                    aria-pressed={formulario.tipo_cliente === 'OCASIONAL'}
+                                    className={`min-h-10 rounded-lg px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 ${
                                         formulario.tipo_cliente ===
                                         'OCASIONAL'
                                             ? 'bg-pink-600 text-white'
-                                            : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                                            : 'border border-theme-border-subtle bg-theme-surface text-theme-body hover:bg-theme-hover'
                                     }`}
                                 >
                                     Cliente ocasional
@@ -862,11 +865,12 @@ function PedidoModal({
                             {formulario.tipo_cliente ===
                             'REGISTRADO' ? (
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium text-gray-700">
+                                    <label htmlFor="pedido-id-cliente" className="mb-1.5 block text-sm font-medium text-theme-body">
                                         Cliente
                                     </label>
 
                                     <select
+                                        id="pedido-id-cliente"
                                         name="id_cliente"
                                         value={
                                             formulario.id_cliente
@@ -878,7 +882,7 @@ function PedidoModal({
                                         disabled={
                                             cargandoCatalogos
                                         }
-                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
+                                        className="min-h-11 w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2.5 text-sm text-theme-heading focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                                     >
                                         <option value="">
                                             Seleccione un cliente...
@@ -910,11 +914,12 @@ function PedidoModal({
                                 </div>
                             ) : (
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium text-gray-700">
+                                    <label htmlFor="pedido-cliente-ocasional" className="mb-1.5 block text-sm font-medium text-theme-body">
                                         Nombre del cliente ocasional
                                     </label>
 
                                     <input
+                                        id="pedido-cliente-ocasional"
                                         type="text"
                                         name="nombre_cliente_ocasional"
                                         value={
@@ -929,25 +934,26 @@ function PedidoModal({
                                         }
                                         required
                                         placeholder="Ej. Carlos Mendoza"
-                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
+                                        className="min-h-11 w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2.5 text-sm text-theme-heading placeholder:text-theme-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                                     />
                                 </div>
                             )}
                         </section>
 
                         {/* Entrega */}
-                        <section className="rounded-xl border border-gray-200 p-5">
-                            <h3 className="mb-4 font-semibold text-gray-900">
+                        <section className="border-b border-theme-border-subtle pb-7">
+                            <h3 className="mb-4 text-base font-semibold text-theme-heading">
                                 Fecha y hora de entrega
                             </h3>
 
                             <div className="grid gap-4 md:grid-cols-2">
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium text-gray-700">
+                                    <label htmlFor="pedido-fecha-entrega" className="mb-1.5 block text-sm font-medium text-theme-body">
                                         Fecha de entrega
                                     </label>
 
                                     <input
+                                        id="pedido-fecha-entrega"
                                         type="date"
                                         name="fecha_entrega"
                                         value={
@@ -957,16 +963,17 @@ function PedidoModal({
                                             manejarCambioFormulario
                                         }
                                         required
-                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
+                                        className="min-h-11 w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2.5 text-sm text-theme-heading focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium text-gray-700">
+                                    <label htmlFor="pedido-hora-entrega" className="mb-1.5 block text-sm font-medium text-theme-body">
                                         Hora de entrega
                                     </label>
 
                                     <input
+                                        id="pedido-hora-entrega"
                                         type="time"
                                         name="hora_entrega"
                                         value={
@@ -976,21 +983,21 @@ function PedidoModal({
                                             manejarCambioFormulario
                                         }
                                         required
-                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
+                                        className="min-h-11 w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2.5 text-sm text-theme-heading focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                                     />
                                 </div>
                             </div>
                         </section>
 
                         {/* Productos */}
-                        <section className="rounded-xl border border-gray-200 p-5">
+                        <section className="border-b border-theme-border-subtle pb-7">
                             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
-                                    <h3 className="font-semibold text-gray-900">
+                                    <h3 className="text-base font-semibold text-theme-heading">
                                         Productos del pedido
                                     </h3>
 
-                                    <p className="text-xs text-gray-500">
+                                    <p className="mt-1 text-sm text-theme-muted">
                                         Los precios definitivos son calculados y congelados por el servidor.
                                     </p>
                                 </div>
@@ -1000,9 +1007,9 @@ function PedidoModal({
                                     onClick={
                                         agregarDetalle
                                     }
-                                    className="rounded-lg border border-pink-200 px-3 py-2 text-sm font-semibold text-pink-600 hover:bg-pink-50"
+                                    className="min-h-10 rounded-lg border border-pink-300 px-3 py-2 text-sm font-semibold text-pink-700 hover:bg-pink-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                                 >
-                                    + Agregar producto
+                                    Agregar producto
                                 </button>
                             </div>
 
@@ -1033,10 +1040,10 @@ function PedidoModal({
                                                 key={
                                                     detalle.uid
                                                 }
-                                                className="rounded-lg border border-gray-200 bg-gray-50 p-4"
+                                                className="rounded-xl bg-theme-subtle p-4 sm:p-5"
                                             >
                                                 <div className="mb-3 flex items-center justify-between">
-                                                    <h4 className="text-sm font-semibold text-gray-700">
+                                                    <h4 className="text-sm font-semibold text-theme-heading">
                                                         Línea{' '}
                                                         {indice +
                                                             1}
@@ -1053,7 +1060,7 @@ function PedidoModal({
                                                                     indice
                                                                 )
                                                             }
-                                                            className="text-xs font-semibold text-red-600 hover:text-red-800"
+                                                            className="rounded-lg px-2 py-1 text-sm font-semibold text-red-700 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
                                                         >
                                                             Quitar
                                                         </button>
@@ -1064,11 +1071,12 @@ function PedidoModal({
 
                                                     {/* Presentación */}
                                                     <div className="lg:col-span-2">
-                                                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                                                        <label htmlFor={`pedido-producto-${detalle.uid}`} className="mb-1.5 block text-sm font-medium text-theme-body">
                                                             Producto / Presentación
                                                         </label>
 
                                                         <select
+                                                            id={`pedido-producto-${detalle.uid}`}
                                                             value={
                                                                 detalle.id_producto_presentacion
                                                             }
@@ -1087,7 +1095,7 @@ function PedidoModal({
                                                             disabled={
                                                                 cargandoCatalogos
                                                             }
-                                                            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
+                                                            className="min-h-11 w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2.5 text-sm text-theme-heading focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                                                         >
                                                             <option value="">
                                                                 Seleccione...
@@ -1120,7 +1128,7 @@ function PedidoModal({
                                                         </select>
 
                                                         {presentacion && (
-                                                            <p className="mt-1 text-xs text-gray-500">
+                                                            <p className="mt-1.5 text-xs text-theme-muted">
                                                                 {personalizable
                                                                     ? 'Esta presentación permite personalización.'
                                                                     : 'Esta presentación no permite personalización.'}
@@ -1130,11 +1138,12 @@ function PedidoModal({
 
                                                     {/* Cantidad */}
                                                     <div>
-                                                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                                                        <label htmlFor={`pedido-cantidad-${detalle.uid}`} className="mb-1.5 block text-sm font-medium text-theme-body">
                                                             Cantidad
                                                         </label>
 
                                                         <input
+                                                            id={`pedido-cantidad-${detalle.uid}`}
                                                             type="number"
                                                             min="1"
                                                             step="1"
@@ -1153,17 +1162,17 @@ function PedidoModal({
                                                                 )
                                                             }
                                                             required
-                                                            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
+                                                            className="min-h-11 w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2.5 text-sm text-theme-heading focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                                                         />
                                                     </div>
 
                                                     {/* Subtotal */}
                                                     <div>
-                                                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                                                        <p className="mb-1.5 block text-sm font-medium text-theme-body">
                                                             Subtotal estimado
-                                                        </label>
+                                                        </p>
 
-                                                        <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-bold text-gray-900">
+                                                        <div className="min-h-11 rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2.5 text-sm font-semibold tabular-nums text-theme-heading">
                                                             Bs{' '}
                                                             {subtotal.toFixed(
                                                                 2
@@ -1176,11 +1185,12 @@ function PedidoModal({
                                                 {personalizable && (
                                                     <div className="mt-4 grid gap-4 md:grid-cols-3">
                                                         <div className="md:col-span-2">
-                                                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                                            <label htmlFor={`pedido-personalizacion-${detalle.uid}`} className="mb-1.5 block text-sm font-medium text-theme-body">
                                                                 Detalle de personalización
                                                             </label>
 
                                                             <input
+                                                                id={`pedido-personalizacion-${detalle.uid}`}
                                                                 type="text"
                                                                 value={
                                                                     detalle.detalle_personalizacion
@@ -1200,16 +1210,17 @@ function PedidoModal({
                                                                     500
                                                                 }
                                                                 placeholder="Ej. Mensaje: Feliz cumpleaños María"
-                                                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
+                                                                className="min-h-11 w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2.5 text-sm text-theme-heading placeholder:text-theme-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                                                             />
                                                         </div>
 
                                                         <div>
-                                                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                                            <label htmlFor={`pedido-costo-${detalle.uid}`} className="mb-1.5 block text-sm font-medium text-theme-body">
                                                                 Costo adicional (Bs)
                                                             </label>
 
                                                             <input
+                                                                id={`pedido-costo-${detalle.uid}`}
                                                                 type="number"
                                                                 min="0"
                                                                 step="0.01"
@@ -1228,7 +1239,7 @@ function PedidoModal({
                                                                     )
                                                                 }
                                                                 placeholder="0.00"
-                                                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
+                                                                className="min-h-11 w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2.5 text-sm text-theme-heading placeholder:text-theme-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                                                             />
                                                         </div>
                                                     </div>
@@ -1241,12 +1252,13 @@ function PedidoModal({
                         </section>
 
                         {/* Observaciones */}
-                        <section className="rounded-xl border border-gray-200 p-5">
-                            <label className="mb-2 block font-semibold text-gray-900">
+                        <section>
+                            <label htmlFor="pedido-observaciones" className="mb-2 block text-base font-semibold text-theme-heading">
                                 Observaciones
                             </label>
 
                             <textarea
+                                id="pedido-observaciones"
                                 name="observaciones"
                                 value={
                                     formulario.observaciones
@@ -1259,24 +1271,24 @@ function PedidoModal({
                                     1000
                                 }
                                 placeholder="Indicaciones adicionales del pedido..."
-                                className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
+                                className="w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2.5 text-sm text-theme-heading placeholder:text-theme-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                             />
                         </section>
 
                         {/* Total */}
-                        <section className="rounded-xl border border-pink-200 bg-pink-50 p-5">
-                            <div className="flex items-center justify-between">
+                        <section className="rounded-xl border border-pink-200 bg-pink-50 p-4 sm:p-5">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                                 <div>
                                     <p className="text-sm font-semibold text-pink-800">
                                         Total estimado
                                     </p>
 
-                                    <p className="text-xs text-pink-700">
-                                        Laravel calculará y guardará el total definitivo.
+                                    <p className="text-sm text-pink-800">
+                                        El total definitivo se calculará al guardar el pedido.
                                     </p>
                                 </div>
 
-                                <p className="text-2xl font-bold text-pink-700">
+                                <p className="text-2xl font-semibold tabular-nums text-pink-900">
                                     Bs{' '}
                                     {totalVistaPrevia.toFixed(
                                         2
@@ -1287,7 +1299,7 @@ function PedidoModal({
                     </div>
 
                     {/* Footer */}
-                    <div className="sticky bottom-0 flex justify-end gap-3 border-t bg-white px-6 py-4">
+                    <div className="sticky bottom-0 flex flex-col-reverse gap-3 border-t border-theme-border-subtle bg-theme-surface px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
                         <button
                             type="button"
                             onClick={
@@ -1296,7 +1308,7 @@ function PedidoModal({
                             disabled={
                                 guardando
                             }
-                            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                            className="min-h-11 rounded-lg border border-theme-border-subtle px-4 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:opacity-50"
                         >
                             Cancelar
                         </button>
@@ -1307,7 +1319,7 @@ function PedidoModal({
                                 guardando ||
                                 cargandoCatalogos
                             }
-                            className="rounded-lg bg-pink-600 px-5 py-2 text-sm font-semibold text-white hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="min-h-11 rounded-lg bg-pink-600 px-5 py-2 text-sm font-semibold text-white hover:bg-pink-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             {guardando
                                 ? 'Guardando...'

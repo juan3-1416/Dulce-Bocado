@@ -31,40 +31,42 @@ function CancelarPedidoModal({ isOpen, onClose, pedido, onConfirm }) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div className="w-full max-w-lg rounded-xl bg-white shadow-xl">
-                <div className="flex items-center justify-between border-b px-6 py-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4">
+            <div role="dialog" aria-modal="true" aria-labelledby="cancelar-pedido-titulo" className="max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-theme-surface shadow-xl">
+                <div className="flex items-start justify-between gap-4 border-b border-theme-border-subtle px-5 py-4 sm:px-6">
                     <div>
-                        <h2 className="text-xl font-bold text-gray-900">
-                            Cancelar Pedido #{pedido.id_pedido}
+                        <h2 id="cancelar-pedido-titulo" className="text-xl font-semibold tracking-tight text-theme-heading">
+                            Cancelar pedido #{pedido.id_pedido}
                         </h2>
+                        <p className="mt-1 text-sm text-theme-muted">Indica el motivo para dejar constancia.</p>
                     </div>
 
                     <button
                         type="button"
                         onClick={onClose}
                         disabled={guardando}
-                        className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                        aria-label="Cerrar"
+                        className="rounded-lg px-2 py-1 text-theme-muted hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:opacity-50"
                     >
-                        ✕
+                        Cerrar
                     </button>
                 </div>
 
-                <form onSubmit={manejarSubmit} className="space-y-5 p-6">
+                <form onSubmit={manejarSubmit} className="space-y-5 p-5 sm:p-6">
                     {error && (
-                        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
                             {error}
                         </div>
                     )}
 
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                        Esta acción es irreversible. El pedido será marcado como CANCELADO y se requerirá un motivo.
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-900">
+                        El pedido quedará cancelado y se registrará el motivo. Esta acción no se puede deshacer.
                     </div>
 
                     <div>
                         <label
                             htmlFor="motivo_cancelacion"
-                            className="mb-1 block text-sm font-medium text-gray-700"
+                            className="mb-1.5 block text-sm font-medium text-theme-body"
                         >
                             Motivo de cancelación
                         </label>
@@ -75,29 +77,30 @@ function CancelarPedidoModal({ isOpen, onClose, pedido, onConfirm }) {
                             rows={4}
                             maxLength={500}
                             placeholder="Explique el motivo por el cual se cancela este pedido..."
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+                            aria-describedby="motivo-cancelacion-ayuda"
+                            className="w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2.5 text-sm text-theme-heading placeholder:text-theme-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
                         />
-                        <p className="mt-1 text-xs text-gray-400">
+                        <p id="motivo-cancelacion-ayuda" className="mt-1.5 text-xs text-theme-muted">
                             Mínimo 5 caracteres.
                         </p>
                     </div>
 
-                    <div className="flex justify-end gap-3 border-t border-gray-200 pt-5">
+                    <div className="flex flex-col-reverse gap-3 border-t border-theme-border-subtle pt-5 sm:flex-row sm:justify-end">
                         <button
                             type="button"
                             onClick={onClose}
                             disabled={guardando}
-                            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                            className="min-h-11 rounded-lg border border-theme-border-subtle px-4 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:opacity-50"
                         >
-                            Cancelar
+                            Volver
                         </button>
 
                         <button
                             type="submit"
                             disabled={guardando || motivo.trim().length < 5}
-                            className="rounded-lg bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="min-h-11 rounded-lg bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                            {guardando ? 'Confirmando...' : 'Confirmar Cancelación'}
+                            {guardando ? 'Confirmando...' : 'Confirmar cancelación'}
                         </button>
                     </div>
                 </form>

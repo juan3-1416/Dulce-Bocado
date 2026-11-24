@@ -15,6 +15,7 @@ import PedidoDetalleModal from './PedidoDetalleModal.jsx';
 import CancelarPedidoModal from './CancelarPedidoModal.jsx';
 import PagoModal from '../pagos/PagoModal';
 import { useAuth } from '../../context/AuthContext';
+import './pedidos.css';
 
 function PedidosPage() {
     const { tienePermiso } = useAuth();
@@ -284,8 +285,8 @@ function PedidosPage() {
 
             default:
                 return (
-                    'bg-gray-100 ' +
-                    'text-gray-700'
+                    'bg-theme-subtle ' +
+                    'text-theme-body'
                 );
         }
     };
@@ -463,16 +464,16 @@ function PedidosPage() {
     */
 
     return (
-        <section className="space-y-6">
+        <section className="min-w-0 space-y-6 pb-10 text-theme-body">
 
             {/* Encabezado */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">
+                    <h1 className="text-2xl font-semibold tracking-tight text-theme-heading sm:text-3xl">
                         Pedidos
                     </h1>
 
-                    <p className="mt-1 text-sm text-gray-600">
+                    <p className="mt-2 text-sm text-theme-muted">
                         Registra y consulta
                         pedidos programados de
                         clientes.
@@ -484,44 +485,46 @@ function PedidosPage() {
                     onClick={
                         abrirNuevoPedido
                     }
-                    className="rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold text-white hover:bg-pink-700"
+                    className="min-h-11 rounded-lg bg-pink-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-pink-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                 >
-                    + Nuevo Pedido
+                    Nuevo pedido
                 </button>
             </div>
 
             {/* Mensajes */}
             {mensajeExito && (
-                <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+                <div role="status" className="flex items-center justify-between gap-4 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
                     <span>{mensajeExito}</span>
                     <button
                         type="button"
                         onClick={() => setMensajeExito('')}
-                        className="text-green-500 hover:text-green-800"
+                        aria-label="Cerrar mensaje"
+                        className="rounded-lg px-2 py-1 text-green-800 hover:bg-green-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700"
                     >
-                        ✕
+                        Cerrar
                     </button>
                 </div>
             )}
 
             {/* Error */}
             {error && (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
                     {error}
                 </div>
             )}
 
             {/* Filtros */}
-            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-xl border border-theme-border-subtle bg-theme-surface p-4 sm:p-5">
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
 
                     {/* Buscar */}
                     <div>
-                        <label className="mb-1 block text-xs font-semibold uppercase text-gray-500">
+                        <label htmlFor="pedidos-buscar" className="mb-1.5 block text-sm font-medium text-theme-body">
                             Buscar
                         </label>
 
                         <input
+                            id="pedidos-buscar"
                             type="text"
                             name="buscar"
                             placeholder="Cliente, CI/NIT o N.º pedido..."
@@ -531,17 +534,18 @@ function PedidosPage() {
                             onChange={
                                 manejarCambioFiltro
                             }
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500"
+                            className="min-h-11 w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2 text-sm text-theme-heading placeholder:text-theme-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                         />
                     </div>
 
                     {/* Estado */}
                     <div>
-                        <label className="mb-1 block text-xs font-semibold uppercase text-gray-500">
+                        <label htmlFor="pedidos-estado" className="mb-1.5 block text-sm font-medium text-theme-body">
                             Estado
                         </label>
 
                         <select
+                            id="pedidos-estado"
                             name="estado"
                             value={
                                 filtros.estado
@@ -549,7 +553,7 @@ function PedidosPage() {
                             onChange={
                                 manejarCambioFiltro
                             }
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500"
+                            className="min-h-11 w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2 text-sm text-theme-heading focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                         >
                             <option value="">
                                 Todos los estados
@@ -575,11 +579,12 @@ function PedidosPage() {
 
                     {/* Fecha */}
                     <div>
-                        <label className="mb-1 block text-xs font-semibold uppercase text-gray-500">
+                        <label htmlFor="pedidos-fecha" className="mb-1.5 block text-sm font-medium text-theme-body">
                             Fecha de entrega
                         </label>
 
                         <input
+                            id="pedidos-fecha"
                             type="date"
                             name="fecha_entrega"
                             value={
@@ -588,7 +593,7 @@ function PedidosPage() {
                             onChange={
                                 manejarCambioFiltro
                             }
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500"
+                            className="min-h-11 w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2 text-sm text-theme-heading focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                         />
                     </div>
 
@@ -599,7 +604,7 @@ function PedidosPage() {
                             onClick={
                                 limpiarFiltros
                             }
-                            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                            className="min-h-11 w-full whitespace-nowrap rounded-lg border border-theme-border-subtle bg-theme-surface px-4 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                         >
                             Limpiar filtros
                         </button>
@@ -608,23 +613,23 @@ function PedidosPage() {
             </div>
 
             {/* Resumen */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                    <p className="text-xs font-semibold uppercase text-gray-500">
+            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-theme-border-subtle bg-theme-border-subtle sm:grid-cols-4">
+                <div className="bg-theme-surface p-4 sm:p-5">
+                    <p className="text-sm text-theme-muted">
                         Resultados
                     </p>
 
-                    <p className="mt-1 text-2xl font-bold text-gray-900">
+                    <p className="mt-1 text-2xl font-semibold tabular-nums text-theme-heading">
                         {pedidos.length}
                     </p>
                 </div>
 
-                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
-                    <p className="text-xs font-semibold uppercase text-blue-700">
+                <div className="bg-theme-surface p-4 sm:p-5">
+                    <p className="text-sm text-theme-muted">
                         Programados
                     </p>
 
-                    <p className="mt-1 text-2xl font-bold text-blue-800">
+                    <p className="mt-1 text-2xl font-semibold tabular-nums text-theme-heading">
                         {
                             pedidos.filter(
                                 (pedido) =>
@@ -635,12 +640,12 @@ function PedidosPage() {
                     </p>
                 </div>
 
-                <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
-                    <p className="text-xs font-semibold uppercase text-yellow-700">
+                <div className="bg-theme-surface p-4 sm:p-5">
+                    <p className="text-sm text-theme-muted">
                         En proceso
                     </p>
 
-                    <p className="mt-1 text-2xl font-bold text-yellow-800">
+                    <p className="mt-1 text-2xl font-semibold tabular-nums text-theme-heading">
                         {
                             pedidos.filter(
                                 (pedido) =>
@@ -651,12 +656,12 @@ function PedidosPage() {
                     </p>
                 </div>
 
-                <div className="rounded-xl border border-green-200 bg-green-50 p-4">
-                    <p className="text-xs font-semibold uppercase text-green-700">
+                <div className="bg-theme-surface p-4 sm:p-5">
+                    <p className="text-sm text-theme-muted">
                         Entregados
                     </p>
 
-                    <p className="mt-1 text-2xl font-bold text-green-800">
+                    <p className="mt-1 text-2xl font-semibold tabular-nums text-theme-heading">
                         {
                             pedidos.filter(
                                 (pedido) =>
@@ -669,67 +674,67 @@ function PedidosPage() {
             </div>
 
             {/* Tabla */}
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+            <div className="min-w-0 overflow-hidden rounded-xl border border-theme-border-subtle bg-theme-surface">
 
                 {cargando ? (
-                    <div className="p-8 text-center text-gray-500">
+                    <div role="status" className="p-8 text-center text-theme-muted">
                         Cargando pedidos...
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
+                    <div className="min-w-0">
+                        <table className="pedidos-table w-full divide-y divide-theme-border-subtle" aria-label="Listado de pedidos">
 
-                            <thead className="bg-gray-50">
+                            <thead className="bg-theme-subtle">
                                 <tr>
-                                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                                    <th className="px-5 py-3 text-left text-xs font-semibold text-theme-muted">
                                         Pedido
                                     </th>
 
-                                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                                    <th className="px-5 py-3 text-left text-xs font-semibold text-theme-muted">
                                         Cliente
                                     </th>
 
-                                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                                    <th className="px-5 py-3 text-left text-xs font-semibold text-theme-muted">
                                         Entrega
                                     </th>
 
-                                    <th className="px-5 py-3 text-center text-xs font-semibold uppercase text-gray-600">
+                                    <th className="px-5 py-3 text-center text-xs font-semibold text-theme-muted">
                                         Productos
                                     </th>
 
-                                    <th className="px-5 py-3 text-right text-xs font-semibold uppercase text-gray-600">
+                                    <th className="px-5 py-3 text-right text-xs font-semibold text-theme-muted">
                                         Total
                                     </th>
 
-                                    <th className="px-5 py-3 text-center text-xs font-semibold uppercase text-gray-600">
+                                    <th className="px-5 py-3 text-center text-xs font-semibold text-theme-muted">
                                         Estado
                                     </th>
 
-                                    <th className="w-[260px] min-w-[260px] px-4 py-3 text-right text-xs font-semibold uppercase text-gray-600">
-    Acciones
-</th>
+                                    <th className="w-[260px] min-w-[260px] px-4 py-3 text-right text-xs font-semibold text-theme-muted">
+                                        Acciones
+                                    </th>
                                 </tr>
                             </thead>
 
-                            <tbody className="divide-y divide-gray-200">
+                            <tbody className="divide-y divide-theme-border-subtle">
                                 {pedidos.map(
                                     (pedido) => (
                                         <tr
                                             key={
                                                 pedido.id_pedido
                                             }
-                                            className="hover:bg-gray-50"
+                                            className="hover:bg-theme-subtle"
                                         >
                                             {/* Número */}
-                                            <td className="px-5 py-4">
-                                                <p className="font-semibold text-gray-900">
+                                            <td data-label="Pedido" className="px-5 py-4">
+                                                <p className="font-semibold tabular-nums text-theme-heading">
                                                     #
                                                     {
                                                         pedido.id_pedido
                                                     }
                                                 </p>
 
-                                                <p className="mt-1 text-xs text-gray-500">
+                                                <p className="mt-1 text-xs text-theme-muted">
                                                     {formatearFecha(
                                                         pedido.fecha_pedido
                                                     )}
@@ -737,14 +742,14 @@ function PedidosPage() {
                                             </td>
 
                                             {/* Cliente */}
-                                            <td className="px-5 py-4">
-                                                <p className="text-sm font-medium text-gray-900">
+                                            <td data-label="Cliente" className="px-5 py-4">
+                                                <p className="break-words text-sm font-medium text-theme-heading">
                                                     {obtenerNombreCliente(
                                                         pedido
                                                     )}
                                                 </p>
 
-                                                <p className="mt-1 text-xs text-gray-500">
+                                                <p className="mt-1 text-xs text-theme-muted">
                                                     {pedido.id_cliente
                                                         ? 'Cliente registrado'
                                                         : 'Cliente ocasional'}
@@ -752,14 +757,14 @@ function PedidosPage() {
                                             </td>
 
                                             {/* Entrega */}
-                                            <td className="px-5 py-4">
-                                                <p className="text-sm font-medium text-gray-800">
+                                            <td data-label="Entrega" className="px-5 py-4">
+                                                <p className="text-sm font-medium text-theme-heading">
                                                     {formatearFecha(
                                                         pedido.fecha_entrega
                                                     )}
                                                 </p>
 
-                                                <p className="mt-1 text-xs text-gray-500">
+                                                <p className="mt-1 text-xs text-theme-muted">
                                                     {formatearHora(
                                                         pedido.hora_entrega
                                                     )}
@@ -767,7 +772,7 @@ function PedidosPage() {
                                             </td>
 
                                             {/* Detalles */}
-                                            <td className="px-5 py-4 text-center">
+                                            <td data-label="Productos" className="px-5 py-4 text-center">
                                                 <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-700">
                                                     {
                                                         pedido
@@ -785,14 +790,14 @@ function PedidosPage() {
                                             </td>
 
                                             {/* Total */}
-                                            <td className="px-5 py-4 text-right">
-                                                <p className="font-bold text-gray-900">
+                                            <td data-label="Total" className="px-5 py-4 text-right">
+                                                <p className="font-semibold tabular-nums text-theme-heading">
                                                     Bs {formatearMonto(pedido.total)}
                                                 </p>
                                             </td>
 
                                             {/* Estado */}
-                                            <td className="px-5 py-4 text-center">
+                                            <td data-label="Estado" className="px-5 py-4 text-center">
                                                 <span
                                                     className={`rounded-full px-3 py-1 text-xs font-semibold ${obtenerClaseEstado(
                                                         pedido.estado
@@ -805,10 +810,9 @@ function PedidosPage() {
                                             </td>
 
                                             {/* Acciones */}
-                                           {/* Acciones */}
-<td className="w-[260px] min-w-[260px] px-4 py-4 text-right align-top">
-    <div className="flex flex-col items-end gap-2">
-        <div className="flex flex-wrap justify-end gap-2">
+                                            <td data-label="Acciones" className="pedidos-actions px-4 py-4 text-right align-top md:w-[260px]">
+                                                <div className="flex flex-col items-end gap-2">
+                                                    <div className="flex flex-wrap justify-end gap-2">
                                                         <button
                                                             type="button"
                                                             onClick={() =>
@@ -819,7 +823,7 @@ function PedidosPage() {
                                                             disabled={
                                                                 cargandoDetalle
                                                             }
-                                                            className="rounded border border-blue-200 px-3 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50 disabled:opacity-50"
+                                                            className="min-h-10 rounded-lg border border-theme-border-subtle px-3 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:opacity-50"
                                                         >
                                                             Ver detalle
                                                         </button>
@@ -831,7 +835,7 @@ function PedidosPage() {
                                                                     setPedidoParaPagar(pedido);
                                                                     setModalPagoAbierto(true);
                                                                 }}
-                                                                className="rounded border border-pink-200 bg-pink-50 px-3 py-1 text-xs font-semibold text-pink-700 hover:bg-pink-100"
+                                                                className="min-h-10 rounded-lg border border-pink-200 bg-pink-50 px-3 py-2 text-sm font-semibold text-pink-800 hover:bg-pink-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                                                             >
                                                                 Cobrar / Anticipo
                                                             </button>
@@ -845,34 +849,34 @@ function PedidosPage() {
                                                                         pedido
                                                                     )
                                                                 }
-                                                                className="rounded border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+                                                                className="min-h-10 rounded-lg border border-theme-border-subtle px-3 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                                                             >
                                                                 Editar
                                                             </button>
                                                         )}
                                                     </div>
 
-                                                    <div className="flex max-w-[260px] flex-wrap justify-end gap-2 mt-1">
+                                                    <div className="mt-1 flex max-w-[260px] flex-wrap justify-end gap-2">
                                                         {puedeGestionarEstado && pedido.estado === 'PROGRAMADO' && (
                                                             <>
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => manejarCambioEstado(pedido, 'EN_PROCESO')}
-                                                                    className="rounded bg-yellow-50 border border-yellow-200 px-2 py-1 text-[10px] font-bold text-yellow-700 hover:bg-yellow-100 uppercase tracking-wider"
+                                                                    className="min-h-10 rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm font-semibold text-yellow-900 hover:bg-yellow-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yellow-700"
                                                                 >
-                                                                    Iniciar Preparación
+                                                                    Iniciar preparación
                                                                 </button>
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => manejarCambioEstado(pedido, 'ENTREGADO')}
-                                                                    className="rounded bg-green-50 border border-green-200 px-2 py-1 text-[10px] font-bold text-green-700 hover:bg-green-100 uppercase tracking-wider"
+                                                                    className="min-h-10 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm font-semibold text-green-900 hover:bg-green-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700"
                                                                 >
-                                                                    Entregar Pedido
+                                                                    Entregar pedido
                                                                 </button>
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => abrirCancelarPedido(pedido)}
-                                                                    className="rounded border border-red-200 px-2 py-1 text-[10px] font-bold text-red-600 hover:bg-red-50 uppercase tracking-wider"
+                                                                    className="min-h-10 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
                                                                 >
                                                                     Cancelar
                                                                 </button>
@@ -884,14 +888,14 @@ function PedidosPage() {
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => manejarCambioEstado(pedido, 'ENTREGADO')}
-                                                                    className="rounded bg-green-50 border border-green-200 px-2 py-1 text-[10px] font-bold text-green-700 hover:bg-green-100 uppercase tracking-wider"
+                                                                    className="min-h-10 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm font-semibold text-green-900 hover:bg-green-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700"
                                                                 >
-                                                                    Entregar Pedido
+                                                                    Entregar pedido
                                                                 </button>
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => abrirCancelarPedido(pedido)}
-                                                                    className="rounded border border-red-200 px-2 py-1 text-[10px] font-bold text-red-600 hover:bg-red-50 uppercase tracking-wider"
+                                                                    className="min-h-10 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
                                                                 >
                                                                     Cancelar
                                                                 </button>
@@ -909,7 +913,7 @@ function PedidosPage() {
                                     <tr>
                                         <td
                                             colSpan="7"
-                                            className="px-5 py-10 text-center text-sm text-gray-500"
+                                            className="px-5 py-10 text-center text-sm text-theme-muted"
                                         >
                                             No se encontraron
                                             pedidos con los
