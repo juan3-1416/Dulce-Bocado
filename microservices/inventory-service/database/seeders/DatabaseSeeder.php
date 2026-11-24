@@ -8,6 +8,6 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Inventory no crea datos de negocio por defecto.
+        $this->call(AlmacenesSprint3Seeder::class);
     }
 }
