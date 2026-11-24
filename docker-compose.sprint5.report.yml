@@ -1,4 +1,13 @@
 services:
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    networks:
+      - dulce_bocado_net
+
   report-db:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -63,6 +72,8 @@ services:
     depends_on:
       report-db:
         condition: service_healthy
+      mailpit:
+        condition: service_started
 
     healthcheck:
       test: ["CMD", "php", "-r", "exit(file_get_contents('http://127.0.0.1:8000/up') === false ? 1 : 0);"]
