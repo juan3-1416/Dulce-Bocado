@@ -31,7 +31,7 @@ class ReporteDataService
         $idClienteFiltro = isset($filtros['id_cliente']) && $filtros['id_cliente'] !== '' ? (int) $filtros['id_cliente'] : null;
         $idUsuarioFiltro = isset($filtros['id_usuario']) && $filtros['id_usuario'] !== '' ? (int) $filtros['id_usuario'] : null;
 
-        $url = config('integrations.sales.url') . '/api/ventas?per_page=200';
+        $url = config('integrations.sales.url') . '/api/ventas?per_page=100';
         $ventasRaw = [];
 
         try {

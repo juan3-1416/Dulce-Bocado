@@ -13,8 +13,6 @@ const FILTROS_INICIALES = {
     fecha_desde: '',
     fecha_hasta: '',
     estado: '',
-    id_cliente: '',
-    id_usuario: '',
   },
   pedidos: {
     fecha_desde: '',
@@ -22,8 +20,6 @@ const FILTROS_INICIALES = {
     entrega_desde: '',
     entrega_hasta: '',
     estado: '',
-    id_cliente: '',
-    id_usuario: '',
   },
   inventario: {
     id_almacen: '',
@@ -417,34 +413,6 @@ function ReportesPage() {
             )
           }
         />
-
-        <CampoNumero
-          label="ID cliente"
-          placeholder="Todos"
-          value={
-            filtrosActuales.id_cliente
-          }
-          onChange={(valor) =>
-            actualizarFiltro(
-              'id_cliente',
-              valor
-            )
-          }
-        />
-
-        <CampoNumero
-          label="ID vendedor"
-          placeholder="Todos"
-          value={
-            filtrosActuales.id_usuario
-          }
-          onChange={(valor) =>
-            actualizarFiltro(
-              'id_usuario',
-              valor
-            )
-          }
-        />
       </div>
     )
 
@@ -513,34 +481,6 @@ function ReportesPage() {
             actualizarFiltro(
               'estado',
               valor.toUpperCase()
-            )
-          }
-        />
-
-        <CampoNumero
-          label="ID cliente"
-          placeholder="Todos"
-          value={
-            filtrosActuales.id_cliente
-          }
-          onChange={(valor) =>
-            actualizarFiltro(
-              'id_cliente',
-              valor
-            )
-          }
-        />
-
-        <CampoNumero
-          label="ID responsable"
-          placeholder="Todos"
-          value={
-            filtrosActuales.id_usuario
-          }
-          onChange={(valor) =>
-            actualizarFiltro(
-              'id_usuario',
-              valor
             )
           }
         />

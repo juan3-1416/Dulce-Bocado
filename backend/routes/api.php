@@ -743,7 +743,6 @@ Route::prefix('dashboard')
 
 Route::prefix('reportes')
     ->middleware([
-        'auth:sanctum',
         'permiso:reportes.generar',
     ])
     ->group(function () {
