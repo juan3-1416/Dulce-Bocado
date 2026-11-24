@@ -1,0 +1,408 @@
+# ==============================================================================
+# DULCE BOCADO — ECOSISTEMA UNIFICADO DE MICROSERVICIOS (OPTIMIZADO PARA DESARROLLO)
+#
+# Características de optimización:
+# 1. 1 Instancia PostgreSQL unificada con 8 bases de datos lógicas aisladas
+#    mediante aliases de red (security-db, sales-db, order-db, etc.).
+# 2. 1 Instancia MySQL 8.4 dedicada para catalog-service (persistencia políglota).
+# 3. Límites de memoria de 256MB por microservicio para no saturar la RAM.
+# 4. Servidor Mailpit en puerto 8025 para captura y visualización de correos/PDFs.
+# 5. Gateway Nginx en puerto 8080 y Frontend Vite en puerto 5173.
+#
+# Comando único para levantar todo el ecosistema:
+#   docker compose -f docker-compose.microservices.yml up -d --build
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # BASES DE DATOS OPTIMIZADAS
+  # ----------------------------------------------------------------------------
+  postgres-shared:
+    image: postgres:16-alpine
+    container_name: dulce_postgres_shared
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_master_pass
+    volumes:
+      - ./docker/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql:ro
+      - postgres_shared_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      dulce_bocado_net:
+        aliases:
+          - security-db
+          - customer-db
+          - sales-db
+          - order-db
+          - inventory-db
+          - production-db
+          - payment-db
+          - report-db
+
+  catalog-db:
+    image: mysql:8.4
+    container_name: dulce_catalog_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: dulce_catalog
+      MYSQL_USER: dulce_catalog_user
+      MYSQL_PASSWORD: dulce_catalog_pass
+      MYSQL_ROOT_PASSWORD: dulce_catalog_root
+    volumes:
+      - catalog_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - dulce_bocado_net
+
+  # ----------------------------------------------------------------------------
+  # INFRAESTRUCTURA DE APOYO (MAILPIT, GATEWAY, FRONTEND)
+  # ----------------------------------------------------------------------------
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: dulce_mailpit
+    restart: unless-stopped
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    networks:
+      - dulce_bocado_net
+
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: dulce_gateway
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - security-service
+      - sales-service
+      - order-service
+      - payment-service
+      - report-service
+    networks:
+      - dulce_bocado_net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: dulce_frontend
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:8080
+    networks:
+      - dulce_bocado_net
+
+  # ----------------------------------------------------------------------------
+  # LOS 9 MICROSERVICIOS
+  # ----------------------------------------------------------------------------
+  security-service:
+    build:
+      context: ./microservices/security-service
+      dockerfile: Dockerfile
+    container_name: dulce_security_service
+    restart: unless-stopped
+    working_dir: /var/www/html
+    environment:
+      APP_NAME: "Dulce Bocado Security"
+      APP_ENV: local
+      APP_DEBUG: "true"
+      DB_CONNECTION: pgsql
+      DB_HOST: security-db
+      DB_PORT: 5432
+      DB_DATABASE: dulce_security
+      DB_USERNAME: dulce_security_user
+      DB_PASSWORD: dulce_security_pass
+      SESSION_DRIVER: file
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
+    volumes:
+      - ./microservices/security-service:/var/www/html
+      - security_vendor:/var/www/html/vendor
+    depends_on:
+      postgres-shared:
+        condition: service_healthy
+    networks:
+      - dulce_bocado_net
+
+  customer-service:
+    build:
+      context: ./microservices/customer-service
+      dockerfile: Dockerfile
+    container_name: dulce_customer_service
+    restart: unless-stopped
+    working_dir: /var/www/html
+    environment:
+      APP_NAME: "Dulce Bocado Customer"
+      APP_ENV: local
+      APP_DEBUG: "true"
+      DB_CONNECTION: pgsql
+      DB_HOST: customer-db
+      DB_PORT: 5432
+      DB_DATABASE: dulce_customer
+      DB_USERNAME: dulce_customer_user
+      DB_PASSWORD: dulce_customer_pass
+      SECURITY_SERVICE_URL: http://security-service:8000
+    volumes:
+      - ./microservices/customer-service:/var/www/html
+      - customer_vendor:/var/www/html/vendor
+    depends_on:
+      postgres-shared:
+        condition: service_healthy
+    networks:
+      - dulce_bocado_net
+
+  catalog-service:
+    build:
+      context: ./microservices/catalog-service
+      dockerfile: Dockerfile
+    container_name: dulce_catalog_service
+    restart: unless-stopped
+    working_dir: /var/www/html
+    environment:
+      APP_NAME: "Dulce Bocado Catalog"
+      APP_ENV: local
+      APP_DEBUG: "true"
+      DB_CONNECTION: mysql
+      DB_HOST: catalog-db
+      DB_PORT: 3306
+      DB_DATABASE: dulce_catalog
+      DB_USERNAME: dulce_catalog_user
+      DB_PASSWORD: dulce_catalog_pass
+      SECURITY_SERVICE_URL: http://security-service:8000
+    volumes:
+      - ./microservices/catalog-service:/var/www/html
+      - catalog_vendor:/var/www/html/vendor
+    depends_on:
+      catalog-db:
+        condition: service_healthy
+    networks:
+      - dulce_bocado_net
+
+  sales-service:
+    build:
+      context: ./microservices/sales-service
+      dockerfile: Dockerfile
+    container_name: dulce_sales_service
+    restart: unless-stopped
+    working_dir: /var/www/html
+    environment:
+      APP_NAME: "Dulce Bocado Sales"
+      APP_ENV: local
+      APP_DEBUG: "true"
+      DB_CONNECTION: pgsql
+      DB_HOST: sales-db
+      DB_PORT: 5432
+      DB_DATABASE: dulce_sales
+      DB_USERNAME: dulce_sales_user
+      DB_PASSWORD: dulce_sales_pass
+      SECURITY_SERVICE_URL: http://security-service:8000
+      CUSTOMER_SERVICE_URL: http://customer-service:8000
+      CATALOG_SERVICE_URL: http://catalog-service:8000
+      INVENTORY_SERVICE_URL: http://inventory-service:8000
+    volumes:
+      - ./microservices/sales-service:/var/www/html
+      - sales_vendor:/var/www/html/vendor
+    depends_on:
+      postgres-shared:
+        condition: service_healthy
+    networks:
+      - dulce_bocado_net
+
+  order-service:
+    build:
+      context: ./microservices/order-service
+      dockerfile: Dockerfile
+    container_name: dulce_order_service
+    restart: unless-stopped
+    working_dir: /var/www/html
+    environment:
+      APP_NAME: "Dulce Bocado Orders"
+      APP_ENV: local
+      APP_DEBUG: "true"
+      DB_CONNECTION: pgsql
+      DB_HOST: order-db
+      DB_PORT: 5432
+      DB_DATABASE: dulce_orders
+      DB_USERNAME: dulce_orders_user
+      DB_PASSWORD: dulce_orders_pass
+      SECURITY_SERVICE_URL: http://security-service:8000
+      CUSTOMER_SERVICE_URL: http://customer-service:8000
+      CATALOG_SERVICE_URL: http://catalog-service:8000
+      PAYMENT_SERVICE_URL: http://payment-service:8000
+    volumes:
+      - ./microservices/order-service:/var/www/html
+      - order_vendor:/var/www/html/vendor
+    depends_on:
+      postgres-shared:
+        condition: service_healthy
+    networks:
+      - dulce_bocado_net
+
+  inventory-service:
+    build:
+      context: ./microservices/inventory-service
+      dockerfile: Dockerfile
+    container_name: dulce_inventory_service
+    restart: unless-stopped
+    working_dir: /var/www/html
+    environment:
+      APP_NAME: "Dulce Bocado Inventory"
+      APP_ENV: local
+      APP_DEBUG: "true"
+      DB_CONNECTION: pgsql
+      DB_HOST: inventory-db
+      DB_PORT: 5432
+      DB_DATABASE: dulce_inventory
+      DB_USERNAME: dulce_inventory_user
+      DB_PASSWORD: dulce_inventory_pass
+      SECURITY_SERVICE_URL: http://security-service:8000
+      CATALOG_SERVICE_URL: http://catalog-service:8000
+    volumes:
+      - ./microservices/inventory-service:/var/www/html
+      - inventory_vendor:/var/www/html/vendor
+    depends_on:
+      postgres-shared:
+        condition: service_healthy
+    networks:
+      - dulce_bocado_net
+
+  production-service:
+    build:
+      context: ./microservices/production-service
+      dockerfile: Dockerfile
+    container_name: dulce_production_service
+    restart: unless-stopped
+    working_dir: /var/www/html
+    environment:
+      APP_NAME: "Dulce Bocado Production"
+      APP_ENV: local
+      APP_DEBUG: "true"
+      DB_CONNECTION: pgsql
+      DB_HOST: production-db
+      DB_PORT: 5432
+      DB_DATABASE: dulce_production
+      DB_USERNAME: dulce_production_user
+      DB_PASSWORD: dulce_production_pass
+      SECURITY_SERVICE_URL: http://security-service:8000
+      CATALOG_SERVICE_URL: http://catalog-service:8000
+      INVENTORY_SERVICE_URL: http://inventory-service:8000
+    volumes:
+      - ./microservices/production-service:/var/www/html
+      - production_vendor:/var/www/html/vendor
+    depends_on:
+      postgres-shared:
+        condition: service_healthy
+    networks:
+      - dulce_bocado_net
+
+  payment-service:
+    build:
+      context: ./microservices/payment-service
+      dockerfile: Dockerfile
+    container_name: dulce_payment_service
+    restart: unless-stopped
+    working_dir: /var/www/html
+    environment:
+      APP_NAME: "Dulce Bocado Payment"
+      APP_ENV: local
+      APP_DEBUG: "true"
+      DB_CONNECTION: pgsql
+      DB_HOST: payment-db
+      DB_PORT: 5432
+      DB_DATABASE: dulce_payment
+      DB_USERNAME: dulce_payment_user
+      DB_PASSWORD: dulce_payment_local_only
+      SECURITY_SERVICE_URL: http://security-service:8000
+      SALES_SERVICE_URL: http://sales-service:8000
+      ORDER_SERVICE_URL: http://order-service:8000
+      INVENTORY_SERVICE_URL: http://inventory-service:8000
+    volumes:
+      - ./microservices/payment-service:/var/www/html
+      - payment_vendor:/var/www/html/vendor
+    depends_on:
+      postgres-shared:
+        condition: service_healthy
+    networks:
+      - dulce_bocado_net
+
+  report-service:
+    build:
+      context: ./microservices/report-service
+      dockerfile: Dockerfile
+    container_name: dulce_report_service
+    restart: unless-stopped
+    working_dir: /var/www/html
+    environment:
+      APP_NAME: "Dulce Bocado Report"
+      APP_ENV: local
+      APP_DEBUG: "true"
+      DB_CONNECTION: pgsql
+      DB_HOST: report-db
+      DB_PORT: 5432
+      DB_DATABASE: dulce_report
+      DB_USERNAME: dulce_report_user
+      DB_PASSWORD: dulce_report_local_only
+      SECURITY_SERVICE_URL: http://security-service:8000
+      SALES_SERVICE_URL: http://sales-service:8000
+      ORDER_SERVICE_URL: http://order-service:8000
+      PAYMENT_SERVICE_URL: http://payment-service:8000
+      INVENTORY_SERVICE_URL: http://inventory-service:8000
+      PRODUCTION_SERVICE_URL: http://production-service:8000
+      CATALOG_SERVICE_URL: http://catalog-service:8000
+      MAIL_MAILER: smtp
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      MAIL_FROM_ADDRESS: "reportes@dulcebocado.com"
+      MAIL_FROM_NAME: "Dulce Bocado"
+    volumes:
+      - ./microservices/report-service:/var/www/html
+      - report_vendor:/var/www/html/vendor
+    depends_on:
+      postgres-shared:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    networks:
+      - dulce_bocado_net
+
+# ------------------------------------------------------------------------------
+# VOLÚMENES PERSISTENTES
+# ------------------------------------------------------------------------------
+volumes:
+  postgres_shared_data:
+  catalog_mysql_data:
+  frontend_node_modules:
+  security_vendor:
+  customer_vendor:
+  catalog_vendor:
+  sales_vendor:
+  order_vendor:
+  inventory_vendor:
+  production_vendor:
+  payment_vendor:
+  report_vendor:
+
+# ------------------------------------------------------------------------------
+# RED COMPARTIDA
+# ------------------------------------------------------------------------------
+networks:
+  dulce_bocado_net:
+    driver: bridge
