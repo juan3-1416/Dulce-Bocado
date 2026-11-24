@@ -192,16 +192,23 @@ function VentaModal({ abierto, onCerrar, onGuardado, clientes, presentaciones, e
           <label className="block text-sm font-medium text-theme-body">Observaciones
             <textarea value={observaciones} onChange={(event) => setObservaciones(event.target.value)} disabled={guardando} maxLength={2000} rows={3} className="mt-1.5 w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2.5 text-theme-main focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600" />
           </label>
-          <div className="flex flex-wrap items-end justify-between gap-5 border-t border-theme-border-subtle pt-5">
-            <div className="text-sm text-theme-body">
-              {venta && <p>Total guardado: <strong>Bs {Number(venta.total ?? 0).toFixed(2)}</strong>.</p>}
-              <p>Estimado con precios actuales: <strong>Bs {totalEstimado.toFixed(2)}</strong>.</p>
-              <p>El total definitivo se calculará al guardar.</p>
-              <p className="mt-1 text-xs text-amber-700">
-                Nota: La venta se guarda en estado <strong>BORRADOR</strong>. Las existencias se comprobarán y descontarán del almacén Mostrador al confirmar la venta.
-              </p>
+          <section aria-label="Resumen de la venta" className="rounded-xl border border-theme-border-subtle bg-theme-subtle p-4 sm:p-5">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-theme-muted">Total estimado</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-theme-heading">Bs {totalEstimado.toFixed(2)}</p>
+              </div>
+              {venta && <div className="sm:text-right"><p className="text-sm text-theme-muted">Total guardado</p><p className="mt-1 text-base font-semibold tabular-nums text-theme-heading">Bs {Number(venta.total ?? 0).toFixed(2)}</p></div>}
             </div>
-            <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+            <p className="mt-4 border-t border-theme-border-subtle pt-3 text-sm text-theme-muted">El total definitivo se calculará al guardar la venta.</p>
+          </section>
+
+          <p className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+            La venta se guardará como <strong>borrador</strong>. Las existencias de Mostrador se comprobarán y descontarán cuando confirmes la venta.
+          </p>
+
+          <div className="flex flex-wrap justify-end gap-2 border-t border-theme-border-subtle pt-5">
+            <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto">
               <button type="button" onClick={onCerrar} disabled={guardando} className="min-h-11 rounded-lg border border-theme-border-subtle px-4 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:opacity-50">Cancelar</button>
               <button type="submit" disabled={guardando} className="min-h-11 rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold text-theme-brand-text hover:bg-pink-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:opacity-50">{guardando ? 'Guardando…' : venta ? 'Guardar cambios' : 'Registrar venta'}</button>
             </div>

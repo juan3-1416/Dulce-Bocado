@@ -550,6 +550,18 @@ function VentasPage() {
     return 'bg-gray-100 text-gray-700'
   }
 
+  const accionesVenta = (venta) => (
+    <div className="flex flex-wrap gap-2" aria-label={`Acciones de la venta ${venta.id_venta}`}>
+      <button type="button" onClick={() => abrirDetalle(venta)} disabled={cargandoDetalle} className="min-h-10 rounded-lg border border-theme-border-subtle px-3 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:opacity-50">Ver</button>
+      {venta.estado === 'BORRADOR' && <>
+        {tienePermiso('ventas.confirmar') && <button type="button" onClick={() => abrirModalConfirmar(venta)} disabled={cargandoDetalle} className="min-h-10 rounded-lg bg-pink-600 px-3 py-2 text-sm font-semibold text-theme-brand-text hover:bg-pink-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:opacity-50">Confirmar</button>}
+        <button type="button" onClick={() => abrirFormulario(venta)} disabled={cargandoCatalogo || !catalogoDisponible || !tienePermiso('ventas.modificar')} title={!catalogoDisponible ? 'Pendiente de Catálogo.' : undefined} className="min-h-10 rounded-lg border border-theme-border-subtle px-3 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:cursor-not-allowed disabled:opacity-50">Editar</button>
+        {tienePermiso('ventas.anular') && <button type="button" onClick={() => abrirModalAnular(venta)} className="min-h-10 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600">Anular</button>}
+      </>}
+      {venta.estado === 'CONFIRMADA' && tienePermiso('pagos.crear') && <Link to="/pagos" className="inline-flex min-h-10 items-center rounded-lg border border-pink-200 bg-pink-50 px-3 py-2 text-sm font-semibold text-pink-700 hover:bg-pink-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600">Cobrar</Link>}
+    </div>
+  )
+
   return (
     <main className="min-w-0 space-y-6 pb-10 text-theme-body">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -655,8 +667,19 @@ function VentasPage() {
             ) : estado ? 'No hay ventas con este estado.' : 'Todavía no hay ventas registradas.'}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-[760px] divide-y divide-theme-border-subtle text-left">
+          <>
+          <div className="divide-y divide-theme-border-subtle 2xl:hidden">
+            {ventas.map((venta) => <article key={venta.id_venta} className="space-y-4 p-4 sm:p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0"><h2 className="text-base font-semibold text-theme-heading">Venta #{venta.id_venta}</h2><p className="mt-1 break-words text-sm text-theme-body">{obtenerCliente(venta)}</p></div>
+                <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${obtenerClaseEstado(venta.estado)}`}>{venta.estado}</span>
+              </div>
+              <dl className="grid grid-cols-2 gap-4 text-sm"><div><dt className="text-theme-muted">Total</dt><dd className="mt-1 font-semibold tabular-nums text-theme-heading">Bs {Number(venta.total ?? 0).toFixed(2)}</dd></div><div><dt className="text-theme-muted">Fecha</dt><dd className="mt-1 text-theme-body">{formatearFecha(venta.fecha_venta ?? venta.created_at)}</dd></div></dl>
+              <div className="border-t border-theme-border-subtle pt-3">{accionesVenta(venta)}</div>
+            </article>)}
+          </div>
+          <div className="hidden overflow-x-auto 2xl:block">
+            <table className="w-full min-w-[1020px] divide-y divide-theme-border-subtle text-left">
               <thead className="bg-theme-subtle">
                 <tr>
                   <th className="px-5 py-3 text-left text-xs font-semibold text-theme-muted">
@@ -734,79 +757,14 @@ function VentasPage() {
                         </span>
                       </td>
 
-                      <td className="px-5 py-4">
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              abrirDetalle(
-                                venta,
-                              )
-                            }
-                            disabled={
-                              cargandoDetalle
-                            }
-                            className="min-h-10 rounded-lg border border-theme-border-subtle px-3 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:opacity-50"
-                          >
-                            Ver
-                          </button>
-
-                          {venta.estado ===
-                            'BORRADOR' && (
-                            <>
-                              {tienePermiso('ventas.confirmar') && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    abrirModalConfirmar(venta)
-                                  }
-                                  disabled={cargandoDetalle}
-                                  className="min-h-10 rounded-lg bg-pink-600 px-3 py-2 text-sm font-semibold text-theme-brand-text hover:bg-pink-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:opacity-50"
-                                >
-                                  Confirmar
-                                </button>
-                              )}
-
-                              <button
-                                type="button"
-                                onClick={() => abrirFormulario(venta)}
-                                disabled={cargandoCatalogo || !catalogoDisponible || !tienePermiso('ventas.modificar')}
-                                title={!catalogoDisponible ? 'Pendiente de Catálogo.' : undefined}
-                                className="min-h-10 rounded-lg border border-theme-border-subtle px-3 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                Editar
-                              </button>
-
-                              {tienePermiso('ventas.anular') && <button
-                                type="button"
-                                onClick={() =>
-                                  abrirModalAnular(
-                                    venta,
-                                  )
-                                }
-                                className="min-h-10 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
-                              >
-                                Anular
-                              </button>}
-                            </>
-                          )}
-
-                          {venta.estado === 'CONFIRMADA' && tienePermiso('pagos.crear') && (
-                            <Link
-                              to="/pagos"
-                              className="inline-flex min-h-10 items-center rounded-lg border border-pink-200 bg-pink-50 px-3 py-2 text-sm font-semibold text-pink-700 hover:bg-pink-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
-                            >
-                              Cobrar
-                            </Link>
-                          )}
-                        </div>
-                      </td>
+                      <td className="px-5 py-4">{accionesVenta(venta)}</td>
                     </tr>
                   ),
                 )}
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 
