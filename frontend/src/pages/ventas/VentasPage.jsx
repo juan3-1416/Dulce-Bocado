@@ -551,16 +551,15 @@ function VentasPage() {
   }
 
   return (
-    <section className="space-y-6">
+    <main className="min-w-0 space-y-6 pb-10 text-theme-body">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Gestión de Ventas
+          <h1 className="text-2xl font-semibold tracking-tight text-theme-heading sm:text-3xl">
+            Ventas
           </h1>
 
-          <p className="mt-1 text-sm text-gray-600">
-            Ventas administradas por
-            Sales Service.
+          <p className="mt-2 text-sm text-theme-muted">
+            Consulta ventas, registra borradores y confirma operaciones.
           </p>
         </div>
 
@@ -569,14 +568,14 @@ function VentasPage() {
           onClick={() => abrirFormulario()}
           disabled={cargandoCatalogo || !catalogoDisponible || !tienePermiso('ventas.crear')}
           title={!catalogoDisponible ? 'Requiere presentaciones disponibles de Catálogo.' : undefined}
-          className="rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold text-white hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="min-h-11 rounded-lg bg-pink-600 px-4 py-2.5 text-sm font-semibold text-theme-brand-text hover:bg-pink-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Nueva Venta
+          Nueva venta
         </button>
       </div>
 
       {!catalogoDisponible && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
           {cargandoCatalogo
             ? 'Consultando presentaciones de Catálogo...'
             : `${errorCatalogo} El listado, consulta y anulación de ventas siguen disponibles.`}
@@ -589,21 +588,21 @@ function VentasPage() {
       )}
 
       {mensaje && (
-        <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+        <div role="status" className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">
           {mensaje}
         </div>
       )}
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           {error}
         </div>
       )}
 
-      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="rounded-xl border border-theme-border-subtle bg-theme-surface p-4">
         <label
           htmlFor="estado_venta"
-          className="mb-1 block text-sm font-medium text-gray-700"
+          className="mb-1.5 block text-sm font-medium text-theme-body"
         >
           Estado
         </label>
@@ -615,7 +614,7 @@ function VentasPage() {
             setPagina(1)
             setEstado(event.target.value)
           }}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 md:max-w-sm"
+          className="w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2.5 text-sm text-theme-main focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 md:max-w-sm"
         >
           <option value="">
             Todas
@@ -635,13 +634,13 @@ function VentasPage() {
         </select>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className="min-w-0 overflow-hidden rounded-xl border border-theme-border-subtle bg-theme-surface">
         {cargando ? (
-          <div className="p-8 text-center text-gray-500">
-            Cargando ventas...
+          <div role="status" className="p-8 text-center text-theme-muted">
+            Cargando ventas…
           </div>
         ) : ventas.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
+          <div className="p-8 text-center text-theme-muted">
             {error ? (
               <>
                 <p>No se pudo mostrar el listado de ventas.</p>
@@ -653,49 +652,49 @@ function VentasPage() {
                   Reintentar ventas
                 </button>
               </>
-            ) : 'No existen ventas registradas.'}
+            ) : estado ? 'No hay ventas con este estado.' : 'Todavía no hay ventas registradas.'}
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-[760px] divide-y divide-theme-border-subtle text-left">
+              <thead className="bg-theme-subtle">
                 <tr>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-theme-muted">
                     N.º
                   </th>
 
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-theme-muted">
                     Cliente
                   </th>
 
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-theme-muted">
                     Total
                   </th>
 
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-theme-muted">
                     Fecha
                   </th>
 
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-theme-muted">
                     Estado
                   </th>
 
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                  <th className="px-5 py-3 text-left text-xs font-semibold text-theme-muted">
                     Acciones
                   </th>
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-theme-border-subtle">
                 {ventas.map(
                   (venta) => (
                     <tr
                       key={
                         venta.id_venta
                       }
-                      className="hover:bg-gray-50"
+                      className="hover:bg-theme-subtle"
                     >
-                      <td className="px-5 py-4 text-sm font-semibold text-gray-900">
+                      <td className="px-5 py-4 text-sm font-semibold tabular-nums text-theme-heading">
                         #
                         {
                           venta.id_venta
@@ -708,7 +707,7 @@ function VentasPage() {
                         )}
                       </td>
 
-                      <td className="px-5 py-4 text-sm font-bold text-gray-900">
+                      <td className="px-5 py-4 text-sm font-semibold tabular-nums text-theme-heading">
                         Bs{' '}
                         {Number(
                           venta.total ??
@@ -747,7 +746,7 @@ function VentasPage() {
                             disabled={
                               cargandoDetalle
                             }
-                            className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                            className="min-h-10 rounded-lg border border-theme-border-subtle px-3 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:opacity-50"
                           >
                             Ver
                           </button>
@@ -762,7 +761,7 @@ function VentasPage() {
                                     abrirModalConfirmar(venta)
                                   }
                                   disabled={cargandoDetalle}
-                                  className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                                  className="min-h-10 rounded-lg bg-pink-600 px-3 py-2 text-sm font-semibold text-theme-brand-text hover:bg-pink-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:opacity-50"
                                 >
                                   Confirmar
                                 </button>
@@ -773,7 +772,7 @@ function VentasPage() {
                                 onClick={() => abrirFormulario(venta)}
                                 disabled={cargandoCatalogo || !catalogoDisponible || !tienePermiso('ventas.modificar')}
                                 title={!catalogoDisponible ? 'Pendiente de Catálogo.' : undefined}
-                                className="rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="min-h-10 rounded-lg border border-theme-border-subtle px-3 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 Editar
                               </button>
@@ -785,7 +784,7 @@ function VentasPage() {
                                     venta,
                                   )
                                 }
-                                className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+                                className="min-h-10 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600"
                               >
                                 Anular
                               </button>}
@@ -795,7 +794,7 @@ function VentasPage() {
                           {venta.estado === 'CONFIRMADA' && tienePermiso('pagos.crear') && (
                             <Link
                               to="/pagos"
-                              className="rounded-lg border border-pink-200 bg-pink-50 px-3 py-2 text-sm font-semibold text-pink-700 hover:bg-pink-100"
+                              className="inline-flex min-h-10 items-center rounded-lg border border-pink-200 bg-pink-50 px-3 py-2 text-sm font-semibold text-pink-700 hover:bg-pink-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                             >
                               Cobrar
                             </Link>
@@ -812,13 +811,13 @@ function VentasPage() {
       </div>
 
       {paginacion && (
-        <div className="flex items-center justify-between text-sm text-gray-600">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-theme-muted">
           <span>
             Total:{' '}
             {paginacion.total}
           </span>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
               disabled={
@@ -834,7 +833,7 @@ function VentasPage() {
                     ),
                 )
               }
-              className="rounded-lg border border-gray-300 px-3 py-2 disabled:opacity-40"
+              className="min-h-10 rounded-lg border border-theme-border-subtle px-3 py-2 text-theme-body hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:opacity-40"
             >
               Anterior
             </button>
@@ -860,7 +859,7 @@ function VentasPage() {
                     actual + 1,
                 )
               }
-              className="rounded-lg border border-gray-300 px-3 py-2 disabled:opacity-40"
+              className="min-h-10 rounded-lg border border-theme-border-subtle px-3 py-2 text-theme-body hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:opacity-40"
             >
               Siguiente
             </button>
@@ -890,11 +889,11 @@ function VentasPage() {
       />
 
       {ventaSeleccionada && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-3 sm:p-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="detalle-venta-titulo" className="max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-2xl bg-theme-surface shadow-xl">
+            <div className="flex items-center justify-between gap-4 border-b border-theme-border-subtle px-5 py-4 sm:px-6">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">
+                <h2 id="detalle-venta-titulo" className="text-xl font-semibold text-theme-heading">
                   Venta #
                   {
                     ventaSeleccionada.id_venta
@@ -910,18 +909,19 @@ function VentasPage() {
 
               <button
                 type="button"
+                aria-label="Cerrar detalle de venta"
                 onClick={() =>
                   setVentaSeleccionada(
                     null,
                   )
                 }
-                className="rounded-lg px-3 py-2 text-gray-500 hover:bg-gray-100"
+                className="rounded-lg p-2 text-theme-muted hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
               >
-                ✕
+                <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></svg>
               </button>
             </div>
 
-            <div className="space-y-5 p-6">
+            <div className="space-y-5 p-5 sm:p-6">
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <p className="text-xs font-semibold uppercase text-gray-500">
@@ -1074,7 +1074,7 @@ function VentasPage() {
                       }}
                       className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
                     >
-                      Confirmar Venta y Descontar Stock
+                      Confirmar venta
                     </button>
                   )}
                 </div>
@@ -1096,11 +1096,11 @@ function VentasPage() {
       )}
 
       {ventaParaAnular && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
-            <div className="border-b border-gray-200 px-6 py-4">
-              <h2 className="text-xl font-bold text-gray-900">
-                Anular Venta
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 p-3 sm:p-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="anular-venta-titulo" className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-theme-surface shadow-xl">
+            <div className="border-b border-theme-border-subtle px-5 py-4 sm:px-6">
+              <h2 id="anular-venta-titulo" className="text-xl font-semibold text-theme-heading">
+                Anular venta
               </h2>
 
               <p className="mt-1 text-sm text-gray-500">
@@ -1111,7 +1111,7 @@ function VentasPage() {
               </p>
             </div>
 
-            <div className="space-y-5 p-6">
+            <div className="space-y-5 p-5 sm:p-6">
               {errorAnulacion && (
                 <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                   {errorAnulacion}
@@ -1122,12 +1122,13 @@ function VentasPage() {
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
+                <label htmlFor="motivo-anulacion" className="mb-1.5 block text-sm font-medium text-theme-body">
                   Motivo de
                   anulación
                 </label>
 
                 <textarea
+                  id="motivo-anulacion"
                   value={
                     motivoAnulacion
                   }
@@ -1139,7 +1140,7 @@ function VentasPage() {
                   }
                   rows={4}
                   maxLength={500}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                  className="w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2.5 text-theme-main focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                 />
               </div>
 
@@ -1152,7 +1153,7 @@ function VentasPage() {
                   disabled={
                     anulando
                   }
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700"
+                  className="min-h-11 rounded-lg border border-theme-border-subtle px-4 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                 >
                   Cancelar
                 </button>
@@ -1168,7 +1169,7 @@ function VentasPage() {
                       .trim()
                       .length < MIN_MOTIVO_ANULACION
                   }
-                  className="rounded-lg bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                  className="min-h-11 rounded-lg bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:opacity-50"
                 >
                   {anulando
                     ? 'Anulando...'
@@ -1226,7 +1227,7 @@ function VentasPage() {
           }}
         tienePermisoInventario={tienePermiso('inventario.ver')}
       />
-    </section>
+    </main>
   )
 }
 

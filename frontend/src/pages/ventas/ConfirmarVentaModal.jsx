@@ -18,6 +18,23 @@ export default function ConfirmarVentaModal({
   const [errorConfirmacion, setErrorConfirmacion] = useState('')
   const [codigoError, setCodigoError] = useState('')
   const intentoConfirmar = useRef(null)
+  const dialogoRef = useRef(null)
+
+  useEffect(() => {
+    if (!abierto || !venta) return undefined
+    const manejarTeclado = (event) => {
+      if (event.key === 'Escape' && !confirmando) onCerrar()
+      if (event.key !== 'Tab') return
+      const controles = dialogoRef.current?.querySelectorAll('button:not([disabled])')
+      if (!controles?.length) return
+      const primero = controles[0]
+      const ultimo = controles[controles.length - 1]
+      if (event.shiftKey && document.activeElement === primero) { event.preventDefault(); ultimo.focus() }
+      if (!event.shiftKey && document.activeElement === ultimo) { event.preventDefault(); primero.focus() }
+    }
+    document.addEventListener('keydown', manejarTeclado)
+    return () => document.removeEventListener('keydown', manejarTeclado)
+  }, [abierto, venta, confirmando, onCerrar])
 
   const cargarDetallesYStock = useCallback(async (signal) => {
     if (!venta) return
@@ -172,30 +189,30 @@ export default function ConfirmarVentaModal({
     (venta.id_cliente ? `Cliente #${venta.id_cliente}` : 'Cliente ocasional')
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-3 sm:p-4">
+      <div ref={dialogoRef} role="dialog" aria-modal="true" aria-labelledby="confirmar-venta-titulo" className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-2xl bg-theme-surface shadow-xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+        <div className="flex items-start justify-between gap-4 border-b border-theme-border-subtle px-5 py-4 sm:px-6">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">
-              Confirmar Venta #{venta.id_venta}
+            <h2 id="confirmar-venta-titulo" className="text-xl font-semibold text-theme-heading">
+              Confirmar venta #{venta.id_venta}
             </h2>
-            <p className="mt-0.5 text-xs text-gray-500">
-              Descuento atómico e idempotente de existencias en Almacén Mostrador.
+            <p className="mt-1 text-sm text-theme-muted">
+              Revisa los artículos antes de descontar existencias de Mostrador.
             </p>
           </div>
           <button
             type="button"
             onClick={onCerrar}
             disabled={confirmando}
-            className="rounded-lg px-3 py-2 text-gray-500 hover:bg-gray-100 disabled:opacity-50"
-            aria-label="Cerrar"
+            className="rounded-lg p-2 text-theme-muted hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:opacity-50"
+            aria-label="Cerrar confirmación"
           >
-            ✕
+            <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" /></svg>
           </button>
         </div>
 
-        <div className="space-y-5 p-6">
+        <div className="space-y-5 p-5 sm:p-6">
           {/* Mensajes de error */}
           {errorConfirmacion && (
             <div
@@ -217,7 +234,7 @@ export default function ConfirmarVentaModal({
           )}
 
           {/* Resumen de la venta */}
-          <div className="grid grid-cols-2 gap-4 rounded-xl border border-gray-200 bg-gray-50 p-4 sm:grid-cols-3">
+          <div className="grid gap-4 rounded-xl bg-theme-subtle p-4 sm:grid-cols-3">
             <div>
               <p className="text-xs font-semibold uppercase text-gray-500">Cliente</p>
               <p className="mt-0.5 text-sm font-medium text-gray-900">{clienteNombre}</p>
@@ -243,7 +260,7 @@ export default function ConfirmarVentaModal({
               className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"
             >
               <div className="flex items-start gap-2">
-                <span className="text-lg">⚠️</span>
+                <span aria-hidden="true" className="font-bold">!</span>
                 <div>
                   <p className="font-semibold">Existencias insuficientes en Mostrador</p>
                   <p className="mt-0.5 text-xs text-amber-800">
@@ -280,8 +297,8 @@ export default function ConfirmarVentaModal({
                 No hay artículos registrados en esta venta.
               </div>
             ) : (
-              <div className="overflow-hidden rounded-xl border border-gray-200">
-                <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <div className="overflow-x-auto rounded-xl border border-theme-border-subtle">
+                <table className="min-w-[540px] divide-y divide-theme-border-subtle text-sm">
                   <thead className="bg-gray-50 text-xs font-semibold uppercase text-gray-600">
                     <tr>
                       <th className="px-4 py-2.5 text-left">Presentación</th>
@@ -310,7 +327,7 @@ export default function ConfirmarVentaModal({
                                 {item.disponible} unid.
                               </span>
                             ) : (
-                              <span className="text-gray-400">0 unid.</span>
+                              <span className="text-theme-muted">Sin dato</span>
                             )}
                           </td>
                         )}
@@ -318,11 +335,11 @@ export default function ConfirmarVentaModal({
                           {item.tieneDatoStock ? (
                             item.suficiente ? (
                               <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
-                                ✓ Disponible
+                                Disponible
                               </span>
                             ) : (
                               <span className="inline-flex rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-800">
-                                ✗ Insuficiente ({item.disponible ?? 0}/{item.requerido})
+                                Insuficiente ({item.disponible ?? 0}/{item.requerido})
                               </span>
                             )
                           ) : (
@@ -339,21 +356,18 @@ export default function ConfirmarVentaModal({
             )}
           </div>
 
-          {/* Información técnica de idempotencia y consistencia */}
-          <div className="rounded-lg border border-blue-100 bg-blue-50/70 p-3 text-xs text-blue-800">
-            <p>
-              <strong>Regla de consistencia:</strong> La confirmación enviará una solicitud atómica al servicio de Inventario. Si el stock es suficiente, la venta pasará a estado <code>CONFIRMADA</code> y las existencias se descontarán de forma definitiva. En caso de corte de red, el reintento utilizará la misma clave de idempotencia para conciliar la operación.
-            </p>
+          <div className="rounded-lg bg-theme-subtle p-3 text-sm text-theme-body">
+            Al confirmar, la venta pasará a confirmada y se descontarán las existencias de Mostrador. Si no hay stock suficiente, la venta seguirá en borrador.
           </div>
         </div>
 
         {/* Footer actions */}
-        <div className="flex items-center justify-end gap-3 border-t border-gray-200 bg-gray-50 px-6 py-4">
+        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-theme-border-subtle bg-theme-subtle px-5 py-4 sm:px-6">
           <button
             type="button"
             onClick={onCerrar}
             disabled={confirmando}
-            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            className="min-h-11 rounded-lg border border-theme-border-subtle bg-theme-surface px-4 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:opacity-50"
           >
             Cancelar
           </button>
@@ -361,8 +375,8 @@ export default function ConfirmarVentaModal({
           <button
             type="button"
             onClick={ejecutarConfirmacion}
-            disabled={confirmando || cargandoDetalles}
-            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={confirmando || cargandoDetalles || articulosConStock.length === 0 || hayArticuloInsuficiente}
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-pink-600 px-5 py-2 text-sm font-semibold text-theme-brand-text hover:bg-pink-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {confirmando ? (
               <>
@@ -385,10 +399,10 @@ export default function ConfirmarVentaModal({
                     d="M4 12a8 8 0 018-8v8H4z"
                   />
                 </svg>
-                <span>Confirmando y descontando...</span>
+                <span>Confirmando venta…</span>
               </>
             ) : (
-              'Confirmar Venta y Descontar Stock'
+              'Confirmar venta'
             )}
           </button>
         </div>
