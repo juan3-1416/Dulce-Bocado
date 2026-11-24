@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
@@ -332,43 +332,45 @@ function Sidebar() {
 
   const claseEnlace = ({ isActive }) =>
     [
-      'block rounded-lg px-3.5 py-2 text-sm font-medium transition',
+      'block rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600',
       isActive
         ? 'bg-pink-100 text-pink-700 font-semibold'
-        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+        : 'text-theme-body hover:bg-theme-hover hover:text-theme-heading',
     ].join(' ')
 
   return (
-    <aside className="h-fit rounded-2xl bg-white p-4 shadow-sm">
+    <aside className="h-fit min-w-0 rounded-2xl border border-theme-border-subtle bg-theme-surface p-4">
       {/* Cabecera del Menú Interactivo */}
       <div className="mb-3 space-y-2">
         <div className="flex items-center justify-between px-1">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+          <span className="text-sm font-semibold text-theme-heading">
             Navegación
           </span>
-          <button
+          {!busqueda && seccionesFiltradas.length > 0 && <button
             type="button"
             onClick={alternarTodo}
-            className="text-[11px] font-medium text-pink-600 hover:text-pink-700 hover:underline"
+            className="rounded-md text-xs font-medium text-pink-700 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
             title="Expandir o colapsar todas las secciones"
           >
             {seccionesFiltradas.every((sec) => seccionesAbiertas[sec.id])
               ? 'Colapsar todo'
               : 'Expandir todo'}
-          </button>
+          </button>}
         </div>
 
         {/* Buscador de Opciones en Tiempo Real */}
         <div className="relative">
           <input
+            aria-label="Buscar módulo"
             type="text"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             placeholder="Buscar módulo..."
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 py-1.5 pl-8 pr-3 text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-pink-500 focus:bg-white focus:ring-1 focus:ring-pink-500 transition"
+            className="w-full rounded-lg border border-theme-border-subtle bg-theme-subtle py-2 pl-9 pr-9 text-sm text-theme-main placeholder:text-theme-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
           />
           <svg
-            className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400"
+            aria-hidden="true"
+            className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-theme-muted"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -384,30 +386,31 @@ function Sidebar() {
             <button
               type="button"
               onClick={() => setBusqueda('')}
-              className="absolute right-2.5 top-2 text-xs text-slate-400 hover:text-slate-600"
+              aria-label="Limpiar búsqueda"
+              className="absolute right-2 top-1.5 flex h-8 w-8 items-center justify-center rounded-md text-theme-muted hover:bg-theme-hover hover:text-theme-heading focus-visible:outline-2 focus-visible:outline-pink-600"
               title="Limpiar búsqueda"
             >
-              ✕
+              <span aria-hidden="true">×</span>
             </button>
           )}
         </div>
 
         {busqueda && (
-          <p className="px-1 text-[11px] text-slate-500">
+          <p className="px-1 text-xs text-theme-muted" role="status">
             {totalOpcionesVisibles}{' '}
             {totalOpcionesVisibles === 1 ? 'resultado' : 'resultados'} encontrados
           </p>
         )}
       </div>
 
-      <nav className="space-y-1.5">
+      <nav aria-label="Navegación principal" className="space-y-1.5">
         {/* Enlace estático Inicio */}
         <NavLink to="/" end className={claseEnlace}>
           <span className="flex items-center gap-2.5">
             {esTemaNinos ? (
-              <span className="text-sm">🏠</span>
+              <span aria-hidden="true" className="text-sm">🏠</span>
             ) : (
-              <IconoInicio className="h-4 w-4 shrink-0 text-slate-500" />
+              <IconoInicio className="h-4 w-4 shrink-0" />
             )}
             <span>Inicio</span>
           </span>
@@ -426,19 +429,21 @@ function Sidebar() {
               <button
                 type="button"
                 onClick={() => toggleSeccion(seccion.id)}
-                className="flex w-full items-center justify-between rounded-lg px-2.5 pb-1 pt-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition"
+                disabled={Boolean(busqueda)}
+                aria-expanded={estaAbierta}
+                className="flex min-h-10 w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-theme-muted transition-colors hover:bg-theme-hover hover:text-theme-heading focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:cursor-default disabled:hover:bg-transparent"
                 title={`Alternar módulo ${seccion.titulo}`}
               >
                 <span className="flex items-center gap-2">
                   {esTemaNinos ? (
-                    <span className="text-sm">{seccion.iconoNinos}</span>
+                    <span aria-hidden="true" className="text-sm">{seccion.iconoNinos}</span>
                   ) : (
-                    <IconoSec className="h-4 w-4 shrink-0 text-slate-400" />
+                    <IconoSec className="h-4 w-4 shrink-0" />
                   )}
                   <span>{seccion.titulo}</span>
                 </span>
                 <div className="flex items-center gap-1.5">
-                  <span className="rounded-full bg-slate-100 px-1.5 py-0.2 text-[10px] font-medium text-slate-600">
+                  <span className="rounded-full bg-theme-subtle px-2 py-0.5 text-xs font-medium tabular-nums text-theme-muted">
                     {seccion.opciones.length}
                   </span>
                   <svg
@@ -460,7 +465,7 @@ function Sidebar() {
               </button>
 
               {estaAbierta && (
-                <div className="mt-1 space-y-1 pl-2">
+                <div id={`menu-${seccion.id}`} className="mt-1 space-y-1 pl-2">
                   {seccion.opciones.map((opcion) => (
                     <NavLink
                       key={opcion.ruta}
@@ -477,8 +482,8 @@ function Sidebar() {
         })}
 
         {seccionesFiltradas.length === 0 && (
-          <div className="p-3 text-center text-xs text-slate-500">
-            No se encontraron módulos para "{busqueda}".
+          <div className="p-3 text-center text-sm text-theme-muted">
+            {busqueda ? `No se encontraron módulos para “${busqueda}”.` : 'No hay módulos disponibles para tu cuenta.'}
           </div>
         )}
       </nav>

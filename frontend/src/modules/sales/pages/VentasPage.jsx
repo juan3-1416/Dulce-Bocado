@@ -575,18 +575,18 @@ function VentasPage() {
         </button>
       </div>
 
-      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-        {catalogoDisponible
-          ? 'El registro y edición usan Customer y Catálogo a través del Gateway. El total definitivo lo calcula Sales.'
-          : cargandoCatalogo
+      {!catalogoDisponible && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          {cargandoCatalogo
             ? 'Consultando presentaciones de Catálogo...'
             : `${errorCatalogo} El listado, consulta y anulación de ventas siguen disponibles.`}
-        {!catalogoDisponible && !cargandoCatalogo && (
-          <button type="button" onClick={cargarCatalogo} className="ml-3 font-semibold underline">
-            Reintentar Catálogo
-          </button>
-        )}
-      </div>
+          {!cargandoCatalogo && (
+            <button type="button" onClick={cargarCatalogo} className="ml-3 font-semibold underline">
+              Reintentar Catálogo
+            </button>
+          )}
+        </div>
+      )}
 
       {mensaje && (
         <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">
@@ -1118,9 +1118,7 @@ function VentasPage() {
                 </div>
               )}
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                Solo los borradores
-                pueden anularse en
-                Sprint 2.
+                Solo las ventas en estado borrador pueden ser anuladas.
               </div>
 
               <div>

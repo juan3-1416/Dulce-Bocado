@@ -19,8 +19,8 @@ function Footer() {
         if (activo && respuesta?.visita) {
           setCantidadVisitas(respuesta.visita.cantidad)
         }
-      } catch (error) {
-        console.error('Error al registrar visita de página:', error)
+      } catch {
+        if (activo) setCantidadVisitas(null)
       } finally {
         if (activo) {
           setCargando(false)
@@ -36,18 +36,19 @@ function Footer() {
   }, [location.pathname])
 
   return (
-    <footer className="mt-auto border-t border-slate-200 bg-white py-4 px-6 text-slate-600 text-xs shadow-sm">
-      <div className="mx-auto flex flex-col items-center justify-between gap-2 sm:flex-row max-w-7xl">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-pink-600">Dulce Bocado</span>
-          <span className="text-slate-300">|</span>
+    <footer className="mt-auto border-t border-theme-border-subtle bg-theme-surface px-6 py-4 text-xs text-theme-muted">
+      <div className="mx-auto flex max-w-7xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="font-semibold text-theme-heading">Dulce Bocado</span>
+          <span aria-hidden="true" className="text-theme-soft">·</span>
           <span>Sistema de Gestión Pastelería</span>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-slate-700 font-medium">
+          <div className="inline-flex items-center gap-1.5 text-theme-muted" aria-live="polite">
             <svg
-              className="h-3.5 w-3.5 text-pink-500"
+              aria-hidden="true"
+              className="h-3.5 w-3.5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -67,19 +68,18 @@ function Footer() {
             </svg>
             <span>
               Visitas a esta página: {' '}
-              {cargando || cantidadVisitas === null ? (
-                <span className="animate-pulse text-slate-400">cargando...</span>
+              {cargando ? (
+                <span>Cargando…</span>
+              ) : cantidadVisitas === null ? (
+                <span>No disponible</span>
               ) : (
-                <strong className="text-slate-900 font-bold">
+                <strong className="font-semibold tabular-nums text-theme-heading">
                   {cantidadVisitas.toLocaleString()}
                 </strong>
               )}
             </span>
           </div>
 
-          <span className="hidden sm:inline text-slate-400 font-mono">
-            [{location.pathname}]
-          </span>
         </div>
       </div>
     </footer>
