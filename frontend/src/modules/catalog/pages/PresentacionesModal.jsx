@@ -95,7 +95,7 @@ function PresentacionesModal({ isOpen, onClose, producto, puedeGestionar = false
             <label className="text-sm font-medium text-gray-700">Nombre
               <input required maxLength={200} value={formulario.nombre} onChange={(event) => setFormulario((actual) => ({ ...actual, nombre: event.target.value }))} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" />
             </label>
-            <label className="text-sm font-medium text-gray-700">Precio Bs
+            <label className="text-sm font-medium text-gray-700">Precio de venta (Bs)
               <input type="number" required min="0" step="0.01" value={formulario.precio} onChange={(event) => setFormulario((actual) => ({ ...actual, precio: event.target.value }))} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" />
             </label>
           </div>
@@ -112,7 +112,7 @@ function PresentacionesModal({ isOpen, onClose, producto, puedeGestionar = false
           {cargando ? <p className="p-6 text-sm text-gray-500">Cargando presentaciones...</p> : <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50"><tr><th className="px-4 py-3 text-left text-xs uppercase text-gray-600">Presentación</th><th className="px-4 py-3 text-left text-xs uppercase text-gray-600">Precio</th><th className="px-4 py-3 text-left text-xs uppercase text-gray-600">Disponibilidad</th><th className="px-4 py-3 text-right text-xs uppercase text-gray-600">Acciones</th></tr></thead>
             <tbody className="divide-y divide-gray-200">{presentaciones.map((item) => <tr key={item.presentacion_id}>
-              <td className="px-4 py-3 text-sm font-medium">{item.nombre}</td><td className="px-4 py-3 text-sm">Bs {Number(item.precio).toFixed(2)}</td><td className="px-4 py-3 text-sm">{item.disponible ? 'Disponible' : 'No disponible'}</td>
+              <td className="px-4 py-3 text-sm font-medium">{item.nombre}</td><td className="px-4 py-3 text-sm font-semibold text-gray-900">Bs {Number(item.precio || 0).toFixed(2)}</td><td className="px-4 py-3 text-sm">{item.disponible ? 'Disponible' : 'No disponible'}</td>
               <td className="px-4 py-3 text-right">{puedeGestionar && <button type="button" onClick={() => editar(item)} className="text-sm font-semibold text-pink-600 hover:text-pink-800">Editar</button>}</td>
             </tr>)}{presentaciones.length === 0 && <tr><td colSpan="4" className="px-4 py-6 text-center text-sm text-gray-500">No hay presentaciones registradas.</td></tr>}</tbody>
           </table>}

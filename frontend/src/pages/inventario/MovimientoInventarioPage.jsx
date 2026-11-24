@@ -7,6 +7,7 @@ import {
 import { Link } from 'react-router-dom'
 
 import { useAuth } from '../../context/AuthContext'
+import { formatearCantidad } from '../../utils/formatters'
 import { listarPresentaciones } from '../../services/presentacionService'
 import { listarMateriasPrimas } from '../../services/catalogoMateriaPrimaService'
 import {
@@ -531,7 +532,7 @@ export default function MovimientoInventarioPage({
     }
 
     if (
-      !/^(?:0|[1-9]\d{0,8})(?:\.\d{1,3})?$/.test(
+      !/^(?:0|[1-9]\d{0,8})(?:\.\d{1,2})?$/.test(
         cantidadLimpia,
       ) ||
       !/[1-9]/.test(
@@ -546,7 +547,7 @@ export default function MovimientoInventarioPage({
       )
     ) {
       setError(
-        'La cantidad debe ser positiva; los productos terminados se registran en unidades enteras.',
+        'La cantidad debe ser positiva y tener como máximo 2 decimales; los productos terminados se registran en unidades enteras.',
       )
       return
     }
@@ -562,7 +563,7 @@ export default function MovimientoInventarioPage({
         )
     ) {
       setError(
-        `Stock insuficiente. Disponible: ${articuloSeleccionado.disponible} ${articuloSeleccionado.unidad}.`,
+        `Stock insuficiente. Disponible: ${formatearCantidad(articuloSeleccionado.disponible)} ${articuloSeleccionado.unidad}.`,
       )
       return
     }
@@ -954,7 +955,7 @@ export default function MovimientoInventarioPage({
             placeholder={
               tipoArticulo ===
               'MATERIA_PRIMA'
-                ? 'Ej. 2.500'
+                ? 'Ej. 2.50'
                 : 'Ej. 2'
             }
             className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
@@ -968,10 +969,10 @@ export default function MovimientoInventarioPage({
               undefined && (
               <span className="mt-1 block text-xs text-gray-500">
                 Disponible:{' '}
-                {
+                {formatearCantidad(
                   articuloSeleccionado
                     .disponible
-                }{' '}
+                )}{' '}
                 {
                   articuloSeleccionado
                     .unidad
@@ -1119,7 +1120,7 @@ export default function MovimientoInventarioPage({
                     </td>
 
                     <td className="px-5 py-4 text-right text-sm font-medium text-gray-900">
-                      {item.cantidad}{' '}
+                      {formatearCantidad(item.cantidad)}{' '}
                       {item.unidad}
                     </td>
 

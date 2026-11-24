@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { formatearCantidad } from '../../../utils/formatters'
 import { obtenerEgreso } from '../../services/egresoService'
 
 export default function EgresoDetail() {
@@ -152,7 +153,7 @@ export default function EgresoDetail() {
                         )}
                       </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-right font-semibold text-red-600 sm:pr-6">
-                        - {Number(detalle.cantidad).toLocaleString('es-ES', { maximumFractionDigits: 3 })}
+                        - {formatearCantidad(detalle.cantidad)}
                         <span className="text-gray-500 font-normal ml-1">
                           {detalle.producto_presentacion ? 'u.' : (detalle.materia_prima?.unidad_medida || '')}
                         </span>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { formatearCantidad } from '../../../utils/formatters'
 import { confirmarVenta, generarIdempotencyKey, obtenerVenta } from '../../services/ventaService'
 import { consultarStockMostrador } from '../../services/inventarioConsultaService'
 
@@ -300,7 +301,7 @@ export default function ConfirmarVentaModal({
                           {item.nombre_presentacion_snapshot || `Presentación #${item.presentacionId}`}
                         </td>
                         <td className="px-4 py-3 text-center text-gray-700">
-                          {item.requerido} unid.
+                          {formatearCantidad(item.requerido)} unid.
                         </td>
                         {tienePermisoInventario && (
                           <td className="px-4 py-3 text-center">
@@ -308,7 +309,7 @@ export default function ConfirmarVentaModal({
                               <span className="text-gray-400">...</span>
                             ) : item.tieneDatoStock ? (
                               <span className="font-semibold text-gray-800">
-                                {item.disponible} unid.
+                                {formatearCantidad(item.disponible)} unid.
                               </span>
                             ) : (
                               <span className="text-gray-400">0 unid.</span>
@@ -323,7 +324,7 @@ export default function ConfirmarVentaModal({
                               </span>
                             ) : (
                               <span className="inline-flex rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-800">
-                                ✗ Insuficiente ({item.disponible ?? 0}/{item.requerido})
+                                ✗ Insuficiente ({formatearCantidad(item.disponible ?? 0)}/{formatearCantidad(item.requerido)})
                               </span>
                             )
                           ) : (

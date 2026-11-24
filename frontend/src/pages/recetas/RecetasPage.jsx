@@ -12,6 +12,7 @@ import {
   cambiarEstadoReceta,
 } from '../../services/catalogoRecetaService'
 import { useAuth } from '../../context/AuthContext'
+import { formatearCantidad } from '../../utils/formatters'
 
 function RecetasPage() {
   const { tienePermiso } = useAuth()
@@ -382,7 +383,7 @@ return (
                             }
                             {' — '}
                             {
-                              detalle.cantidad
+                              formatearCantidad(detalle.cantidad)
                             }{' '}
                             {
                               detalle

@@ -21,6 +21,8 @@ import {
   listarMateriasPrimas,
 } from '../../services/catalogoMateriaPrimaService'
 
+import { formatearCantidad } from '../../utils/formatters'
+
 const TIPOS = {
   MATERIA_PRIMA: 'Materia prima',
   PRESENTACION: 'Producto terminado',
@@ -612,7 +614,7 @@ export default function ExistenciaList() {
 
                     <td className="px-6 py-4 text-right text-sm font-semibold text-gray-900">
                       {
-                        existencia.cantidad
+                        formatearCantidad(existencia.cantidad)
                       }{' '}
 
                       <span className="font-normal text-gray-500">

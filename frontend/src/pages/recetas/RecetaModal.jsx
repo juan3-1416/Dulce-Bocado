@@ -8,6 +8,7 @@ import {
   actualizarReceta,
   crearReceta,
 } from '../../services/catalogoRecetaService'
+import { formatearCantidad } from '../../utils/formatters'
 
 function RecetaModal({
   abierto,
@@ -70,7 +71,7 @@ function RecetaModal({
                   ),
 
                 cantidad:
-                  String(
+                  formatearCantidad(
                     detalle.cantidad
                   ),
               })

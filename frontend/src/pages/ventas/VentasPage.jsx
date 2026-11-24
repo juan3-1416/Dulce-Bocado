@@ -20,6 +20,7 @@ import {
   listarRecibos,
 } from '../../services/reciboService'
 import { useAuth } from '../../context/AuthContext'
+import { formatearCantidad } from '../../utils/formatters'
 import VentaModal from './VentaModal'
 import ConfirmarVentaModal from './ConfirmarVentaModal'
 import PagoModal from '../pagos/PagoModal'
@@ -956,9 +957,9 @@ function VentasPage() {
 
                           <p className="mt-1 text-sm text-gray-600">
                             Cantidad:{' '}
-                            {
+                            {formatearCantidad(
                               detalle.cantidad
-                            }
+                            )}
                           </p>
 
                           <p className="text-sm text-gray-600">
