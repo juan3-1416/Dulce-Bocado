@@ -2,7 +2,7 @@
 
 return [
     'inventory_sales' => [
-        'key' => env('INVENTORY_SALES_KEY'),
+        'key' => env('INVENTORY_SALES_KEY', env('INTERNAL_SERVICE_KEY')),
     ],
     'security' => [
         'url' => env(
@@ -19,9 +19,12 @@ return [
     'catalog' => [
         'url' => env(
             'CATALOGO_SERVICE_URL',
-            'http://catalog-service:8000'
+            env('CATALOG_SERVICE_URL', 'http://catalog-service:8000')
         ),
-        'key' => env('CATALOGO_SERVICE_KEY'),
+        'key' => env(
+            'CATALOGO_SERVICE_KEY',
+            env('CATALOG_INTERNAL_KEY', env('INTERNAL_SERVICE_KEY'))
+        ),
         'timeout' => (int) env(
             'CATALOGO_TIMEOUT',
             3
@@ -29,6 +32,6 @@ return [
     ],
 
     'inventory_internal' => [
-        'key' => env('INVENTORY_INTERNAL_KEY'),
+        'key' => env('INVENTORY_INTERNAL_KEY', env('INTERNAL_SERVICE_KEY')),
     ],
 ];

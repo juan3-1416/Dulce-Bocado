@@ -40,7 +40,7 @@ return [
             'SECURITY_SERVICE_URL',
             'http://security-service:8000'
         ),
-        'key' => env('SECURITY_SERVICE_KEY'),
+        'key' => env('SECURITY_SERVICE_KEY', env('INTERNAL_SERVICE_KEY')),
         'timeout' => (int) env(
             'SECURITY_TIMEOUT',
             3
@@ -48,6 +48,6 @@ return [
     ],
 
     'catalog_internal' => [
-        'key' => env('CATALOG_INTERNAL_KEY'),
+        'key' => env('CATALOG_INTERNAL_KEY', env('INTERNAL_SERVICE_KEY')),
     ],
 ];

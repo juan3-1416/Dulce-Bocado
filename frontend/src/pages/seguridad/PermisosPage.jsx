@@ -12,6 +12,8 @@ import {
     obtenerPermiso,
 } from '../../services/permisoService';
 
+import './seguridad.css';
+
 const formularioInicial = {
     nombre: '',
     descripcion: '',
@@ -241,23 +243,23 @@ const manejarGuardado = async (event) => {
 
 
 return (
-    <section className="space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <section className="security-page min-w-0 space-y-6 pb-10 text-theme-body">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className="text-2xl font-semibold tracking-tight text-theme-heading sm:text-3xl">
                     Gestión de Permisos
                 </h1>
 
-                <p className="mt-1 text-sm text-gray-600">
+                <p className="mt-1 text-sm text-theme-body">
                     Administra los permisos disponibles en Dulce Bocado.
                 </p>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
                 <button
                     type="button"
                     onClick={cargarPermisos}
-                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                    className="rounded-lg border border-theme-border-subtle px-4 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover"
                 >
                     Actualizar
                 </button>
@@ -273,33 +275,33 @@ return (
         </div>
 
         {mensaje && (
-            <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+            <div role="status" className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
                 {mensaje}
             </div>
         )}
 
         {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
                 {error}
             </div>
         )}
 
         {mostrarFormulario && (
-            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                <h2 className="text-lg font-bold text-gray-900">
+            <div className="max-w-3xl rounded-xl border border-theme-border-subtle bg-theme-surface p-4 sm:p-6">
+                <h2 className="text-lg font-semibold text-theme-heading">
                     {permisoEditando
                         ? 'Editar Permiso'
                         : 'Registrar Permiso'}
                 </h2>
 
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="mt-1 text-sm text-theme-muted">
                     {permisoEditando
                         ? 'Modifica los datos del permiso seleccionado.'
                         : 'Registra un nuevo permiso del sistema. La asociación con roles se realizará posteriormente en Rol-Permiso.'}
                 </p>
 
                 {errorFormulario && (
-                    <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    <div role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
                         {errorFormulario}
                     </div>
                 )}
@@ -311,7 +313,7 @@ return (
                     <div>
                         <label
                             htmlFor="nombre"
-                            className="mb-1 block text-sm font-medium text-gray-700"
+                            className="mb-1 block text-sm font-medium text-theme-body"
                         >
                             Nombre del permiso
                         </label>
@@ -325,14 +327,14 @@ return (
                             required
                             maxLength={100}
                             placeholder="ejemplo.gestionar_modulo"
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
+                            className="w-full rounded-lg border border-theme-border-subtle px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                         />
                     </div>
 
                     <div>
                         <label
                             htmlFor="descripcion"
-                            className="mb-1 block text-sm font-medium text-gray-700"
+                            className="mb-1 block text-sm font-medium text-theme-body"
                         >
                             Descripción
                         </label>
@@ -344,16 +346,16 @@ return (
                             onChange={manejarCambio}
                             maxLength={255}
                             rows={3}
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
+                            className="w-full rounded-lg border border-theme-border-subtle px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                         />
                     </div>
 
-                    <div className="flex justify-end gap-3">
+                    <div className="flex flex-col-reverse gap-3 border-t border-theme-border-subtle pt-5 sm:flex-row sm:justify-end">
                         <button
                             type="button"
                             onClick={cerrarFormulario}
                             disabled={guardando}
-                            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                            className="rounded-lg border border-theme-border-subtle px-4 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover disabled:opacity-60"
                         >
                             Cancelar
                         </button>
@@ -374,62 +376,65 @@ return (
             </div>
         )}
 
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-xl border border-theme-border-subtle bg-theme-surface">
+            <div className="border-b border-theme-border-subtle px-4 py-4 sm:px-6">
+                <h2 className="text-base font-semibold text-theme-heading">Permisos <span className="ml-2 text-sm font-normal tabular-nums text-theme-muted">{permisos.length}</span></h2>
+            </div>
             {cargando ? (
-                <div className="p-8 text-center text-gray-500">
+                <div className="p-8 text-center text-theme-muted">
                     Cargando permisos...
                 </div>
             ) : permisos.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
+                <div className="p-8 text-center text-theme-muted">
                     No hay permisos registrados.
                 </div>
             ) : (
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                <div className="min-w-0">
+                    <table className="security-table divide-y divide-theme-border-subtle" aria-label="Permisos registrados">
+                        <thead className="bg-theme-subtle">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-theme-body">
                                     ID
                                 </th>
 
-                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-theme-body">
                                     Nombre
                                 </th>
 
-                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-theme-body">
                                     Descripción
                                 </th>
 
-                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-theme-body">
                                     Estado
                                 </th>
 
-                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-theme-body">
                                     Acciones
                                 </th>
                             </tr>
                         </thead>
 
-                        <tbody className="divide-y divide-gray-200 bg-white">
+                        <tbody className="divide-y divide-theme-border-subtle bg-theme-surface">
                             {permisos.map((permiso) => (
                                 <tr
                                     key={permiso.id_permiso}
-                                    className="hover:bg-gray-50"
+                                    className="hover:bg-theme-hover"
                                 >
-                                    <td className="px-6 py-4 text-sm text-gray-500">
+                                    <td data-label="ID" className="px-6 py-4 text-sm text-theme-muted">
                                         {permiso.id_permiso}
                                     </td>
 
-                                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                                    <td data-label="Nombre" className="px-6 py-4 text-sm font-medium text-theme-heading">
                                         {permiso.nombre}
                                     </td>
 
-                                    <td className="px-6 py-4 text-sm text-gray-700">
+                                    <td data-label="Descripción" className="px-6 py-4 text-sm text-theme-body">
                                         {permiso.descripcion ||
                                             'Sin descripción'}
                                     </td>
 
-                                    <td className="px-6 py-4">
+                                    <td data-label="Estado" className="px-6 py-4">
                                         <span
                                             className={
                                                 permiso.activo
@@ -443,7 +448,7 @@ return (
                                         </span>
                                     </td>
 
-<td className="px-6 py-4">
+<td data-label="Acciones" className="px-6 py-4">
     <div className="flex flex-wrap gap-2">
         <button
             type="button"
@@ -457,7 +462,7 @@ return (
                 cambiandoEstadoId ===
                     permiso.id_permiso
             }
-            className="rounded-lg border border-pink-200 px-3 py-1.5 text-sm font-semibold text-pink-600 hover:bg-pink-50 disabled:opacity-50"
+            className="rounded-lg border border-pink-200 px-3 py-1.5 text-sm font-semibold text-pink-700 hover:bg-pink-50 disabled:opacity-50"
         >
             Editar
         </button>

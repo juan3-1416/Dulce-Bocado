@@ -1,0 +1,92 @@
+.security-page {
+  min-width: 0;
+}
+
+.security-page :is(button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--brand-600);
+  outline-offset: 2px;
+}
+
+.security-page :is(input, select, textarea) {
+  max-width: 100%;
+  background: var(--bg-surface);
+  color: var(--text-main);
+}
+
+.security-page :is(input, select) {
+  min-height: 2.75rem;
+}
+
+.security-page textarea {
+  min-height: 6.5rem;
+}
+
+.security-page :is(input, select, textarea):disabled {
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+}
+
+.security-page button {
+  min-height: 2.5rem;
+}
+
+.security-page button:disabled {
+  cursor: not-allowed;
+}
+
+.security-table {
+  width: 100%;
+}
+
+@media (max-width: 1599px) {
+  .security-table,
+  .security-table tbody,
+  .security-table tr,
+  .security-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .security-table thead {
+    display: none;
+  }
+
+  .security-table tbody {
+    padding: 0.75rem;
+  }
+
+  .security-table tr {
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+    border: 1px solid var(--border-subtle);
+    border-radius: 0.75rem;
+  }
+
+  .security-table tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .security-table td {
+    padding: 0.65rem 1rem;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+
+  .security-table td + td {
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .security-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.2rem;
+    color: var(--text-body);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .security-table td[data-label="Acciones"] > div,
+  .security-table td[data-label="Acción"] > div {
+    justify-content: flex-start;
+  }
+}

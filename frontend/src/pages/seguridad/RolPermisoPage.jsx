@@ -12,6 +12,8 @@ import {
     quitarRolPermiso,
 } from '../../services/rolPermisoService';
 
+import './seguridad.css';
+
 function RolPermisoPage() {
     const [relaciones, setRelaciones] =
         useState([]);
@@ -245,14 +247,14 @@ function RolPermisoPage() {
 };
 
 return (
-    <section className="space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <section className="security-page min-w-0 space-y-6 pb-10 text-theme-body">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className="text-2xl font-semibold tracking-tight text-theme-heading sm:text-3xl">
                     Gestión Rol-Permiso
                 </h1>
 
-                <p className="mt-1 text-sm text-gray-600">
+                <p className="mt-1 text-sm text-theme-body">
                     Administra los permisos asignados
                     a cada rol del sistema.
                 </p>
@@ -261,42 +263,42 @@ return (
             <button
                 type="button"
                 onClick={cargarDatos}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                className="rounded-lg border border-theme-border-subtle px-4 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover"
             >
                 Actualizar
             </button>
         </div>
 
         {mensaje && (
-            <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+            <div role="status" className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
                 {mensaje}
             </div>
         )}
 
         {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
                 {error}
             </div>
         )}
 
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-gray-900">
+        <div className="rounded-xl border border-theme-border-subtle bg-theme-surface p-4 sm:p-6">
+            <h2 className="text-lg font-semibold text-theme-heading">
                 Asignar Permiso a Rol
             </h2>
 
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-theme-muted">
                 Selecciona un rol y uno de los permisos
                 que todavía no tenga asignado.
             </p>
 
             <form
                 onSubmit={manejarAsignacion}
-                className="mt-5 grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end"
+                className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] xl:items-end"
             >
                 <div>
                     <label
                         htmlFor="rol_id"
-                        className="mb-1 block text-sm font-medium text-gray-700"
+                        className="mb-1 block text-sm font-medium text-theme-body"
                     >
                         Rol
                     </label>
@@ -306,7 +308,7 @@ return (
                         value={rolSeleccionado}
                         onChange={manejarCambioRol}
                         required
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
+                        className="w-full rounded-lg border border-theme-border-subtle px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                     >
                         <option value="">
                             Seleccionar rol
@@ -326,7 +328,7 @@ return (
                 <div>
                     <label
                         htmlFor="permiso_id"
-                        className="mb-1 block text-sm font-medium text-gray-700"
+                        className="mb-1 block text-sm font-medium text-theme-body"
                     >
                         Permiso
                     </label>
@@ -341,7 +343,7 @@ return (
                         }
                         required
                         disabled={!rolSeleccionado}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100 disabled:bg-gray-100"
+                        className="w-full rounded-lg border border-theme-border-subtle px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:bg-theme-subtle"
                     >
                         <option value="">
                             {!rolSeleccionado
@@ -371,7 +373,7 @@ return (
                         !rolSeleccionado ||
                         !permisoSeleccionado
                     }
-                    className="rounded-lg bg-pink-600 px-5 py-2 text-sm font-semibold text-white hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="min-h-11 rounded-lg bg-pink-600 px-5 py-2 text-sm font-semibold text-white hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-2 xl:col-span-1"
                 >
                     {asignando
                         ? 'Asignando...'
@@ -380,70 +382,73 @@ return (
             </form>
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-xl border border-theme-border-subtle bg-theme-surface">
+            <div className="border-b border-theme-border-subtle px-4 py-4 sm:px-6">
+                <h2 className="text-base font-semibold text-theme-heading">Permisos asignados <span className="ml-2 text-sm font-normal tabular-nums text-theme-muted">{relaciones.length}</span></h2>
+            </div>
             {cargando ? (
-                <div className="p-8 text-center text-gray-500">
+                <div className="p-8 text-center text-theme-muted">
                     Cargando relaciones...
                 </div>
             ) : relaciones.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
+                <div className="p-8 text-center text-theme-muted">
                     No existen relaciones Rol-Permiso.
                 </div>
             ) : (
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                <div className="min-w-0">
+                    <table className="security-table divide-y divide-theme-border-subtle" aria-label="Permisos asignados a roles">
+                        <thead className="bg-theme-subtle">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-theme-body">
                                     ID
                                 </th>
 
-                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-theme-body">
                                     Rol
                                 </th>
 
-                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-theme-body">
                                     Permiso
                                 </th>
 
-                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-theme-body">
                                     Descripción
                                 </th>
 
-                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-theme-body">
                                     Estado
                                 </th>
 
-                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                                <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-theme-body">
                                     Acciones
                                 </th>
                             </tr>
                         </thead>
 
-                        <tbody className="divide-y divide-gray-200 bg-white">
+                        <tbody className="divide-y divide-theme-border-subtle bg-theme-surface">
                             {relaciones.map((relacion) => (
                                 <tr
                                     key={relacion.id_rol_permiso}
-                                    className="hover:bg-gray-50"
+                                    className="hover:bg-theme-hover"
                                 >
-                                    <td className="px-6 py-4 text-sm text-gray-500">
+                                    <td data-label="ID" className="px-6 py-4 text-sm text-theme-muted">
                                         {relacion.id_rol_permiso}
                                     </td>
 
-                                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                                    <td data-label="Rol" className="px-6 py-4 text-sm font-semibold text-theme-heading">
                                         {relacion.rol.nombre}
                                     </td>
 
-                                    <td className="px-6 py-4 text-sm text-gray-700">
+                                    <td data-label="Permiso" className="px-6 py-4 text-sm text-theme-body">
                                         {relacion.permiso.nombre}
                                     </td>
 
-                                    <td className="px-6 py-4 text-sm text-gray-600">
+                                    <td data-label="Descripción" className="px-6 py-4 text-sm text-theme-body">
                                         {relacion.permiso.descripcion ||
                                             'Sin descripción'}
                                     </td>
 
-                                    <td className="px-6 py-4">
+                                    <td data-label="Estado" className="px-6 py-4">
                                         {relacion.rol.activo &&
                                         relacion.permiso.activo ? (
                                             <span className="inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
@@ -456,7 +461,7 @@ return (
                                         )}
                                     </td>
 
-                                    <td className="px-6 py-4">
+                                    <td data-label="Acciones" className="px-6 py-4">
                                         <button
                                             type="button"
                                             onClick={() =>

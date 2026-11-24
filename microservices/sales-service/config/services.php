@@ -48,8 +48,8 @@ return [
     ],
 
     'catalog' => [
-        'url' => env('CATALOGO_SERVICE_URL', 'http://catalog-service:8000'),
-        'key' => env('CATALOGO_SERVICE_KEY'),
+        'url' => env('CATALOGO_SERVICE_URL', env('CATALOG_SERVICE_URL', 'http://catalog-service:8000')),
+        'key' => env('CATALOGO_SERVICE_KEY', env('CATALOG_INTERNAL_KEY', env('INTERNAL_SERVICE_KEY'))),
         'timeout' => (int) env('CATALOGO_TIMEOUT', 3),
     ],
 
@@ -59,7 +59,8 @@ return [
             'http://inventory-service:8000'
         ),
         'sales_key' => env(
-            'INVENTORY_SALES_KEY'
+            'INVENTORY_SALES_KEY',
+            env('INTERNAL_SERVICE_KEY')
         ),
         'timeout' => (int) env(
             'INVENTORY_TIMEOUT',

@@ -12,6 +12,8 @@ import {
     obtenerUsuario,
 } from '../../services/usuarioService';
 
+import './seguridad.css';
+
 const formularioInicial = {
     nombre: '',
     nombre_usuario: '',
@@ -270,24 +272,24 @@ function UsuariosPage() {
 };
 
     return (
-        <section className="space-y-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <section className="security-page min-w-0 space-y-6 pb-10 text-theme-body">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">
+                    <h1 className="text-2xl font-semibold tracking-tight text-theme-heading sm:text-3xl">
                         Gestión de Usuarios
                     </h1>
 
-                    <p className="mt-1 text-sm text-gray-600">
+                    <p className="mt-1 text-sm text-theme-body">
                         Administra los usuarios registrados en
                         Dulce Bocado.
                     </p>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     <button
                         type="button"
                         onClick={cargarUsuarios}
-                        className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                        className="rounded-lg border border-theme-border-subtle px-4 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover"
                     >
                         Actualizar
                     </button>
@@ -303,33 +305,33 @@ function UsuariosPage() {
             </div>
 
             {mensaje && (
-                <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+                <div role="status" className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
                     {mensaje}
                 </div>
             )}
 
             {error && (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
                     {error}
                 </div>
             )}
 
             {mostrarFormulario && (
-                <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <h2 className="text-lg font-bold text-gray-900">
+                <div className="max-w-4xl rounded-xl border border-theme-border-subtle bg-theme-surface p-4 sm:p-6">
+                    <h2 className="text-lg font-semibold text-theme-heading">
                         {usuarioEditando
                             ? 'Editar Usuario'
                             : 'Registrar Usuario'}
                     </h2>
 
-                    <p className="mt-1 text-sm text-gray-500">
+                    <p className="mt-1 text-sm text-theme-muted">
                         {usuarioEditando
                             ? 'Modifica los datos del usuario. Deja la contraseña vacía si no deseas cambiarla.'
                             : 'Complete los datos del nuevo usuario. Los roles y permisos se asignarán posteriormente.'}
                     </p>
 
                     {errorFormulario && (
-                        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                        <div role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
                             {errorFormulario}
                         </div>
                     )}
@@ -342,7 +344,7 @@ function UsuariosPage() {
                             <div>
                                 <label
                                     htmlFor="nombre"
-                                    className="mb-1 block text-sm font-medium text-gray-700"
+                                    className="mb-1 block text-sm font-medium text-theme-body"
                                 >
                                     Nombre completo
                                 </label>
@@ -354,14 +356,14 @@ function UsuariosPage() {
                                     onChange={manejarCambio}
                                     required
                                     maxLength={120}
-                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
+                                    className="w-full rounded-lg border border-theme-border-subtle px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                                 />
                             </div>
 
                             <div>
                                 <label
                                     htmlFor="nombre_usuario"
-                                    className="mb-1 block text-sm font-medium text-gray-700"
+                                    className="mb-1 block text-sm font-medium text-theme-body"
                                 >
                                     Nombre de usuario
                                 </label>
@@ -375,7 +377,7 @@ function UsuariosPage() {
                                     onChange={manejarCambio}
                                     required
                                     maxLength={80}
-                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
+                                    className="w-full rounded-lg border border-theme-border-subtle px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                                 />
                             </div>
                         </div>
@@ -383,7 +385,7 @@ function UsuariosPage() {
                         <div>
                             <label
                                 htmlFor="correo_electronico"
-                                className="mb-1 block text-sm font-medium text-gray-700"
+                                className="mb-1 block text-sm font-medium text-theme-body"
                             >
                                 Correo electrónico
                             </label>
@@ -398,7 +400,7 @@ function UsuariosPage() {
                                 onChange={manejarCambio}
                                 required
                                 maxLength={150}
-                                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
+                                className="w-full rounded-lg border border-theme-border-subtle px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                             />
                         </div>
 
@@ -406,7 +408,7 @@ function UsuariosPage() {
                             <div>
                                 <label
                                     htmlFor="contrasena"
-                                    className="mb-1 block text-sm font-medium text-gray-700"
+                                    className="mb-1 block text-sm font-medium text-theme-body"
                                 >
                                     {usuarioEditando
                                         ? 'Nueva contraseña'
@@ -417,19 +419,21 @@ function UsuariosPage() {
                                     id="contrasena"
                                     name="contrasena"
                                     type="password"
+                                    autoComplete="new-password"
+                                    aria-describedby="usuario-password-hint"
                                     value={
                                         formulario.contrasena
                                     }
                                     onChange={manejarCambio}
                                     required={!usuarioEditando}
-                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
+                                    className="w-full rounded-lg border border-theme-border-subtle px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                                 />
                             </div>
 
                             <div>
                                 <label
                                     htmlFor="contrasena_confirmation"
-                                    className="mb-1 block text-sm font-medium text-gray-700"
+                                    className="mb-1 block text-sm font-medium text-theme-body"
                                 >
                                     Confirmar contraseña
                                 </label>
@@ -438,6 +442,8 @@ function UsuariosPage() {
                                     id="contrasena_confirmation"
                                     name="contrasena_confirmation"
                                     type="password"
+                                    autoComplete="new-password"
+                                    aria-describedby="usuario-password-hint"
                                     value={
                                         formulario.contrasena_confirmation
                                     }
@@ -448,23 +454,23 @@ function UsuariosPage() {
                                             formulario.contrasena
                                         )
                                     }
-                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
+                                    className="w-full rounded-lg border border-theme-border-subtle px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                                 />
                             </div>
                         </div>
 
-                        <p className="text-xs text-gray-500">
+                        <p id="usuario-password-hint" className="text-sm text-theme-muted">
                             La contraseña debe tener mínimo 8
                             caracteres, mayúscula, minúscula,
                             número y símbolo.
                         </p>
 
-                        <div className="flex justify-end gap-3">
+                        <div className="flex flex-col-reverse gap-3 border-t border-theme-border-subtle pt-5 sm:flex-row sm:justify-end">
                             <button
                                 type="button"
                                 onClick={cerrarFormulario}
                                 disabled={guardando}
-                                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                                className="rounded-lg border border-theme-border-subtle px-4 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover disabled:opacity-60"
                             >
                                 Cancelar
                             </button>
@@ -485,77 +491,82 @@ function UsuariosPage() {
                 </div>
             )}
 
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-xl border border-theme-border-subtle bg-theme-surface">
+                <div className="border-b border-theme-border-subtle px-4 py-4 sm:px-6">
+                    <h2 className="text-base font-semibold text-theme-heading">Usuarios <span className="ml-2 text-sm font-normal tabular-nums text-theme-muted">{usuarios.length}</span></h2>
+                </div>
                 {cargando ? (
-                    <div className="p-8 text-center text-gray-500">
+                    <div className="p-8 text-center text-theme-muted">
                         Cargando usuarios...
                     </div>
+                ) : usuarios.length === 0 ? (
+                    <div className="p-8 text-center text-theme-muted">No hay usuarios registrados.</div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
+                    <div className="min-w-0">
+                        <table className="security-table divide-y divide-theme-border-subtle" aria-label="Usuarios registrados">
+                            <thead className="bg-theme-subtle">
                                 <tr>
-                                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-theme-body">
                                         ID
                                     </th>
 
-                                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-theme-body">
                                         Nombre
                                     </th>
 
-                                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-theme-body">
                                         Usuario
                                     </th>
 
-                                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-theme-body">
                                         Correo
                                     </th>
 
-                                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-theme-body">
                                         Rol
                                     </th>
 
-                                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-theme-body">
                                         Estado
                                     </th>
 
-                                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-theme-body">
                                         Acciones
                                     </th>
                                 </tr>
                             </thead>
 
-                            <tbody className="divide-y divide-gray-200">
+                            <tbody className="divide-y divide-theme-border-subtle">
                                 {usuarios.map((usuario) => (
                                     <tr
                                         key={
                                             usuario.id_usuario
                                         }
-                                        className="hover:bg-gray-50"
+                                        className="hover:bg-theme-hover"
                                     >
-                                        <td className="px-5 py-4 text-sm text-gray-500">
+                                        <td data-label="ID" className="px-5 py-4 text-sm text-theme-muted">
                                             {
                                                 usuario.id_usuario
                                             }
                                         </td>
 
-                                        <td className="px-5 py-4 text-sm font-medium text-gray-900">
+                                        <td data-label="Nombre" className="px-5 py-4 text-sm font-medium text-theme-heading">
                                             {usuario.nombre}
                                         </td>
 
-                                        <td className="px-5 py-4 text-sm text-gray-700">
+                                        <td data-label="Usuario" className="px-5 py-4 text-sm text-theme-body">
                                             {
                                                 usuario.nombre_usuario
                                             }
                                         </td>
 
-                                        <td className="px-5 py-4 text-sm text-gray-700">
+                                        <td data-label="Correo" className="px-5 py-4 text-sm text-theme-body">
                                             {
                                                 usuario.correo_electronico
                                             }
                                         </td>
 
-                                        <td className="px-5 py-4 text-sm text-gray-700">
+                                        <td data-label="Rol" className="px-5 py-4 text-sm text-theme-body">
                                             {usuario.roles?.length
                                                 ? usuario.roles.join(
                                                     ', '
@@ -563,7 +574,7 @@ function UsuariosPage() {
                                                 : 'Sin rol asignado'}
                                         </td>
 
-                                        <td className="px-5 py-4">
+                                        <td data-label="Estado" className="px-5 py-4">
                                             <span
                                                 className={
                                                     usuario.activo
@@ -577,7 +588,7 @@ function UsuariosPage() {
                                             </span>
                                         </td>
 
-<td className="px-5 py-4">
+<td data-label="Acciones" className="px-5 py-4">
     <div className="flex flex-wrap gap-2">
         <button
             type="button"
@@ -591,7 +602,7 @@ function UsuariosPage() {
                 cambiandoEstadoId ===
                     usuario.id_usuario
             }
-            className="rounded-lg border border-pink-200 px-3 py-1.5 text-sm font-semibold text-pink-600 hover:bg-pink-50 disabled:opacity-50"
+            className="rounded-lg border border-pink-200 px-3 py-1.5 text-sm font-semibold text-pink-700 hover:bg-pink-50 disabled:opacity-50"
         >
             Editar
         </button>

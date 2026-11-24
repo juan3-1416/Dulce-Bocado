@@ -7,6 +7,8 @@ import {
 } from '../../services/usuarioRolPermisoService';
 import { crearRol } from '../../services/rolService';
 
+import './seguridad.css';
+
 const formularioRolInicial = {
   nombre: '',
   descripcion: '',
@@ -226,11 +228,11 @@ function AsignacionesPage() {
   };
 
   return (
-    <section className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <section className="security-page min-w-0 space-y-6 pb-10 text-theme-body">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Asignaciones de Roles</h1>
-          <p className="mt-1 text-sm text-gray-600">
+          <h1 className="text-2xl font-semibold tracking-tight text-theme-heading sm:text-3xl">Asignaciones de Roles</h1>
+          <p className="mt-1 text-sm text-theme-body">
             Asigna roles a los usuarios. Los permisos de cada rol se administran desde Rol-Permiso.
           </p>
         </div>
@@ -239,29 +241,29 @@ function AsignacionesPage() {
           type="button"
           onClick={cargarDatos}
           disabled={cargando}
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg border border-theme-border-subtle px-4 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover disabled:cursor-not-allowed disabled:opacity-50"
         >
           {cargando ? 'Actualizando...' : 'Actualizar'}
         </button>
       </div>
 
       {mensaje && (
-        <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+        <div role="status" className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
           {mensaje}
         </div>
       )}
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
           {error}
         </div>
       )}
 
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="rounded-xl border border-theme-border-subtle bg-theme-surface p-4 sm:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Asignar rol a usuario</h2>
-            <p className="mt-1 text-sm text-gray-500">
+            <h2 className="text-lg font-semibold text-theme-heading">Asignar rol a usuario</h2>
+            <p className="mt-1 text-sm text-theme-muted">
               Selecciona el usuario y el rol. El sistema habilitará automáticamente los permisos configurados para ese rol.
             </p>
           </div>
@@ -269,15 +271,15 @@ function AsignacionesPage() {
           <button
             type="button"
             onClick={abrirModalRol}
-            className="shrink-0 rounded-lg border border-pink-300 px-4 py-2 text-sm font-semibold text-pink-600 hover:bg-pink-50"
+            className="shrink-0 rounded-lg border border-pink-300 px-4 py-2 text-sm font-semibold text-pink-700 hover:bg-pink-50"
           >
-            + Crear nuevo rol
+            Crear nuevo rol
           </button>
         </div>
 
-        <form onSubmit={manejarAsignarRol} className="mt-6 grid gap-4 md:grid-cols-[1fr_1fr_auto]">
+        <form onSubmit={manejarAsignarRol} className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
           <div>
-            <label htmlFor="usuario_asignacion" className="mb-1 block text-sm font-medium text-gray-700">
+            <label htmlFor="usuario_asignacion" className="mb-1 block text-sm font-medium text-theme-body">
               Usuario
             </label>
             <select
@@ -289,7 +291,7 @@ function AsignacionesPage() {
                 setMensaje('');
               }}
               required
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
+              className="w-full rounded-lg border border-theme-border-subtle px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
             >
               <option value="">Seleccionar usuario</option>
               {usuarios.map((usuario) => (
@@ -302,10 +304,10 @@ function AsignacionesPage() {
 
           <div>
             <div className="mb-1 flex items-center justify-between">
-              <label htmlFor="rol_asignacion" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="rol_asignacion" className="block text-sm font-medium text-theme-body">
                 Rol
               </label>
-              <span className="text-xs text-gray-400">Permisos definidos en Rol-Permiso</span>
+              <span className="text-xs text-theme-muted">Permisos definidos en Rol-Permiso</span>
             </div>
             <select
               id="rol_asignacion"
@@ -316,7 +318,7 @@ function AsignacionesPage() {
                 setMensaje('');
               }}
               required
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
+              className="w-full rounded-lg border border-theme-border-subtle px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
             >
               <option value="">Seleccionar rol</option>
               {roles.map((rol) => (
@@ -327,7 +329,7 @@ function AsignacionesPage() {
             </select>
           </div>
 
-          <div className="flex items-end">
+          <div className="flex items-end sm:col-span-2 xl:col-span-1">
             <button
               type="submit"
               disabled={asignando || !usuarioSeleccionado || !rolSeleccionado}
@@ -339,26 +341,26 @@ function AsignacionesPage() {
         </form>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-200 bg-gray-50 p-4">
+      <div className="overflow-hidden rounded-xl border border-theme-border-subtle bg-theme-surface">
+        <div className="border-b border-theme-border-subtle bg-theme-subtle p-4">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <h2 className="font-bold text-gray-900">Roles asignados</h2>
-              <p className="mt-1 text-sm text-gray-500">
+              <h2 className="font-bold text-theme-heading">Roles asignados</h2>
+              <p className="mt-1 text-sm text-theme-muted">
                 Consulta y administra los roles actualmente asignados a los usuarios.
               </p>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">
               <div>
-                <label htmlFor="filtro_usuario" className="mb-1 block text-xs font-medium text-gray-600">
+                <label htmlFor="filtro_usuario" className="mb-1 block text-xs font-medium text-theme-body">
                   Usuario
                 </label>
                 <select
                   id="filtro_usuario"
                   value={filtroUsuario}
                   onChange={(event) => setFiltroUsuario(event.target.value)}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2 text-sm"
                 >
                   <option value="">Todos</option>
                   {usuarios.map((usuario) => (
@@ -370,14 +372,14 @@ function AsignacionesPage() {
               </div>
 
               <div>
-                <label htmlFor="filtro_rol" className="mb-1 block text-xs font-medium text-gray-600">
+                <label htmlFor="filtro_rol" className="mb-1 block text-xs font-medium text-theme-body">
                   Rol
                 </label>
                 <select
                   id="filtro_rol"
                   value={filtroRol}
                   onChange={(event) => setFiltroRol(event.target.value)}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2 text-sm"
                 >
                   <option value="">Todos</option>
                   {roles.map((rol) => (
@@ -396,7 +398,7 @@ function AsignacionesPage() {
                       setFiltroUsuario('');
                       setFiltroRol('');
                     }}
-                    className="px-2 py-2 text-xs font-semibold text-pink-600 hover:text-pink-800"
+                    className="px-2 py-2 text-xs font-semibold text-pink-700 hover:text-pink-800"
                   >
                     Limpiar filtros
                   </button>
@@ -407,53 +409,53 @@ function AsignacionesPage() {
         </div>
 
         {cargando ? (
-          <div className="p-8 text-center text-gray-500">Cargando asignaciones...</div>
+          <div className="p-8 text-center text-theme-muted">Cargando asignaciones...</div>
         ) : rolesAsignadosFiltrados.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
+          <div className="p-8 text-center text-theme-muted">
             No existen roles asignados que coincidan con los filtros.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+          <div className="min-w-0">
+            <table className="security-table divide-y divide-theme-border-subtle" aria-label="Roles asignados">
+              <thead className="bg-theme-subtle">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-600">Usuario</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-600">Rol</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-600">Permisos</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-600">Estado</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-600">Acción</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-theme-body">Usuario</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-theme-body">Rol</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-theme-body">Permisos</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-theme-body">Estado</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase text-theme-body">Acción</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 bg-white">
+              <tbody className="divide-y divide-theme-border-subtle bg-theme-surface">
                 {rolesAsignadosFiltrados.map((grupo) => (
-                  <tr key={grupo.clave} className="align-top hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <p className="text-sm font-semibold text-gray-900">{grupo.usuario.nombre}</p>
-                      <p className="mt-1 text-xs text-gray-500">@{grupo.usuario.nombre_usuario}</p>
+                  <tr key={grupo.clave} className="align-top hover:bg-theme-hover">
+                    <td data-label="Usuario" className="px-6 py-4">
+                      <p className="text-sm font-semibold text-theme-heading">{grupo.usuario.nombre}</p>
+                      <p className="mt-1 text-xs text-theme-muted">@{grupo.usuario.nombre_usuario}</p>
                     </td>
-                    <td className="px-6 py-4">
+                    <td data-label="Rol" className="px-6 py-4">
                       <span className="inline-flex rounded-full bg-pink-100 px-3 py-1 text-xs font-semibold text-pink-700">
                         {grupo.rol.nombre}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <p className="text-sm font-semibold text-gray-800">
+                    <td data-label="Permisos" className="px-6 py-4">
+                      <p className="text-sm font-semibold text-theme-heading">
                         {grupo.permisos.length} permiso(s)
                       </p>
                       <details className="mt-2">
-                        <summary className="cursor-pointer text-xs font-semibold text-pink-600 hover:text-pink-800">
+                        <summary className="cursor-pointer text-xs font-semibold text-pink-700 hover:text-pink-800">
                           Ver permisos
                         </summary>
-                        <div className="mt-2 space-y-1 rounded-lg bg-gray-50 p-3">
+                        <div className="mt-2 space-y-1 rounded-lg bg-theme-subtle p-3">
                           {grupo.permisos.map((permiso) => (
-                            <p key={permiso.id_permiso} className="text-xs text-gray-600">
+                            <p key={permiso.id_permiso} className="text-xs text-theme-body">
                               • {permiso.nombre}
                             </p>
                           ))}
                         </div>
                       </details>
                     </td>
-                    <td className="px-6 py-4">
+                    <td data-label="Estado" className="px-6 py-4">
                       {grupo.usuario.activo && grupo.rol.activo ? (
                         <span className="inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
                           Activo
@@ -464,7 +466,7 @@ function AsignacionesPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4">
+                    <td data-label="Acción" className="px-6 py-4">
                       <button
                         type="button"
                         onClick={() => manejarQuitarRol(grupo)}
@@ -484,23 +486,23 @@ function AsignacionesPage() {
 
       {modalRolAbierto && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
-            <div className="border-b border-gray-200 px-6 py-4">
-              <h2 className="text-xl font-bold text-gray-900">Crear nuevo rol</h2>
-              <p className="mt-1 text-sm text-gray-500">
+          <div role="dialog" aria-modal="true" aria-labelledby="crear-rol-titulo" className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-theme-surface shadow-xl">
+            <div className="border-b border-theme-border-subtle px-6 py-4">
+              <h2 id="crear-rol-titulo" className="text-xl font-semibold text-theme-heading">Crear nuevo rol</h2>
+              <p className="mt-1 text-sm text-theme-muted">
                 Crea un nuevo tipo de acceso para los usuarios del sistema.
               </p>
             </div>
 
             <form onSubmit={manejarCrearRol} className="space-y-5 p-6">
               {errorRol && (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
                   {errorRol}
                 </div>
               )}
 
               <div>
-                <label htmlFor="nombre_rol" className="mb-1 block text-sm font-medium text-gray-700">
+                <label htmlFor="nombre_rol" className="mb-1 block text-sm font-medium text-theme-body">
                   Nombre del rol
                 </label>
                 <input
@@ -512,12 +514,12 @@ function AsignacionesPage() {
                   maxLength={60}
                   required
                   placeholder="Ej. Supervisor"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
+                  className="w-full rounded-lg border border-theme-border-subtle px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                 />
               </div>
 
               <div>
-                <label htmlFor="descripcion_rol" className="mb-1 block text-sm font-medium text-gray-700">
+                <label htmlFor="descripcion_rol" className="mb-1 block text-sm font-medium text-theme-body">
                   Descripción
                 </label>
                 <textarea
@@ -528,19 +530,19 @@ function AsignacionesPage() {
                   rows={4}
                   maxLength={255}
                   placeholder="Describe brevemente la función de este rol..."
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-pink-500 focus:outline-none focus:ring-2 focus:ring-pink-100"
+                  className="w-full rounded-lg border border-theme-border-subtle px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
                 />
-                <p className="mt-1 text-xs text-gray-400">
+                <p className="mt-1 text-xs text-theme-muted">
                   La configuración de permisos se realiza posteriormente desde Rol-Permiso.
                 </p>
               </div>
 
-              <div className="flex justify-end gap-3 border-t border-gray-200 pt-5">
+              <div className="flex flex-col-reverse gap-3 border-t border-theme-border-subtle pt-5 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={cerrarModalRol}
                   disabled={guardandoRol}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  className="rounded-lg border border-theme-border-subtle px-4 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover disabled:opacity-50"
                 >
                   Cancelar
                 </button>
