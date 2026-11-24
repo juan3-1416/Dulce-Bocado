@@ -51,8 +51,8 @@ services:
     environment:
       MYSQL_DATABASE: dulce_catalog
       MYSQL_USER: dulce_catalog_user
-      MYSQL_PASSWORD: dulce_catalog_pass
-      MYSQL_ROOT_PASSWORD: dulce_catalog_root
+      MYSQL_PASSWORD: dulce_catalog_local_only
+      MYSQL_ROOT_PASSWORD: dulce_catalog_root_local_only
     volumes:
       - catalog_mysql_data:/var/lib/mysql
     healthcheck:
@@ -133,6 +133,7 @@ services:
       SESSION_DRIVER: file
       CACHE_STORE: file
       QUEUE_CONNECTION: sync
+      INTERNAL_SERVICE_KEY: B797289C51ED543126C5E4589696648AA9FEB8FCA0305C13BE4D51D9C1126A42
     volumes:
       - ./microservices/security-service:/var/www/html
       - security_vendor:/var/www/html/vendor
@@ -156,9 +157,9 @@ services:
       DB_CONNECTION: pgsql
       DB_HOST: customer-db
       DB_PORT: 5432
-      DB_DATABASE: dulce_customer
-      DB_USERNAME: dulce_customer_user
-      DB_PASSWORD: dulce_customer_pass
+      DB_DATABASE: dulce_customers
+      DB_USERNAME: dulce_customers_user
+      DB_PASSWORD: dulce_customers_local_only
       SECURITY_SERVICE_URL: http://security-service:8000
     volumes:
       - ./microservices/customer-service:/var/www/html
@@ -185,7 +186,7 @@ services:
       DB_PORT: 3306
       DB_DATABASE: dulce_catalog
       DB_USERNAME: dulce_catalog_user
-      DB_PASSWORD: dulce_catalog_pass
+      DB_PASSWORD: dulce_catalog_local_only
       SECURITY_SERVICE_URL: http://security-service:8000
     volumes:
       - ./microservices/catalog-service:/var/www/html
@@ -212,11 +213,12 @@ services:
       DB_PORT: 5432
       DB_DATABASE: dulce_sales
       DB_USERNAME: dulce_sales_user
-      DB_PASSWORD: dulce_sales_pass
+      DB_PASSWORD: dulce_sales_local_only
       SECURITY_SERVICE_URL: http://security-service:8000
       CUSTOMER_SERVICE_URL: http://customer-service:8000
       CATALOG_SERVICE_URL: http://catalog-service:8000
       INVENTORY_SERVICE_URL: http://inventory-service:8000
+      INTERNAL_SERVICE_KEY: B797289C51ED543126C5E4589696648AA9FEB8FCA0305C13BE4D51D9C1126A42
     volumes:
       - ./microservices/sales-service:/var/www/html
       - sales_vendor:/var/www/html/vendor
@@ -242,11 +244,12 @@ services:
       DB_PORT: 5432
       DB_DATABASE: dulce_orders
       DB_USERNAME: dulce_orders_user
-      DB_PASSWORD: dulce_orders_pass
+      DB_PASSWORD: dulce_orders_local_only
       SECURITY_SERVICE_URL: http://security-service:8000
       CUSTOMER_SERVICE_URL: http://customer-service:8000
       CATALOG_SERVICE_URL: http://catalog-service:8000
       PAYMENT_SERVICE_URL: http://payment-service:8000
+      INTERNAL_SERVICE_KEY: B797289C51ED543126C5E4589696648AA9FEB8FCA0305C13BE4D51D9C1126A42
     volumes:
       - ./microservices/order-service:/var/www/html
       - order_vendor:/var/www/html/vendor
@@ -275,6 +278,7 @@ services:
       DB_PASSWORD: dulce_inventory_pass
       SECURITY_SERVICE_URL: http://security-service:8000
       CATALOG_SERVICE_URL: http://catalog-service:8000
+      INTERNAL_SERVICE_KEY: B797289C51ED543126C5E4589696648AA9FEB8FCA0305C13BE4D51D9C1126A42
     volumes:
       - ./microservices/inventory-service:/var/www/html
       - inventory_vendor:/var/www/html/vendor
@@ -300,10 +304,11 @@ services:
       DB_PORT: 5432
       DB_DATABASE: dulce_production
       DB_USERNAME: dulce_production_user
-      DB_PASSWORD: dulce_production_pass
+      DB_PASSWORD: dulce_production_local_only
       SECURITY_SERVICE_URL: http://security-service:8000
       CATALOG_SERVICE_URL: http://catalog-service:8000
       INVENTORY_SERVICE_URL: http://inventory-service:8000
+      INTERNAL_SERVICE_KEY: B797289C51ED543126C5E4589696648AA9FEB8FCA0305C13BE4D51D9C1126A42
     volumes:
       - ./microservices/production-service:/var/www/html
       - production_vendor:/var/www/html/vendor
@@ -334,6 +339,7 @@ services:
       SALES_SERVICE_URL: http://sales-service:8000
       ORDER_SERVICE_URL: http://order-service:8000
       INVENTORY_SERVICE_URL: http://inventory-service:8000
+      INTERNAL_SERVICE_KEY: B797289C51ED543126C5E4589696648AA9FEB8FCA0305C13BE4D51D9C1126A42
     volumes:
       - ./microservices/payment-service:/var/www/html
       - payment_vendor:/var/www/html/vendor
@@ -367,6 +373,8 @@ services:
       INVENTORY_SERVICE_URL: http://inventory-service:8000
       PRODUCTION_SERVICE_URL: http://production-service:8000
       CATALOG_SERVICE_URL: http://catalog-service:8000
+      INTERNAL_SERVICE_KEY: B797289C51ED543126C5E4589696648AA9FEB8FCA0305C13BE4D51D9C1126A42
+      INTERNAL_SERVICES_KEY: B797289C51ED543126C5E4589696648AA9FEB8FCA0305C13BE4D51D9C1126A42
       MAIL_MAILER: smtp
       MAIL_HOST: mailpit
       MAIL_PORT: 1025
