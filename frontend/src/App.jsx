@@ -1,5 +1,4 @@
 import {
-  Navigate,
   Route,
   Routes,
 } from 'react-router-dom'
@@ -12,37 +11,21 @@ import InicioPage from './pages/InicioPage'
 import LoginPage from './pages/LoginPage'
 import NotFoundPage from './pages/NotFoundPage'
 
-import UsuariosPage from './pages/seguridad/UsuariosPage'
-import RolesPage from './pages/seguridad/RolesPage'
-import PermisosPage from './pages/seguridad/PermisosPage'
-import RolPermisoPage from './pages/seguridad/RolPermisoPage'
-import AsignacionesPage from './pages/seguridad/AsignacionesPage'
-
-import ProductosPage from './pages/productos/ProductosPage'
-import ClientesPage from './pages/clientes/ClientesPage'
-
-import RecetasPage from './pages/recetas/RecetasPage'
-import MateriasPrimasPage from './pages/recetas/MateriasPrimasPage'
-import VentasPage from './pages/ventas/VentasPage'
-
-import PagosPage from './pages/pagos/PagosPage'
-import PagosInternetPage from './pages/pagosInternet/PagosInternetPage'
-import RecibosPage from './pages/recibos/RecibosPage.jsx'
-import PedidosPage from './pages/pedidos/PedidosPage.jsx'
-import PagoQrPublicPage from './pages/pagosInternet/PagoQrPublicPage'
-
-import ProduccionList from './pages/produccion/ProduccionList'
-import ProduccionForm from './pages/produccion/ProduccionForm'
-
-import AlmacenList from './pages/inventario/AlmacenList'
-import ExistenciaList from './pages/inventario/ExistenciaList'
-import MovimientoInventarioPage from './pages/inventario/MovimientoInventarioPage'
-import DashboardPage from './pages/dashboard/DashboardPage'
-import ReportesPage from './pages/reportes/ReportesPage'
+// Rutas modulares por dominio (espejo de los microservicios)
+import { securityRoutes } from './modules/security/securityRoutes'
+import { catalogRoutes } from './modules/catalog/catalogRoutes'
+import { customerRoutes } from './modules/customers/customerRoutes'
+import { salesRoutes } from './modules/sales/salesRoutes'
+import { orderRoutes } from './modules/orders/orderRoutes'
+import { paymentRoutes, paymentPublicRoutes } from './modules/payments/paymentRoutes'
+import { productionRoutes } from './modules/production/productionRoutes'
+import { inventoryRoutes } from './modules/inventory/inventoryRoutes'
+import { reportRoutes } from './modules/reports/reportRoutes'
 
 function App() {
   return (
     <Routes>
+      {/* Rutas públicas */}
       <Route
         path="/login"
         element={<LoginPage />}
@@ -52,11 +35,10 @@ function App() {
         path="/acceso-denegado"
         element={<AccesoDenegadoPage />}
       />
-      <Route
-  path="/pago-qr/:token"
-  element={<PagoQrPublicPage />}
-/>
 
+      {paymentPublicRoutes}
+
+      {/* Rutas protegidas con Layout principal */}
       <Route element={<ProtectedRoute />}>
         <Route element={<MainLayout />}>
           <Route
@@ -64,336 +46,20 @@ function App() {
             element={<InicioPage />}
           />
 
-          {/* SEGURIDAD */}
-
-          <Route
-            element={
-              <ProtectedRoute
-                permiso="seguridad.gestionar_usuario"
-              />
-            }
-          >
-            <Route
-              path="seguridad/usuarios"
-              element={<UsuariosPage />}
-            />
-          </Route>
-
-          <Route
-            element={
-              <ProtectedRoute
-                permiso="seguridad.gestionar_rol"
-              />
-            }
-          >
-            <Route
-              path="seguridad/roles"
-              element={<RolesPage />}
-            />
-          </Route>
-
-          <Route
-            element={
-              <ProtectedRoute
-                permiso="seguridad.gestionar_permiso"
-              />
-            }
-          >
-            <Route
-              path="seguridad/permisos"
-              element={<PermisosPage />}
-            />
-          </Route>
-
-          <Route
-            element={
-              <ProtectedRoute
-                permiso="seguridad.gestionar_rol_permiso"
-              />
-            }
-          >
-            <Route
-              path="seguridad/rol-permiso"
-              element={<RolPermisoPage />}
-            />
-          </Route>
-
-          <Route
-            element={
-              <ProtectedRoute
-                permiso="seguridad.asignar_roles_permisos"
-              />
-            }
-          >
-            <Route
-              path="seguridad/asignaciones"
-              element={<AsignacionesPage />}
-            />
-          </Route>
-
-          {/* PRODUCTOS */}
-
-          <Route
-            element={
-              <ProtectedRoute
-                permiso="catalogo.ver"
-              />
-            }
-          >
-            <Route
-              path="productos"
-              element={<ProductosPage />}
-            />
-          </Route>
-
-          {/* CLIENTES */}
-
-          <Route
-            element={
-              <ProtectedRoute
-                permiso="clientes.ver"
-              />
-            }
-          >
-            <Route
-              path="clientes"
-              element={<ClientesPage />}
-            />
-          </Route>
-
-          {/* RECETAS */}
-
-          <Route
-            element={
-              <ProtectedRoute
-                permiso="recetas.ver"
-              />
-            }
-          >
-            <Route
-              path="recetas"
-              element={<RecetasPage />}
-            />
-
-            <Route
-              path="recetas/materias-primas"
-              element={<MateriasPrimasPage />}
-            />
-          </Route>
-
-          {/* VENTAS */}
-
-          <Route
-            element={
-              <ProtectedRoute
-                permiso="ventas.ver"
-              />
-            }
-          >
-            <Route
-              path="ventas"
-              element={<VentasPage />}
-            />
-          </Route>
-
-          {/* PAGOS */}
-
-          <Route
-            element={
-              <ProtectedRoute
-                permiso="pagos.gestionar_pago"
-              />
-            }
-          >
-            <Route
-              path="pagos"
-              element={<PagosPage />}
-            />
-          </Route>
-
-          <Route
-            element={
-              <ProtectedRoute
-                permiso="pagos.gestionar_pago_internet"
-              />
-            }
-          >
-            <Route
-              path="pagos-internet"
-              element={<PagosInternetPage />}
-            />
-          </Route>
-
-          {/* RECIBOS */}
-
-          <Route
-            element={
-              <ProtectedRoute
-                permiso="recibos.gestionar_recibo"
-              />
-            }
-          >
-            <Route
-              path="recibos"
-              element={<RecibosPage />}
-            />
-          </Route>
-
-          {/* PEDIDOS */}
-
-          <Route
-            element={
-              <ProtectedRoute
-                permiso="pedidos.gestionar_pedido"
-              />
-            }
-          >
-            <Route
-              path="pedidos"
-              element={<PedidosPage />}
-            />
-          </Route>
-
-          {/* Sprint 3 - Producción mediante Gateway */}
-
-          <Route
-            element={
-              <ProtectedRoute
-                permiso="produccion.ver"
-              />
-            }
-          >
-            <Route
-              path="produccion"
-              element={<ProduccionList />}
-            />
-          </Route>
-
-          <Route
-            element={
-              <ProtectedRoute
-                permiso="produccion.crear"
-              />
-            }
-          >
-            <Route
-              path="produccion/crear"
-              element={<ProduccionForm />}
-            />
-          </Route>
-
-          {/* La ruta legada de consumo queda fuera del flujo de Sprint 3. */}
-
-          <Route
-            element={
-              <ProtectedRoute
-                permiso="produccion.registrar_consumo"
-              />
-            }
-          >
-            <Route
-              path="produccion/consumo-desperdicio"
-              element={<Navigate to="/produccion" replace />}
-            />
-          </Route>
-
-          {/* CU18 - ALMACENES Y EXISTENCIAS */}
-
-          <Route
-            element={
-              <ProtectedRoute
-                permiso="inventario.ver"
-              />
-            }
-          >
-            <Route
-              path="almacenes"
-              element={<AlmacenList />}
-            />
-            <Route
-              path="almacenes/:id/existencias"
-              element={<ExistenciaList />}
-            />
-          </Route>
-
-          {/* CU19 - INGRESOS DE INVENTARIO */}
-          <Route
-            element={
-              <ProtectedRoute
-                permiso="inventario.ingresar"
-              />
-            }
-          >
-            <Route
-              path="inventario/ingresos"
-              element={<MovimientoInventarioPage key="ingreso" modo="INGRESO" />}
-            />
-            <Route
-              path="inventario/ingresos/crear"
-              element={<Navigate to="/inventario/ingresos" replace />}
-            />
-            <Route
-              path="inventario/ingresos/:id"
-              element={<Navigate to="/inventario/ingresos" replace />}
-            />
-          </Route>
-
-          {/* CU20 - EGRESOS DE INVENTARIO */}
-          <Route
-            element={
-              <ProtectedRoute
-                permiso="inventario.egresar"
-              />
-            }
-          >
-            <Route
-              path="inventario/egresos"
-              element={<MovimientoInventarioPage key="egreso" modo="EGRESO" />}
-            />
-            <Route
-              path="inventario/egresos/crear"
-              element={<Navigate to="/inventario/egresos" replace />}
-            />
-            <Route
-              path="inventario/egresos/:id"
-              element={<Navigate to="/inventario/egresos" replace />}
-            />
-          </Route>
-
-          <Route element={<ProtectedRoute permiso="inventario.trasladar" />}>
-            <Route path="inventario/traslados" element={<MovimientoInventarioPage key="traslado" modo="TRASLADO" />} />
-          </Route>
-
-          {/* CU24 - CONSULTAR DASHBOARD */}
-          <Route
-            element={
-              <ProtectedRoute
-                permiso="dashboard.consultar"
-              />
-            }
-          >
-            <Route
-              path="dashboard"
-              element={<DashboardPage />}
-            />
-          </Route>
-          {/* CU25 - GENERAR Y ENVIAR REPORTES */}
-
-<Route
-  element={
-    <ProtectedRoute
-      permiso="reportes.generar"
-    />
-  }
->
-  <Route
-    path="reportes"
-    element={<ReportesPage />}
-  />
-</Route>
+          {/* Módulos de dominio */}
+          {securityRoutes}
+          {catalogRoutes}
+          {customerRoutes}
+          {salesRoutes}
+          {orderRoutes}
+          {paymentRoutes}
+          {productionRoutes}
+          {inventoryRoutes}
+          {reportRoutes}
         </Route>
       </Route>
 
+      {/* Fallback 404 */}
       <Route
         path="*"
         element={<NotFoundPage />}

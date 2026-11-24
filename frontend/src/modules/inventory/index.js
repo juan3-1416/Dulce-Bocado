@@ -1,0 +1,5 @@
+export * from './inventoryRoutes'
+export { default as inventarioService } from './services/inventarioService'
+export { default as inventarioConsultaService } from './services/inventarioConsultaService'
+export { default as ingresoService } from './services/ingresoService'
+export { default as egresoService } from './services/egresoService'

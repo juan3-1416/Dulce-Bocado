@@ -1,0 +1,6 @@
+export * from './catalogRoutes'
+export { default as productoService } from './services/productoService'
+export { default as categoriaService } from './services/categoriaService'
+export { default as recetaService } from './services/recetaService'
+export { default as materiaPrimaService } from './services/materiaPrimaService'
+export { default as presentacionService } from './services/presentacionService'
