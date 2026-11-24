@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 
 import {
   descargarReportePdf,
@@ -13,8 +13,6 @@ const FILTROS_INICIALES = {
     fecha_desde: '',
     fecha_hasta: '',
     estado: '',
-    id_cliente: '',
-    id_usuario: '',
   },
   pedidos: {
     fecha_desde: '',
@@ -22,8 +20,6 @@ const FILTROS_INICIALES = {
     entrega_desde: '',
     entrega_hasta: '',
     estado: '',
-    id_cliente: '',
-    id_usuario: '',
   },
   inventario: {
     id_almacen: '',
@@ -377,7 +373,7 @@ function ReportesPage() {
 
   const renderFiltrosVentas =
     () => (
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <CampoFecha
           label="Fecha desde"
           value={
@@ -417,40 +413,12 @@ function ReportesPage() {
             )
           }
         />
-
-        <CampoNumero
-          label="ID cliente"
-          placeholder="Todos"
-          value={
-            filtrosActuales.id_cliente
-          }
-          onChange={(valor) =>
-            actualizarFiltro(
-              'id_cliente',
-              valor
-            )
-          }
-        />
-
-        <CampoNumero
-          label="ID vendedor"
-          placeholder="Todos"
-          value={
-            filtrosActuales.id_usuario
-          }
-          onChange={(valor) =>
-            actualizarFiltro(
-              'id_usuario',
-              valor
-            )
-          }
-        />
       </div>
     )
 
   const renderFiltrosPedidos =
     () => (
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <CampoFecha
           label="Pedido desde"
           value={
@@ -516,34 +484,6 @@ function ReportesPage() {
             )
           }
         />
-
-        <CampoNumero
-          label="ID cliente"
-          placeholder="Todos"
-          value={
-            filtrosActuales.id_cliente
-          }
-          onChange={(valor) =>
-            actualizarFiltro(
-              'id_cliente',
-              valor
-            )
-          }
-        />
-
-        <CampoNumero
-          label="ID responsable"
-          placeholder="Todos"
-          value={
-            filtrosActuales.id_usuario
-          }
-          onChange={(valor) =>
-            actualizarFiltro(
-              'id_usuario',
-              valor
-            )
-          }
-        />
       </div>
     )
 
@@ -565,11 +505,12 @@ function ReportesPage() {
         />
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
+          <label htmlFor="reporte-tipo-inventario" className="mb-1 block text-sm font-medium text-theme-body">
             Tipo
           </label>
 
           <select
+            id="reporte-tipo-inventario"
             value={
               filtrosActuales.tipo
             }
@@ -579,7 +520,7 @@ function ReportesPage() {
                 event.target.value
               )
             }
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+            className="w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2.5 text-sm text-theme-main focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
           >
             <option value="">
               Todos
@@ -596,7 +537,7 @@ function ReportesPage() {
         </div>
 
         <div className="flex items-end">
-          <label className="flex w-full cursor-pointer items-center gap-3 rounded-xl border border-slate-300 bg-white px-4 py-2.5">
+          <label className="flex w-full cursor-pointer items-center gap-3 rounded-lg border border-theme-border-subtle bg-theme-surface px-4 py-2.5 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-pink-600">
             <input
               type="checkbox"
               checked={
@@ -611,7 +552,7 @@ function ReportesPage() {
               className="h-4 w-4 accent-pink-600"
             />
 
-            <span className="text-sm font-medium text-slate-700">
+            <span className="text-sm font-medium text-theme-body">
               Solo stock crítico
             </span>
           </label>
@@ -683,13 +624,13 @@ function ReportesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <main className="space-y-6 pb-10 text-theme-body">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">
-          Reportes Generales
+        <h1 className="text-2xl font-semibold tracking-tight text-theme-heading sm:text-3xl">
+          Reportes
         </h1>
 
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-theme-muted">
           Genera reportes
           parametrizados, descárgalos
           en PDF o envíalos por correo
@@ -698,10 +639,10 @@ function ReportesPage() {
       </div>
 
       {/* TIPO DE REPORTE */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <p className="mb-3 text-sm font-semibold text-slate-700">
+      <section className="rounded-xl border border-theme-border-subtle bg-theme-surface p-4 sm:p-5">
+        <h2 className="mb-3 text-sm font-semibold text-theme-heading">
           Tipo de reporte
-        </p>
+        </h2>
 
         <div className="grid gap-3 sm:grid-cols-3">
           {[
@@ -729,43 +670,44 @@ function ReportesPage() {
               <button
                 key={tipo}
                 type="button"
+                aria-pressed={tipoReporte === tipo}
                 onClick={() =>
                   cambiarTipo(tipo)
                 }
-                className={`rounded-xl border p-4 text-left transition ${
+                className={`rounded-lg border p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 ${
                   tipoReporte === tipo
                     ? 'border-pink-600 bg-pink-50'
-                    : 'border-slate-200 bg-white hover:border-pink-300'
+                    : 'border-theme-border-subtle bg-theme-surface hover:bg-theme-hover'
                 }`}
               >
                 <p
                   className={`font-semibold ${
                     tipoReporte === tipo
                       ? 'text-pink-700'
-                      : 'text-slate-900'
+                      : 'text-theme-heading'
                   }`}
                 >
                   {titulo}
                 </p>
 
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-sm text-theme-muted">
                   {descripcion}
                 </p>
               </button>
             )
           )}
         </div>
-      </div>
+      </section>
 
       {/* FILTROS */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-theme-border-subtle bg-theme-surface p-4 sm:p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-semibold text-slate-900">
+            <h2 className="font-semibold text-theme-heading">
               Parámetros del reporte
             </h2>
 
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-theme-muted">
               Los parámetros se aplican
               también al PDF y al envío
               por correo.
@@ -777,7 +719,7 @@ function ReportesPage() {
             onClick={
               limpiarFiltros
             }
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+            className="rounded-lg border border-theme-border-subtle px-3 py-2 text-sm font-medium text-theme-body hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
           >
             Limpiar filtros
           </button>
@@ -794,18 +736,18 @@ function ReportesPage() {
         {tipoReporte ===
           'inventario' &&
           renderFiltrosInventario()}
-      </div>
+      </section>
 
       {/* CORREOS */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-theme-border-subtle bg-theme-surface p-4 sm:p-5">
         <label
           htmlFor="destinatarios"
-          className="block font-semibold text-slate-900"
+          className="block font-semibold text-theme-heading"
         >
           Destinatarios
         </label>
 
-        <p className="mt-1 text-sm text-slate-500">
+        <p id="destinatarios-ayuda" className="mt-1 text-sm text-theme-muted">
           Para múltiples
           destinatarios, separa los
           correos con coma o punto y
@@ -814,6 +756,7 @@ function ReportesPage() {
 
         <input
           id="destinatarios"
+          aria-describedby="destinatarios-ayuda"
           type="text"
           value={destinatarios}
           onChange={(event) =>
@@ -822,14 +765,14 @@ function ReportesPage() {
             )
           }
           placeholder="correo1@ejemplo.com, correo2@ejemplo.com"
-          className="mt-3 w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+          className="mt-3 w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-4 py-2.5 text-sm text-theme-main focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
         />
-      </div>
+      </section>
 
       {/* ACCIONES */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-theme-border-subtle bg-theme-surface p-4 sm:p-5">
         <div className="mb-4">
-          <h2 className="font-semibold text-slate-900">
+          <h2 className="font-semibold text-theme-heading">
             {
               nombresTipo[
                 tipoReporte
@@ -837,7 +780,7 @@ function ReportesPage() {
             }
           </h2>
 
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-theme-muted">
             Selecciona la operación
             que deseas realizar.
           </p>
@@ -852,7 +795,7 @@ function ReportesPage() {
             onClick={
               consultarReporte
             }
-            className="rounded-xl bg-pink-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="min-h-11 rounded-lg bg-pink-600 px-4 py-3 text-sm font-semibold text-theme-brand-text hover:bg-pink-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {cargando ===
             'consultar'
@@ -866,7 +809,7 @@ function ReportesPage() {
               cargando !== null
             }
             onClick={descargarPdf}
-            className="rounded-xl border border-pink-600 px-4 py-3 text-sm font-semibold text-pink-600 transition hover:bg-pink-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="min-h-11 rounded-lg border border-pink-600 px-4 py-3 text-sm font-semibold text-pink-700 hover:bg-pink-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {cargando === 'pdf'
               ? 'Generando PDF...'
@@ -879,7 +822,7 @@ function ReportesPage() {
               cargando !== null
             }
             onClick={enviarCorreo}
-            className="rounded-xl bg-slate-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+            className="min-h-11 rounded-lg border border-theme-border-subtle bg-theme-subtle px-4 py-3 text-sm font-semibold text-theme-heading hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {cargando ===
             'correo'
@@ -887,11 +830,11 @@ function ReportesPage() {
               : 'Enviar por correo'}
           </button>
         </div>
-      </div>
+      </section>
 
       {/* ÉXITO */}
       {mensaje && (
-        <div className="rounded-2xl border border-green-200 bg-green-50 p-5">
+        <div role="status" className="rounded-xl border border-green-200 bg-green-50 p-5">
           <h2 className="font-semibold text-green-800">
             Operación completada
           </h2>
@@ -925,7 +868,7 @@ function ReportesPage() {
 
       {/* ERROR */}
       {error && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-5">
           <h2 className="font-semibold text-red-800">
             No se pudo completar la
             operación
@@ -962,13 +905,13 @@ function ReportesPage() {
 
       {/* RESULTADOS */}
       {resultado && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="rounded-xl border border-theme-border-subtle bg-theme-surface p-4 sm:p-5">
           <div className="mb-5">
-            <h2 className="text-lg font-bold text-slate-900">
+            <h2 className="text-lg font-semibold text-theme-heading">
               {resultado.titulo}
             </h2>
 
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-theme-muted">
               Resultados obtenidos con
               los parámetros
               seleccionados.
@@ -986,15 +929,15 @@ function ReportesPage() {
                 ]) => (
                   <div
                     key={clave}
-                    className="rounded-xl border border-slate-100 bg-slate-50 p-4"
+                    className="rounded-lg bg-theme-subtle p-4"
                   >
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <p className="text-sm text-theme-muted">
                       {tituloResumen(
                         clave
                       )}
                     </p>
 
-                    <p className="mt-1 text-xl font-bold text-slate-900">
+                    <p className="mt-1 text-xl font-semibold tabular-nums text-theme-heading">
                       {valorResumen(
                         clave,
                         valor
@@ -1007,9 +950,9 @@ function ReportesPage() {
           )}
 
           {renderTabla()}
-        </div>
+        </section>
       )}
-    </div>
+    </main>
   )
 }
 
@@ -1018,13 +961,15 @@ function CampoFecha({
   value,
   onChange,
 }) {
+  const id = useId()
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium text-slate-700">
+      <label htmlFor={id} className="mb-1 block text-sm font-medium text-theme-body">
         {label}
       </label>
 
       <input
+        id={id}
         type="date"
         value={value}
         onChange={(event) =>
@@ -1032,7 +977,7 @@ function CampoFecha({
             event.target.value
           )
         }
-        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+        className="w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2.5 text-sm text-theme-main focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
       />
     </div>
   )
@@ -1044,13 +989,15 @@ function CampoTexto({
   onChange,
   placeholder,
 }) {
+  const id = useId()
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium text-slate-700">
+      <label htmlFor={id} className="mb-1 block text-sm font-medium text-theme-body">
         {label}
       </label>
 
       <input
+        id={id}
         type="text"
         value={value}
         placeholder={placeholder}
@@ -1059,7 +1006,7 @@ function CampoTexto({
             event.target.value
           )
         }
-        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+        className="w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2.5 text-sm text-theme-main focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
       />
     </div>
   )
@@ -1071,13 +1018,15 @@ function CampoNumero({
   onChange,
   placeholder,
 }) {
+  const id = useId()
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium text-slate-700">
+      <label htmlFor={id} className="mb-1 block text-sm font-medium text-theme-body">
         {label}
       </label>
 
       <input
+        id={id}
         type="number"
         min="1"
         value={value}
@@ -1087,7 +1036,7 @@ function CampoNumero({
             event.target.value
           )
         }
-        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+        className="w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2.5 text-sm text-theme-main focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
       />
     </div>
   )
@@ -1318,7 +1267,7 @@ function TablaBase({
   children,
 }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200">
+    <div className="overflow-x-auto rounded-lg border border-theme-border-subtle">
       <table className="min-w-full text-sm">
         {children}
       </table>
@@ -1332,7 +1281,8 @@ function Th({
 }) {
   return (
     <th
-      className={`bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600 ${
+      scope="col"
+      className={`bg-theme-subtle px-4 py-3 text-xs font-semibold text-theme-muted ${
         derecha
           ? 'text-right'
           : 'text-left'
@@ -1349,7 +1299,7 @@ function Td({
 }) {
   return (
     <td
-      className={`whitespace-nowrap px-4 py-3 text-slate-700 ${
+      className={`whitespace-nowrap border-t border-theme-border-subtle px-4 py-3 text-theme-body ${
         derecha
           ? 'text-right'
           : 'text-left'
