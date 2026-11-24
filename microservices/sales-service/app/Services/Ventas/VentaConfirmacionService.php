@@ -176,6 +176,23 @@ class VentaConfirmacionService
                 ->first();
 
             if ($intento) {
+                if ($intento->estado === 'RECHAZADA') {
+                    $intento->update([
+                        'operacion_id' => (string) Str::uuid(),
+                        'clave' => $clave,
+                        'hash_solicitud' => $hash,
+                        'id_usuario' => $actor,
+                        'estado' => 'PENDIENTE',
+                        'items_snapshot' => $items,
+                        'codigo_http' => null,
+                        'codigo_resultado' => null,
+                        'respuesta_snapshot' => null,
+                        'rechazado_at' => null,
+                    ]);
+
+                    return $intento->fresh();
+                }
+
                 if (
                     $intento->clave !== $clave ||
                     $intento->hash_solicitud
@@ -186,7 +203,7 @@ class VentaConfirmacionService
                     throw new VentaException(
                         409,
                         'CLAVE_IDEMPOTENTE_EN_CONFLICTO',
-                        'La confirmación ya fue iniciada con otra solicitud.'
+                        'Ya existe una solicitud de confirmación previa en proceso para esta venta.'
                     );
                 }
 

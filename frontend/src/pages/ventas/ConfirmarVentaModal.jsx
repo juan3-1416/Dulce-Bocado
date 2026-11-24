@@ -152,31 +152,39 @@ export default function ConfirmarVentaModal({
 
       if (code === 'STOCK_INSUFICIENTE') {
         setErrorConfirmacion(
-          'Stock insuficiente: El almacén Mostrador no cuenta con las existencias requeridas para esta venta. Reponga existencias o modifique el borrador.',
+          'Stock insuficiente: El almacén Mostrador no cuenta con las existencias requeridas para esta venta. Repón existencias desde producción o modifica los artículos del borrador.',
         )
       } else if (code === 'VENTA_NO_CONFIRMABLE') {
         setErrorConfirmacion(
-          'La venta no puede confirmarse porque ya no se encuentra en estado borrador.',
+          'Esta venta no puede confirmarse porque ya fue confirmada o cancelada anteriormente.',
         )
       } else if (code === 'CLAVE_IDEMPOTENTE_EN_CONFLICTO') {
         setErrorConfirmacion(
-          'La confirmación ya fue iniciada con otra solicitud o parámetros diferentes.',
+          'Ya se procesó un intento de confirmación previo para esta venta. Por favor, actualiza el listado o verifica si ya fue confirmada antes de intentar nuevamente.',
         )
       } else if (code === 'INVENTORY_NO_DISPONIBLE') {
         setErrorConfirmacion(
-          'El servicio de Inventario no respondió a tiempo. Puede reintentar la operación con la misma clave para conciliar.',
+          'El servicio de inventario no respondió a tiempo. Por favor, espera un momento y vuelve a intentar la confirmación.',
         )
       } else if (code === 'CONFIRMACION_INCIERTA') {
         setErrorConfirmacion(
-          'El resultado en Inventario no está confirmado todavía. Puede reintentar para conciliar.',
+          'No se pudo verificar el resultado del descuento en inventario. Por favor, intenta nuevamente para validar la operación.',
+        )
+      } else if (code === 'INVENTORY_RECHAZO') {
+        setErrorConfirmacion(
+          'El inventario no permitió confirmar la venta debido a existencias insuficientes o almacén no disponible.',
         )
       } else if (err.status === 403) {
         setErrorConfirmacion(
-          'No tienes permiso para confirmar ventas (se requiere permiso ventas.confirmar).',
+          'No tienes permiso para confirmar ventas (se requiere el permiso de confirmación de ventas).',
         )
       } else {
+        const rawMessage = err.data?.error?.message || err.message || ''
+        const esTecnico = /CLAVE_IDEMPOTENTE|idempotent|SQLSTATE|PDOException/i.test(rawMessage)
         setErrorConfirmacion(
-          err.message || 'Ocurrió un error al intentar confirmar la venta.',
+          esTecnico || !rawMessage
+            ? 'Ocurrió un inconveniente al intentar confirmar la venta. Por favor, intenta nuevamente.'
+            : rawMessage,
         )
       }
     } finally {
@@ -221,14 +229,7 @@ export default function ConfirmarVentaModal({
             >
               <div className="flex items-start gap-2">
                 <span className="font-bold">Error:</span>
-                <div>
-                  <p>{errorConfirmacion}</p>
-                  {codigoError && (
-                    <p className="mt-1 font-mono text-xs text-red-600">
-                      Código: {codigoError}
-                    </p>
-                  )}
-                </div>
+                <p>{errorConfirmacion}</p>
               </div>
             </div>
           )}
