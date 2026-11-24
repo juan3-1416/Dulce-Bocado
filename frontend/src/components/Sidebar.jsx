@@ -78,48 +78,48 @@ function IconoReportes({ className = 'h-4 w-4' }) {
 }
 
 /**
- * ConfiguraciÃ³n modular de los mÃ³dulos y opciones de navegaciÃ³n.
- * Estructurado segÃºn los 27 Casos de Uso (CU) oficiales del sistema.
+ * Configuración modular de los módulos y opciones de navegación.
+ * Estructurado según los 27 Casos de Uso (CU) oficiales del sistema.
  */
 const SECCIONES_MENU = [
-{
-  id: 'seguridad',
-  titulo: 'Seguridad',
-  iconoComponente: IconoSeguridad,
-  iconoNinos: 'ðŸ›¡ï¸',
-  opciones: [
-    {
-      nombre: 'Usuarios',
-      ruta: '/seguridad/usuarios',
-      permiso: 'seguridad.gestionar_usuario',
-    },
-    {
-      nombre: 'Roles',
-      ruta: '/seguridad/roles',
-      permiso: 'seguridad.gestionar_rol',
-    },
-    {
-      nombre: 'Permisos',
-      ruta: '/seguridad/permisos',
-      permiso: 'seguridad.gestionar_permiso',
-    },
-    {
-      nombre: 'Rol - Permiso',
-      ruta: '/seguridad/rol-permiso',
-      permiso: 'seguridad.gestionar_rol_permiso',
-    },
-    {
-      nombre: 'Asignaciones',
-      ruta: '/seguridad/asignaciones',
-      permiso: 'seguridad.asignar_roles_permisos',
-    },
-  ],
-},
+  {
+    id: 'seguridad',
+    titulo: 'Seguridad',
+    iconoComponente: IconoSeguridad,
+    iconoNinos: '🛡️',
+    opciones: [
+      {
+        nombre: 'Usuarios',
+        ruta: '/seguridad/usuarios',
+        permiso: 'seguridad.gestionar_usuario',
+      },
+      {
+        nombre: 'Roles',
+        ruta: '/seguridad/roles',
+        permiso: 'seguridad.gestionar_rol',
+      },
+      {
+        nombre: 'Permisos',
+        ruta: '/seguridad/permisos',
+        permiso: 'seguridad.gestionar_permiso',
+      },
+      {
+        nombre: 'Rol - Permiso',
+        ruta: '/seguridad/rol-permiso',
+        permiso: 'seguridad.gestionar_rol_permiso',
+      },
+      {
+        nombre: 'Asignaciones',
+        ruta: '/seguridad/asignaciones',
+        permiso: 'seguridad.asignar_roles_permisos',
+      },
+    ],
+  },
   {
     id: 'catalogo',
-    titulo: 'CatÃ¡logo y Recetas',
+    titulo: 'Catálogo y Recetas',
     iconoComponente: IconoCatalogo,
-    iconoNinos: 'ðŸ§',
+    iconoNinos: '🧁',
     opciones: [
       {
         nombre: 'Productos y Presentaciones',
@@ -140,23 +140,22 @@ const SECCIONES_MENU = [
   },
   {
     id: 'produccion',
-    titulo: 'ProducciÃ³n',
+    titulo: 'Producción',
     iconoComponente: IconoProduccion,
-    iconoNinos: 'âš™ï¸',
+    iconoNinos: '⚙️',
     opciones: [
       {
-        nombre: 'ProducciÃ³n',
+        nombre: 'Producción',
         ruta: '/produccion',
         permiso: 'produccion.ver',
       },
-
     ],
   },
   {
     id: 'inventario',
     titulo: 'Inventario',
     iconoComponente: IconoInventario,
-    iconoNinos: 'ðŸ“¦',
+    iconoNinos: '📦',
     opciones: [
       {
         nombre: 'Almacenes y Stock',
@@ -184,23 +183,20 @@ const SECCIONES_MENU = [
     id: 'ventas',
     titulo: 'Ventas y Comercial',
     iconoComponente: IconoVentas,
-    iconoNinos: 'ðŸ’³',
+    iconoNinos: '💳',
     opciones: [
       {
         nombre: 'Ventas',
         ruta: '/ventas',
         permiso: 'ventas.ver',
       },
-
-
       {
-        nombre: 'GestiÃ³n de Pedidos',
+        nombre: 'Gestión de Pedidos',
         ruta: '/pedidos',
         permiso: 'pedidos.gestionar_pedido',
       },
-      
       {
-        nombre: 'GestiÃ³n de Pagos',
+        nombre: 'Gestión de Pagos',
         ruta: '/pagos',
         permiso: 'pagos.gestionar_pago',
       },
@@ -210,7 +206,7 @@ const SECCIONES_MENU = [
     id: 'clientes',
     titulo: 'Clientes',
     iconoComponente: IconoClientes,
-    iconoNinos: 'ðŸ‘¥',
+    iconoNinos: '👥',
     opciones: [
       {
         nombre: 'Directorio de Clientes',
@@ -223,7 +219,7 @@ const SECCIONES_MENU = [
     id: 'compras',
     titulo: 'Compras',
     iconoComponente: IconoCompras,
-    iconoNinos: 'ðŸ›’',
+    iconoNinos: '🛒',
     opciones: [
       {
         nombre: 'Proveedores y Compras',
@@ -236,7 +232,7 @@ const SECCIONES_MENU = [
     id: 'reportes',
     titulo: 'Reportes',
     iconoComponente: IconoReportes,
-    iconoNinos: 'ðŸ“Š',
+    iconoNinos: '📊',
     opciones: [
       {
         nombre: 'Dashboard',
@@ -262,7 +258,7 @@ function Sidebar() {
   // Estado del buscador interactivo
   const [busqueda, setBusqueda] = useState('')
 
-  // Control de apertura/cierre de cada secciÃ³n por su ID
+  // Control de apertura/cierre de cada sección por su ID
   const [seccionesAbiertas, setSeccionesAbiertas] = useState(() => {
     const inicial = { seguridad: true }
     SECCIONES_MENU.forEach((seccion) => {
@@ -283,7 +279,7 @@ function Sidebar() {
     }))
   }
 
-  // Filtrado reactivo de mÃ³dulos segÃºn permisos RBAC y texto de bÃºsqueda
+  // Filtrado reactivo de módulos según permisos RBAC y texto de búsqueda
   const seccionesFiltradas = useMemo(() => {
     const termino = busqueda.trim().toLowerCase()
 
@@ -344,11 +340,11 @@ function Sidebar() {
 
   return (
     <aside className="h-fit rounded-2xl bg-white p-4 shadow-sm">
-      {/* Cabecera del MenÃº Interactivo */}
+      {/* Cabecera del Menú Interactivo */}
       <div className="mb-3 space-y-2">
         <div className="flex items-center justify-between px-1">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-            NavegaciÃ³n
+            Navegación
           </span>
           <button
             type="button"
@@ -368,7 +364,7 @@ function Sidebar() {
             type="text"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar mÃ³dulo..."
+            placeholder="Buscar módulo..."
             className="w-full rounded-xl border border-slate-200 bg-slate-50 py-1.5 pl-8 pr-3 text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-pink-500 focus:bg-white focus:ring-1 focus:ring-pink-500 transition"
           />
           <svg
@@ -389,9 +385,9 @@ function Sidebar() {
               type="button"
               onClick={() => setBusqueda('')}
               className="absolute right-2.5 top-2 text-xs text-slate-400 hover:text-slate-600"
-              title="Limpiar bÃºsqueda"
+              title="Limpiar búsqueda"
             >
-              âœ•
+              ✕
             </button>
           )}
         </div>
@@ -405,11 +401,11 @@ function Sidebar() {
       </div>
 
       <nav className="space-y-1.5">
-        {/* Enlace estÃ¡tico Inicio */}
+        {/* Enlace estático Inicio */}
         <NavLink to="/" end className={claseEnlace}>
           <span className="flex items-center gap-2.5">
             {esTemaNinos ? (
-              <span className="text-sm">ðŸ </span>
+              <span className="text-sm">🏠</span>
             ) : (
               <IconoInicio className="h-4 w-4 shrink-0 text-slate-500" />
             )}
@@ -417,7 +413,7 @@ function Sidebar() {
           </span>
         </NavLink>
 
-        {/* Secciones dinÃ¡micas */}
+        {/* Secciones dinámicas */}
         {seccionesFiltradas.map((seccion) => {
           const estaAbierta = busqueda
             ? true
@@ -431,7 +427,7 @@ function Sidebar() {
                 type="button"
                 onClick={() => toggleSeccion(seccion.id)}
                 className="flex w-full items-center justify-between rounded-lg px-2.5 pb-1 pt-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition"
-                title={`Alternar mÃ³dulo ${seccion.titulo}`}
+                title={`Alternar módulo ${seccion.titulo}`}
               >
                 <span className="flex items-center gap-2">
                   {esTemaNinos ? (
@@ -482,7 +478,7 @@ function Sidebar() {
 
         {seccionesFiltradas.length === 0 && (
           <div className="p-3 text-center text-xs text-slate-500">
-            No se encontraron mÃ³dulos para "{busqueda}".
+            No se encontraron módulos para "{busqueda}".
           </div>
         )}
       </nav>
@@ -491,4 +487,3 @@ function Sidebar() {
 }
 
 export default Sidebar
-
