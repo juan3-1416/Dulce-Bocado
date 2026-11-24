@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
@@ -260,7 +260,7 @@ function Sidebar() {
 
   // Control de apertura/cierre de cada sección por su ID
   const [seccionesAbiertas, setSeccionesAbiertas] = useState(() => {
-    const inicial = { seguridad: true }
+    const inicial = {}
     SECCIONES_MENU.forEach((seccion) => {
       const coincideRuta = seccion.opciones.some((opcion) =>
         location.pathname.startsWith(opcion.ruta),
@@ -271,6 +271,21 @@ function Sidebar() {
     })
     return inicial
   })
+
+  // Sincroniza la apertura al navegar directamente a una ruta de módulo
+  useEffect(() => {
+    SECCIONES_MENU.forEach((seccion) => {
+      const coincideRuta = seccion.opciones.some((opcion) =>
+        location.pathname.startsWith(opcion.ruta),
+      )
+      if (coincideRuta) {
+        setSeccionesAbiertas((prev) => (prev[seccion.id] ? prev : {
+          ...prev,
+          [seccion.id]: true,
+        }))
+      }
+    })
+  }, [location.pathname])
 
   const toggleSeccion = (id) => {
     setSeccionesAbiertas((prev) => ({

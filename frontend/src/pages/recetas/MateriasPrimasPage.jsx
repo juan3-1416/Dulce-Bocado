@@ -370,18 +370,27 @@ function MateriasPrimasPage() {
 
                       <td className="px-6 py-4">
                         {materiaPrima.unidad_medida === 'g' && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800">
-                            ⚖️ Peso / Gramos (g)
+                          <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200/80 bg-emerald-50/80 px-2.5 py-1 text-xs font-medium text-emerald-800">
+                            <svg className="h-3.5 w-3.5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                            </svg>
+                            Gramos (g) · Peso
                           </span>
                         )}
                         {materiaPrima.unidad_medida === 'ml' && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-800">
-                            🥛 Volumen / Mililitros (ml)
+                          <span className="inline-flex items-center gap-1.5 rounded-md border border-sky-200/80 bg-sky-50/80 px-2.5 py-1 text-xs font-medium text-sky-800">
+                            <svg className="h-3.5 w-3.5 text-sky-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                            </svg>
+                            Mililitros (ml) · Volumen
                           </span>
                         )}
                         {materiaPrima.unidad_medida === 'unidad' && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">
-                            🥚 Conteo / Unidades (u)
+                          <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-200/80 bg-amber-50/80 px-2.5 py-1 text-xs font-medium text-amber-800">
+                            <svg className="h-3.5 w-3.5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                            </svg>
+                            Unidades (u) · Conteo
                           </span>
                         )}
                       </td>
@@ -520,13 +529,15 @@ function MateriasPrimasPage() {
                   <button
                     type="button"
                     onClick={() => manejarCambioTipoUnidad('g')}
-                    className={`flex flex-col items-center justify-center rounded-xl border p-3 text-center transition ${
+                    className={`group flex flex-col items-center justify-center rounded-xl border p-3 text-center transition ${
                       unidadMedida === 'g'
                         ? 'border-pink-600 bg-pink-50 text-pink-700 ring-2 ring-pink-500'
-                        : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
                     }`}
                   >
-                    <span className="text-xl">⚖️</span>
+                    <svg className={`h-5 w-5 ${unidadMedida === 'g' ? 'text-pink-600' : 'text-gray-400 group-hover:text-gray-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                    </svg>
                     <span className="mt-1 text-xs font-bold">Peso / Sólidos</span>
                     <span className="text-[10px] text-gray-500">Gramos (g) · Kilos</span>
                   </button>
@@ -534,13 +545,15 @@ function MateriasPrimasPage() {
                   <button
                     type="button"
                     onClick={() => manejarCambioTipoUnidad('ml')}
-                    className={`flex flex-col items-center justify-center rounded-xl border p-3 text-center transition ${
+                    className={`group flex flex-col items-center justify-center rounded-xl border p-3 text-center transition ${
                       unidadMedida === 'ml'
                         ? 'border-pink-600 bg-pink-50 text-pink-700 ring-2 ring-pink-500'
-                        : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
                     }`}
                   >
-                    <span className="text-xl">🥛</span>
+                    <svg className={`h-5 w-5 ${unidadMedida === 'ml' ? 'text-pink-600' : 'text-gray-400 group-hover:text-gray-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    </svg>
                     <span className="mt-1 text-xs font-bold">Volumen / Líquidos</span>
                     <span className="text-[10px] text-gray-500">Mililitros (ml) · Litros</span>
                   </button>
@@ -548,13 +561,15 @@ function MateriasPrimasPage() {
                   <button
                     type="button"
                     onClick={() => manejarCambioTipoUnidad('unidad')}
-                    className={`flex flex-col items-center justify-center rounded-xl border p-3 text-center transition ${
+                    className={`group flex flex-col items-center justify-center rounded-xl border p-3 text-center transition ${
                       unidadMedida === 'unidad'
                         ? 'border-pink-600 bg-pink-50 text-pink-700 ring-2 ring-pink-500'
-                        : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
                     }`}
                   >
-                    <span className="text-xl">🥚</span>
+                    <svg className={`h-5 w-5 ${unidadMedida === 'unidad' ? 'text-pink-600' : 'text-gray-400 group-hover:text-gray-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
                     <span className="mt-1 text-xs font-bold">Conteo / Piezas</span>
                     <span className="text-[10px] text-gray-500">Unidades (u) · Maples</span>
                   </button>
@@ -564,9 +579,14 @@ function MateriasPrimasPage() {
               {/* Asistente de Cálculo de Costo de Compra */}
               <div className="rounded-xl border border-pink-200 bg-pink-50/50 p-4 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-gray-900">
-                    💡 Calculadora de compra y costo unitario
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <svg className="h-4 w-4 text-pink-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    <h3 className="text-sm font-semibold text-gray-900">
+                      Calculadora de compra y costo unitario
+                    </h3>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setModoAvanzado(!modoAvanzado)}

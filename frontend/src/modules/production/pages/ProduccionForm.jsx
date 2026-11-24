@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { listarRecetas } from '../../services/catalogoRecetaService'
 import { generarClaveProduccion, registrarProduccionGateway } from '../../services/produccionGatewayService'
+import { formatearCantidad } from '../../../utils/formatters'
 
 const clavePendiente = (actor) => `sprint3.produccion.pendiente.${actor}`
 
@@ -166,7 +167,16 @@ export default function ProduccionForm() {
           <h2 className="text-sm font-semibold text-blue-900">Receta #{receta.id_receta}</h2>
           <p className="mt-1 text-xs text-blue-800">Insumos por unidad. Production calculará las cantidades exactas y Inventory verificará el stock al registrar.</p>
           <ul className="mt-3 space-y-1 text-sm text-blue-900">
-            {receta.detalles.map((detalle) => <li key={detalle.id_materia_prima}>{detalle.materia_prima?.nombre || `Materia prima #${detalle.id_materia_prima}`}: {detalle.cantidad} {detalle.materia_prima?.unidad_medida || ''}</li>)}
+            {receta.detalles.map((detalle) => (
+              <li key={detalle.id_materia_prima}>
+                <span className="font-medium">{detalle.materia_prima?.nombre || `Materia prima #${detalle.id_materia_prima}`}</span>: {formatearCantidad(detalle.cantidad)} {detalle.materia_prima?.unidad_medida || ''} por unidad
+                {Number(cantidad) > 1 && (
+                  <span className="ml-2 text-xs text-blue-700">
+                    (Total: {formatearCantidad(Number(detalle.cantidad) * Number(cantidad))} {detalle.materia_prima?.unidad_medida || ''})
+                  </span>
+                )}
+              </li>
+            ))}
           </ul>
         </div>}
 
