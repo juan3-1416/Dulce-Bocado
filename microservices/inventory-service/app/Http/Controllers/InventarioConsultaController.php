@@ -101,11 +101,18 @@ class InventarioConsultaController extends Controller
         ]);
     }
 
-    public function movimientos(): \Illuminate\Http\JsonResponse
+    public function movimientos(Request $request): JsonResponse
     {
-        $movimientos = \App\Models\Movimiento::query()
+        $datos = $request->validate([
+            'tipo' => ['nullable', 'in:INGRESO,EGRESO,TRASLADO'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $query = \App\Models\Movimiento::query()
+            ->when($datos['tipo'] ?? null, fn ($query, $tipo) => $query->where('tipo', $tipo))
             ->orderByDesc('id_movimiento')
-            ->get([
+            ->select([
                 'id_movimiento',
                 'tipo',
                 'tipo_articulo',
@@ -120,7 +127,22 @@ class InventarioConsultaController extends Controller
                 'created_at',
             ]);
 
+        if (isset($datos['per_page'])) {
+            $pagina = $query->paginate((int) $datos['per_page']);
+
+            return response()->json([
+                'movimientos' => $pagina->items(),
+                'paginacion' => [
+                    'pagina' => $pagina->currentPage(),
+                    'ultima_pagina' => $pagina->lastPage(),
+                    'por_pagina' => $pagina->perPage(),
+                    'total' => $pagina->total(),
+                ],
+            ]);
+        }
+
         return response()->json([
-            'movimientos' => $movimientos,
+            'movimientos' => $query->get(),
         ]);
-    }}
+    }
+}

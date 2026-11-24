@@ -163,6 +163,53 @@ class MovimientoConsultaTest extends TestCase
             );
     }
 
+    public function test_filtra_tipo_y_pagina_sin_mezclar_movimientos(): void
+    {
+        $this->simularSeguridad(['inventario.ver']);
+        foreach (range(1, 13) as $numero) {
+            Movimiento::create([
+                'tipo' => $numero === 13 ? 'EGRESO' : 'INGRESO',
+                'tipo_articulo' => 'MATERIA_PRIMA',
+                'articulo_id' => 10,
+                'cantidad' => '1.000',
+                'unidad' => 'g',
+                'motivo' => "Movimiento {$numero}",
+                'actor_usuario_id' => 1,
+            ]);
+        }
+
+        $primera = $this->withToken('token-prueba')
+            ->getJson('/api/movimientos?tipo=INGRESO&per_page=10&page=1')
+            ->assertOk()
+            ->assertJsonCount(10, 'movimientos')
+            ->assertJsonPath('paginacion.total', 12)
+            ->assertJsonPath('paginacion.ultima_pagina', 2)
+            ->assertJsonPath('movimientos.0.motivo', 'Movimiento 12');
+
+        $segunda = $this->withToken('token-prueba')
+            ->getJson('/api/movimientos?tipo=INGRESO&per_page=10&page=2')
+            ->assertOk()
+            ->assertJsonCount(2, 'movimientos')
+            ->assertJsonPath('paginacion.pagina', 2)
+            ->assertJsonPath('movimientos.1.motivo', 'Movimiento 1');
+
+        $this->assertEmpty(array_intersect(
+            array_column($primera->json('movimientos'), 'id_movimiento'),
+            array_column($segunda->json('movimientos'), 'id_movimiento'),
+        ));
+        $this->withToken('token-prueba')->getJson('/api/movimientos?tipo=EGRESO')
+            ->assertOk()->assertJsonCount(1, 'movimientos');
+    }
+
+    public function test_rechaza_filtros_y_paginacion_invalidos(): void
+    {
+        $this->simularSeguridad(['inventario.ver']);
+        foreach (['tipo=OTRO', 'page=0', 'per_page=101'] as $consulta) {
+            $this->withToken('token-prueba')->getJson('/api/movimientos?'.$consulta)
+                ->assertStatus(422);
+        }
+    }
+
     private function simularSeguridad(
         array $permisos
     ): void {

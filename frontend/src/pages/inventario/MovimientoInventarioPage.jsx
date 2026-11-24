@@ -14,7 +14,7 @@ import {
   generarClaveInventario,
   listarAlmacenes,
   listarExistencias,
-  listarMovimientos,
+  consultarHistorialMovimientos,
   registrarEgreso,
   registrarIngreso,
   registrarTraslado,
@@ -51,6 +51,9 @@ export default function MovimientoInventarioPage({
 
   const [movimientos, setMovimientos] =
     useState([])
+  const [pagina, setPagina] = useState(1)
+  const [paginacion, setPaginacion] = useState({ pagina: 1, ultima_pagina: 1, total: 0 })
+  const [saldosActualizados, setSaldosActualizados] = useState([])
 
   const [
     presentaciones,
@@ -119,15 +122,16 @@ export default function MovimientoInventarioPage({
 
   const cargar = useCallback(
     async (signal) => {
+      setCargando(true)
       try {
         const [
           almacenesActuales,
           movimientosActuales,
         ] = await Promise.all([
           listarAlmacenes({ signal }),
-          listarMovimientos(
+          consultarHistorialMovimientos(
             modo,
-            { signal },
+            { signal, pagina },
           ),
         ])
 
@@ -138,8 +142,9 @@ export default function MovimientoInventarioPage({
         )
 
         setMovimientos(
-          movimientosActuales,
+          movimientosActuales.movimientos,
         )
+        setPaginacion(movimientosActuales.paginacion)
 
         setError('')
       } catch (err) {
@@ -155,7 +160,7 @@ export default function MovimientoInventarioPage({
         }
       }
     },
-    [modo],
+    [modo, pagina],
   )
 
   useEffect(() => {
@@ -652,6 +657,7 @@ export default function MovimientoInventarioPage({
     }
 
     setGuardando(true)
+    setSaldosActualizados([])
 
     try {
       const operacion =
@@ -679,17 +685,30 @@ export default function MovimientoInventarioPage({
       setMotivo('')
       setObservaciones('')
 
+      // El saldo se refresca aunque falle la consulta del historial.
+      setRevisionExistencias((valor) => valor + 1)
+      window.dispatchEvent(new Event('inventario:actualizado'))
       try {
-        setMovimientos(
-          await listarMovimientos(
-            modo,
-          ),
-        )
+        const ids = modo === 'TRASLADO'
+          ? [datos.almacen_origen_id, datos.almacen_destino_id]
+          : [datos.almacen_id]
+        const saldos = await Promise.all(ids.map(async (id) => ({
+          almacen_id: id,
+          existencias: await listarExistencias({ almacen_id: id, tipo_articulo: datos.tipo_articulo, articulo_id: datos.articulo_id }),
+        })))
+        setSaldosActualizados(saldos)
+      } catch {
+        setError('El movimiento se registró, pero no se pudo consultar el saldo actualizado. Revisa las existencias del almacén.')
+      }
 
-        setRevisionExistencias(
-          (valor) =>
-            valor + 1,
-        )
+      try {
+        if (pagina !== 1) {
+          setPagina(1)
+        } else {
+          const historial = await consultarHistorialMovimientos(modo)
+          setMovimientos(historial.movimientos)
+          setPaginacion(historial.paginacion)
+        }
       } catch {
         setError(
           'El movimiento se registró, pero no se pudo actualizar el historial. Reintenta la consulta.',
@@ -706,16 +725,16 @@ export default function MovimientoInventarioPage({
   }
 
   return (
-    <section className="space-y-6">
+    <section className="min-w-0 space-y-6 pb-10 text-theme-body">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">
+        <h1 className="text-2xl font-semibold text-theme-heading">
           {
             CONFIG[modo]
               .titulo
           }
         </h1>
 
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-theme-muted">
           Registra movimientos trazables y consulta el historial del almacén.
         </p>
       </div>
@@ -742,7 +761,7 @@ export default function MovimientoInventarioPage({
                 className={`rounded-lg px-3 py-2 text-sm font-semibold ${
                   clave === modo
                     ? 'bg-pink-600 text-white'
-                    : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                    : 'border border-theme-border-subtle bg-theme-surface text-theme-body hover:bg-theme-hover'
                 }`}
               >
                 {valor.titulo}
@@ -782,13 +801,34 @@ export default function MovimientoInventarioPage({
         </div>
       )}
 
+      {saldosActualizados.length > 0 && (
+        <section aria-label="Existencias actualizadas" className="rounded-xl border border-theme-border-subtle bg-theme-surface p-4">
+          <h2 className="font-semibold text-theme-heading">Existencias después del movimiento</h2>
+          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            {saldosActualizados.map(({ almacen_id, existencias }) => (
+              <div key={almacen_id}>
+                <Link to={`/almacenes/${almacen_id}/existencias`} className="font-medium text-pink-700 underline underline-offset-4">
+                  {almacenes.find((item) => item.id_almacen === almacen_id)?.nombre || `Almacén #${almacen_id}`}
+                </Link>
+                {existencias.map((item) => (
+                  <p key={`${item.tipo_articulo}-${item.articulo_id}`} className="mt-1 text-sm text-theme-body">
+                    {nombreArticulo(item.tipo_articulo, item.articulo_id)}: <strong className="tabular-nums">{formatearCantidad(item.cantidad)} {item.unidad}</strong>
+                  </p>
+                ))}
+                {existencias.length === 0 && <p className="mt-1 text-sm text-theme-body">Sin existencia registrada para el artículo.</p>}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <form
         onSubmit={guardar}
-        className="grid gap-4 rounded-lg border border-gray-200 bg-white p-6 sm:grid-cols-2 lg:grid-cols-3"
+        className="grid gap-4 rounded-lg border border-theme-border-subtle bg-theme-surface p-6 sm:grid-cols-2 lg:grid-cols-3"
       >
         {modo !==
           'TRASLADO' && (
-          <label className="text-sm font-medium text-gray-700">
+          <label className="text-sm font-medium text-theme-body">
             Tipo de artículo
 
             <select
@@ -806,7 +846,7 @@ export default function MovimientoInventarioPage({
                 setAlmacenId('')
                 setArticuloId('')
               }}
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
+              className="mt-1 w-full rounded-lg border border-theme-border-subtle px-3 py-2"
             >
               <option value="MATERIA_PRIMA">
                 Materia prima
@@ -821,7 +861,7 @@ export default function MovimientoInventarioPage({
 
         {modo !==
         'TRASLADO' ? (
-          <label className="text-sm font-medium text-gray-700">
+          <label className="text-sm font-medium text-theme-body">
             Almacén
 
             <select
@@ -839,7 +879,7 @@ export default function MovimientoInventarioPage({
                 setArticuloId('')
               }}
               required
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
+              className="mt-1 w-full rounded-lg border border-theme-border-subtle px-3 py-2"
             >
               <option value="">
                 Seleccionar
@@ -871,7 +911,7 @@ export default function MovimientoInventarioPage({
           </div>
         )}
 
-        <label className="text-sm font-medium text-gray-700">
+        <label className="text-sm font-medium text-theme-body">
           {tipoArticulo ===
           'PRESENTACION'
             ? 'Producto / presentación'
@@ -898,7 +938,7 @@ export default function MovimientoInventarioPage({
                 !almacenId
               )
             }
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 disabled:bg-gray-100"
+            className="mt-1 w-full rounded-lg border border-theme-border-subtle px-3 py-2 disabled:bg-gray-100"
           >
             <option value="">
               {cargandoArticulos
@@ -935,7 +975,7 @@ export default function MovimientoInventarioPage({
           </select>
         </label>
 
-        <label className="text-sm font-medium text-gray-700">
+        <label className="text-sm font-medium text-theme-body">
           Cantidad
 
           <input
@@ -958,7 +998,7 @@ export default function MovimientoInventarioPage({
                 ? 'Ej. 2.50'
                 : 'Ej. 2'
             }
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
+            className="mt-1 w-full rounded-lg border border-theme-border-subtle px-3 py-2"
           />
 
           {articuloSeleccionado
@@ -967,7 +1007,7 @@ export default function MovimientoInventarioPage({
             articuloSeleccionado
               ?.disponible !==
               undefined && (
-              <span className="mt-1 block text-xs text-gray-500">
+              <span className="mt-1 block text-xs text-theme-muted">
                 Disponible:{' '}
                 {formatearCantidad(
                   articuloSeleccionado
@@ -981,7 +1021,7 @@ export default function MovimientoInventarioPage({
             )}
         </label>
 
-        <label className="text-sm font-medium text-gray-700">
+        <label className="text-sm font-medium text-theme-body">
           Motivo
 
           <input
@@ -996,14 +1036,14 @@ export default function MovimientoInventarioPage({
             }
             maxLength={200}
             required
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
+            className="mt-1 w-full rounded-lg border border-theme-border-subtle px-3 py-2"
           />
         </label>
 
-        <label className="text-sm font-medium text-gray-700 sm:col-span-2">
+        <label className="text-sm font-medium text-theme-body sm:col-span-2">
           Observaciones
           {' '}
-          <span className="font-normal text-gray-500">
+          <span className="font-normal text-theme-muted">
             (opcional)
           </span>
 
@@ -1020,7 +1060,7 @@ export default function MovimientoInventarioPage({
               )
             }
             maxLength={1000}
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
+            className="mt-1 w-full rounded-lg border border-theme-border-subtle px-3 py-2"
           />
         </label>
 
@@ -1043,103 +1083,49 @@ export default function MovimientoInventarioPage({
         </div>
       </form>
 
-      <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-5 py-3 text-left text-sm font-semibold text-gray-900">
-                Artículo
-              </th>
-
-              <th className="px-5 py-3 text-left text-sm font-semibold text-gray-900">
-                Motivo
-              </th>
-
-              <th className="px-5 py-3 text-right text-sm font-semibold text-gray-900">
-                Cantidad
-              </th>
-
-              <th className="px-5 py-3 text-right text-sm font-semibold text-gray-900">
-                Fecha
-              </th>
-            </tr>
-          </thead>
-
-          <tbody className="divide-y divide-gray-200">
-            {cargando ? (
-              <tr>
-                <td
-                  colSpan="4"
-                  className="px-5 py-8 text-center text-sm text-gray-500"
-                >
-                  Cargando movimientos...
-                </td>
-              </tr>
-            ) : error &&
-              movimientos.length ===
-                0 ? (
-              <tr>
-                <td
-                  colSpan="4"
-                  className="px-5 py-8 text-center text-sm text-gray-500"
-                >
-                  Historial no disponible.
-                </td>
-              </tr>
-            ) : movimientos.length ===
-              0 ? (
-              <tr>
-                <td
-                  colSpan="4"
-                  className="px-5 py-8 text-center text-sm text-gray-500"
-                >
-                  No hay movimientos registrados.
-                </td>
-              </tr>
-            ) : (
-              movimientos.map(
-                (
-                  item,
-                  indice,
-                ) => (
-                  <tr
-                    key={
-                      item.id_movimiento ||
-                      `${item.tipo}-${indice}`
-                    }
-                  >
-                    <td className="px-5 py-4 text-sm font-medium text-gray-900">
-                      {nombreArticulo(
-                        item.tipo_articulo,
-                        item.articulo_id,
-                      )}
-                    </td>
-
-                    <td className="px-5 py-4 text-sm text-gray-600">
-                      {item.motivo}
-                    </td>
-
-                    <td className="px-5 py-4 text-right text-sm font-medium text-gray-900">
-                      {formatearCantidad(item.cantidad)}{' '}
-                      {item.unidad}
-                    </td>
-
-                    <td className="px-5 py-4 text-right text-sm text-gray-500">
-                      {item.created_at
-                        ? new Date(
-                            item.created_at,
-                          ).toLocaleString(
-                            'es-BO',
-                          )
-                        : '—'}
-                    </td>
-                  </tr>
-                ),
-              )
-            )}
-          </tbody>
-        </table>
-      </div>
+      <section aria-label="Historial de movimientos" className="min-w-0 overflow-hidden rounded-xl border border-theme-border-subtle bg-theme-surface">
+        <div className="border-b border-theme-border-subtle p-4 sm:px-5">
+          <h2 className="text-lg font-semibold text-theme-heading">Historial de {modo === 'INGRESO' ? 'ingresos' : modo === 'EGRESO' ? 'egresos' : 'traspasos'}</h2>
+          <p className="mt-1 text-sm text-theme-muted">{paginacion.total} movimientos · 10 por página</p>
+        </div>
+        {cargando ? (
+          <p role="status" className="p-8 text-center text-theme-muted">Cargando movimientos...</p>
+        ) : movimientos.length === 0 ? (
+          <p className="p-8 text-center text-theme-muted">{error ? 'Historial no disponible.' : 'No hay movimientos registrados.'}</p>
+        ) : (
+          <ul className="divide-y divide-theme-border-subtle">
+            {movimientos.map((item) => (
+              <li key={item.id_movimiento} className="grid gap-3 p-4 sm:px-5 lg:grid-cols-[minmax(0,1fr)_auto]">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${item.tipo === 'INGRESO' ? 'bg-green-100 text-green-800' : item.tipo === 'EGRESO' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>
+                      {item.tipo === 'INGRESO' ? 'Ingreso' : item.tipo === 'EGRESO' ? 'Egreso' : item.tipo === 'TRASLADO' ? 'Traspaso' : item.tipo}
+                    </span>
+                    <span className="text-xs tabular-nums text-theme-muted">#{item.id_movimiento}</span>
+                    <h3 className="break-words text-sm font-semibold text-theme-heading">{nombreArticulo(item.tipo_articulo, item.articulo_id)}</h3>
+                  </div>
+                  <p className="mt-2 break-words text-sm text-theme-body">{item.motivo}</p>
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-theme-body">
+                    {item.almacen_origen_id && <span>Origen: {almacenes.find((a) => a.id_almacen === item.almacen_origen_id)?.nombre || `Almacén #${item.almacen_origen_id}`}</span>}
+                    {item.almacen_destino_id && <span>Destino: {almacenes.find((a) => a.id_almacen === item.almacen_destino_id)?.nombre || `Almacén #${item.almacen_destino_id}`}</span>}
+                  </div>
+                </div>
+                <div className="lg:text-right">
+                  <p className="font-semibold tabular-nums text-theme-heading">{formatearCantidad(item.cantidad)} {item.unidad}</p>
+                  <p className="mt-1 text-xs text-theme-muted">{item.created_at ? new Date(item.created_at).toLocaleString('es-BO') : '—'}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <nav aria-label="Paginación del historial" className="flex flex-wrap items-center justify-between gap-3 border-t border-theme-border-subtle p-4">
+          <span className="text-sm text-theme-body">Página {pagina} de {paginacion.ultima_pagina}</span>
+          <div className="flex gap-2">
+            <button type="button" disabled={cargando || guardando || pagina <= 1} onClick={() => setPagina((actual) => actual - 1)} className="min-h-10 rounded-lg border border-theme-border-subtle px-3 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover disabled:opacity-40">Anterior</button>
+            <button type="button" disabled={cargando || guardando || pagina >= paginacion.ultima_pagina} onClick={() => setPagina((actual) => actual + 1)} className="min-h-10 rounded-lg border border-theme-border-subtle px-3 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover disabled:opacity-40">Siguiente</button>
+          </div>
+        </nav>
+      </section>
     </section>
   )
 }

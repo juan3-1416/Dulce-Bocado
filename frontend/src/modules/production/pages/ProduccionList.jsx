@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { listarProduccionesGateway, obtenerProduccionGateway } from '../../services/produccionGatewayService'
 import { listarPresentaciones } from '../../services/presentacionService'
 import { listarMateriasPrimas } from '../../services/catalogoMateriaPrimaService'
+import { formatearCantidad } from '../../../utils/formatters'
 
 const ESTADOS = {
   EN_PROCESO: { texto: 'En proceso', clase: 'bg-amber-50 text-amber-800' },
@@ -174,7 +175,6 @@ export default function ProduccionList() {
         <label className="text-sm font-medium text-gray-700">Estado
           <select value={estado} onChange={(evento) => { setEstado(evento.target.value); setPagina(1); setDetalle(null) }} className="mt-1 block min-w-44 rounded-lg border border-gray-300 px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-pink-600">
             <option value="">Todos</option>
-            <option value="EN_PROCESO">En proceso</option>
             <option value="COMPLETADA">Completada</option>
             <option value="RECHAZADA">Rechazada</option>
           </select>
@@ -199,7 +199,7 @@ export default function ProduccionList() {
                   : producciones.map((item) => <tr key={item.id_produccion}>
                     <td className="px-5 py-4 text-sm font-semibold text-gray-900">#{item.id_produccion}</td>
                     <td className="px-5 py-4 text-sm text-gray-700">{nombrePresentacion(item.presentacion_id)}</td>
-                    <td className="px-5 py-4 text-right text-sm text-gray-700">{item.cantidad}</td>
+                    <td className="px-5 py-4 text-right text-sm text-gray-700">{formatearCantidad(item.cantidad)}</td>
                     <td className="px-5 py-4"><Estado valor={item.estado} /></td>
                     <td className="px-5 py-4 text-sm text-gray-600">{fechaLocal(item.created_at)}</td>
                     <td className="px-5 py-4 text-right"><button type="button" onClick={() => void abrirDetalle(item.id_produccion)} className="text-sm font-semibold text-pink-700 hover:text-pink-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-pink-600">Ver detalle</button></td>
@@ -293,7 +293,7 @@ export default function ProduccionList() {
                       Unidades
                     </span>
                     <p className="mt-1 font-medium text-gray-900">
-                      {detalle.cantidad}
+                      {formatearCantidad(detalle.cantidad)}
                     </p>
                   </div>
                 </div>
@@ -356,7 +356,7 @@ export default function ProduccionList() {
                               </td>
 
                               <td className="px-4 py-3 text-right text-sm text-gray-700">
-                                {insumo.cantidad} {insumo.unidad}
+                                {formatearCantidad(insumo.cantidad)} {insumo.unidad}
                               </td>
                             </tr>
                           ),

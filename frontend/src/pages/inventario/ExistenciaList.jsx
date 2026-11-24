@@ -245,15 +245,20 @@ export default function ExistenciaList() {
       return undefined
     }
 
-    const controller =
-      new AbortController()
-
-    void cargar(
-      controller.signal,
-    )
-
-    return () =>
-      controller.abort()
+    let controller
+    const actualizar = () => {
+      controller?.abort()
+      controller = new AbortController()
+      void cargar(controller.signal)
+    }
+    actualizar()
+    window.addEventListener('focus', actualizar)
+    window.addEventListener('inventario:actualizado', actualizar)
+    return () => {
+      controller?.abort()
+      window.removeEventListener('focus', actualizar)
+      window.removeEventListener('inventario:actualizado', actualizar)
+    }
   }, [
     cargar,
     idValido,

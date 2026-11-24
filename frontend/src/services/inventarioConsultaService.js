@@ -17,6 +17,7 @@ async function solicitar(ruta, { method = 'GET', filtros = {}, datos, clave, sig
       `${API_BASE}/api/${ruta}${query.size ? `?${query}` : ''}`,
       {
         method,
+        cache: 'no-store',
         signal,
         headers: {
           Accept: 'application/json',
@@ -89,6 +90,16 @@ export async function listarMovimientos(tipo, { signal } = {}) {
     throw new ApiError('Inventario devolvió un historial de movimientos inválido.', 503)
   }
   return data.movimientos
+}
+
+export async function consultarHistorialMovimientos(tipo, { pagina = 1, signal } = {}) {
+  const data = await solicitar('movimientos', {
+    filtros: { tipo, page: pagina, per_page: 10 }, signal,
+  })
+  if (!Array.isArray(data?.movimientos) || !data?.paginacion) {
+    throw new ApiError('Inventario devolvió un historial inválido.', 503)
+  }
+  return data
 }
 
 export function generarClaveInventario() {

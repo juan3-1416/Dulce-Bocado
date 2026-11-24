@@ -91,6 +91,16 @@ export async function listarMovimientos(tipo, { signal } = {}) {
   return data.movimientos
 }
 
+export async function consultarHistorialMovimientos(tipo, { pagina = 1, signal } = {}) {
+  const data = await solicitar('movimientos', {
+    filtros: { tipo, page: pagina, per_page: 10 }, signal,
+  })
+  if (!Array.isArray(data?.movimientos) || !data?.paginacion) {
+    throw new ApiError('Inventario devolvió un historial inválido.', 503)
+  }
+  return data
+}
+
 export function generarClaveInventario() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return `inventario-${crypto.randomUUID()}`
