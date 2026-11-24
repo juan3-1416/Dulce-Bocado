@@ -36,8 +36,8 @@ function Footer() {
   }, [location.pathname])
 
   return (
-    <footer className="mt-auto border-t border-theme-border-subtle bg-theme-surface px-6 py-4 text-xs text-theme-muted">
-      <div className="mx-auto flex max-w-7xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <footer className="mt-auto border-t border-theme-border-subtle bg-theme-surface py-4 text-xs text-theme-muted">
+      <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-2 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="font-semibold text-theme-heading">Dulce Bocado</span>
           <span aria-hidden="true" className="text-theme-soft">·</span>

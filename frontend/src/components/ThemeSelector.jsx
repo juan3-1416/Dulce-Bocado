@@ -131,7 +131,7 @@ function ThemeSelector() {
 
       {/* Menú Desplegable Flotante */}
       {abierto && (
-        <div id="selector-tema-panel" className="absolute right-0 z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-theme-border-subtle bg-theme-surface p-4 shadow-xl sm:p-5">
+        <div id="selector-tema-panel" className="fixed inset-x-4 top-24 z-50 max-h-[calc(100dvh-7rem)] overflow-y-auto rounded-2xl border border-theme-border-subtle bg-theme-surface p-4 shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-88 sm:max-h-[calc(100dvh-6rem)] sm:p-5">
           <div className="mb-4 flex items-center justify-between gap-3 border-b border-theme-border-subtle pb-3">
             <div>
               <h3 className="text-sm font-semibold text-theme-heading">
