@@ -1,23 +1,21 @@
 import { useState } from 'react'
 
-export default function GraficoTendenciaVentas({ datos = [], periodo = 'mes', cargando = false }) {
+export default function GraficoTendenciaVentas({ datos = [], cargando = false }) {
   const [puntoActivo, setPuntoActivo] = useState(null)
 
   if (cargando) {
     return (
-      <div className="flex h-72 items-center justify-center">
-        <div className="flex flex-col items-center gap-2">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-pink-600 border-t-transparent"></div>
-          <p className="text-xs text-slate-400">Cargando tendencia de ventas...</p>
-        </div>
+      <div className="h-72 animate-pulse space-y-6 pt-5" aria-label="Cargando tendencia de ventas">
+        <div className="h-7 w-40 rounded bg-theme-hover" />
+        <div className="h-48 rounded-xl bg-theme-subtle" />
       </div>
     )
   }
 
   if (!datos || datos.length === 0) {
     return (
-      <div className="flex h-72 flex-col items-center justify-center text-slate-400">
-        <svg className="h-12 w-12 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="flex h-72 flex-col items-center justify-center text-theme-muted">
+        <svg aria-hidden="true" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
         <p className="mt-2 text-sm">No hay registros de ventas para el período seleccionado.</p>
@@ -48,18 +46,18 @@ export default function GraficoTendenciaVentas({ datos = [], periodo = 'mes', ca
       {/* Cabecera del gráfico con métricas resumen */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            Total en Período
+          <span className="text-xs font-medium text-theme-muted">
+            Total del período
           </span>
-          <p className="text-xl font-black text-pink-600">
+          <p className="mt-1 text-xl font-semibold tabular-nums text-theme-heading">
             Bs. {totalPeriodo.toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
         </div>
         <div className="text-right">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            Promedio Diario/Período
+          <span className="text-xs font-medium text-theme-muted">
+            Promedio por intervalo
           </span>
-          <p className="text-sm font-bold text-slate-800">
+          <p className="mt-1 text-sm font-semibold tabular-nums text-theme-heading">
             Bs. {promedio.toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
         </div>
@@ -68,19 +66,14 @@ export default function GraficoTendenciaVentas({ datos = [], periodo = 'mes', ca
       {/* Gráfico SVG Reactivo */}
       <div className="relative w-full overflow-hidden">
         <svg
+          role="img"
+          aria-label={`Gráfico de ventas del período con ${datos.length} intervalos`}
           viewBox={`0 0 ${width} ${height}`}
           className="w-full overflow-visible transition-all duration-300"
           style={{ maxHeight: '260px' }}
         >
           <defs>
-            <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.9" />
-              <stop offset="100%" stopColor="#fb7185" stopOpacity="0.4" />
-            </linearGradient>
-            <linearGradient id="barGradientHover" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#e11d48" stopOpacity="1" />
-              <stop offset="100%" stopColor="#f43f5e" stopOpacity="0.8" />
-            </linearGradient>
+            <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--brand-500)" stopOpacity="0.92" /><stop offset="100%" stopColor="var(--brand-500)" stopOpacity="0.5" /></linearGradient>
           </defs>
 
           {/* Líneas de cuadrícula horizontales */}
@@ -94,7 +87,7 @@ export default function GraficoTendenciaVentas({ datos = [], periodo = 'mes', ca
                   x2={width - paddingRight}
                   y2={y}
                   stroke="currentColor"
-                  className="text-slate-200"
+                  className="text-theme-border-subtle"
                   strokeDasharray="4 4"
                   strokeWidth="1"
                 />
@@ -121,6 +114,7 @@ export default function GraficoTendenciaVentas({ datos = [], periodo = 'mes', ca
                 onMouseEnter={() => setPuntoActivo(d)}
                 onMouseLeave={() => setPuntoActivo(null)}
               >
+                <title>{`${d.etiqueta}: Bs. ${Number(d.total).toFixed(2)} · ${d.cantidad} ventas`}</title>
                 {/* Zona de hover amplia */}
                 <rect
                   x={x - step / 2}
@@ -137,7 +131,7 @@ export default function GraficoTendenciaVentas({ datos = [], periodo = 'mes', ca
                   width={barWidth}
                   height={Math.max(barH, 3)}
                   rx={barWidth / 2}
-                  fill={esActivo ? 'url(#barGradientHover)' : 'url(#barGradient)'}
+                  fill={esActivo ? 'var(--brand-600)' : 'url(#barGradient)'}
                   className="transition-all duration-200"
                 />
 
@@ -147,7 +141,7 @@ export default function GraficoTendenciaVentas({ datos = [], periodo = 'mes', ca
                     x={x}
                     y={height - 10}
                     textAnchor="middle"
-                    className="fill-slate-500 text-[10px] font-medium select-none"
+                    className="fill-theme-muted text-[10px] font-medium select-none"
                   >
                     {d.etiqueta}
                   </text>
@@ -160,18 +154,18 @@ export default function GraficoTendenciaVentas({ datos = [], periodo = 'mes', ca
         {/* Tooltip flotante interactivo */}
         {puntoActivo && (
           <div
-            className="pointer-events-none absolute top-0 right-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs shadow-lg backdrop-blur-md transition-all duration-150"
+            className="pointer-events-none absolute top-0 right-0 rounded-xl border border-theme-border-subtle bg-theme-surface px-3 py-2 text-xs shadow-lg"
           >
-            <p className="font-bold text-slate-900">{puntoActivo.etiqueta}</p>
+            <p className="font-semibold text-theme-heading">{puntoActivo.etiqueta}</p>
             <div className="mt-1 flex items-center justify-between gap-4">
-              <span className="text-slate-500">Total:</span>
-              <span className="font-bold text-pink-600">
+              <span className="text-theme-muted">Total:</span>
+              <span className="font-semibold text-theme-heading">
                 Bs. {Number(puntoActivo.total).toFixed(2)}
               </span>
             </div>
             <div className="flex items-center justify-between gap-4">
-              <span className="text-slate-500">Transacciones:</span>
-              <span className="font-medium text-slate-800">
+              <span className="text-theme-muted">Transacciones:</span>
+              <span className="font-medium text-theme-heading">
                 {puntoActivo.cantidad} {puntoActivo.cantidad === 1 ? 'venta' : 'ventas'}
               </span>
             </div>

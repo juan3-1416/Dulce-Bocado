@@ -1,8 +1,8 @@
 export default function GraficoEstadosPedidos({ datos = [], cargando = false }) {
   if (cargando) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="h-7 w-7 animate-spin rounded-full border-2 border-pink-600 border-t-transparent"></div>
+      <div className="flex h-64 animate-pulse items-center justify-center" aria-label="Cargando estados de pedidos">
+        <div className="h-36 w-36 rounded-full bg-theme-subtle" />
       </div>
     )
   }
@@ -34,8 +34,8 @@ export default function GraficoEstadosPedidos({ datos = [], cargando = false }) 
 
   if (totalPedidos === 0) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center text-slate-400">
-        <svg className="h-10 w-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="flex h-64 flex-col items-center justify-center text-theme-muted">
+        <svg aria-hidden="true" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
         </svg>
         <p className="mt-2 text-sm">No hay pedidos registrados en este período.</p>
@@ -46,13 +46,12 @@ export default function GraficoEstadosPedidos({ datos = [], cargando = false }) 
   // Parámetros Donut SVG
   const radio = 40
   const circunferencia = 2 * Math.PI * radio
-  let acumuladorPorcentaje = 0
 
   return (
-    <div className="flex flex-col items-center justify-center gap-6 sm:flex-row">
+    <div className="flex flex-col items-center justify-center gap-5">
       {/* Donut Chart SVG */}
       <div className="relative flex h-44 w-44 items-center justify-center">
-        <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90 transform">
+        <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90 transform" role="img" aria-label={`Distribución de ${totalPedidos} pedidos por estado`}>
           {/* Círculo base de fondo */}
           <circle
             cx="50"
@@ -61,15 +60,15 @@ export default function GraficoEstadosPedidos({ datos = [], cargando = false }) 
             fill="transparent"
             stroke="currentColor"
             strokeWidth="14"
-            className="text-slate-100"
+            className="text-theme-subtle"
           />
 
           {/* Segmentos del Donut */}
           {datos.map((item, idx) => {
             const porcentaje = item.cantidad / totalPedidos
             const dashArray = `${porcentaje * circunferencia} ${circunferencia}`
-            const dashOffset = -acumuladorPorcentaje * circunferencia
-            acumuladorPorcentaje += porcentaje
+            const porcentajeAnterior = datos.slice(0, idx).reduce((acc, anterior) => acc + anterior.cantidad, 0) / totalPedidos
+            const dashOffset = -porcentajeAnterior * circunferencia
 
             const config = configuracionEstados[item.estado] || {
               nombre: item.estado,
@@ -95,10 +94,10 @@ export default function GraficoEstadosPedidos({ datos = [], cargando = false }) 
 
         {/* Centro del Donut con total */}
         <div className="absolute flex flex-col items-center justify-center text-center">
-          <span className="text-2xl font-black text-slate-800">
+          <span className="text-2xl font-semibold tabular-nums text-theme-heading">
             {totalPedidos}
           </span>
-          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+          <span className="text-xs text-theme-muted">
             Pedidos
           </span>
         </div>
@@ -117,22 +116,22 @@ export default function GraficoEstadosPedidos({ datos = [], cargando = false }) 
           return (
             <div
               key={item.estado || idx}
-              className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 p-2.5 transition-all hover:bg-slate-100"
+              className="flex items-center justify-between border-b border-theme-border-subtle py-2.5 last:border-b-0"
             >
               <div className="flex items-center gap-2">
                 <span
                   className="h-3 w-3 rounded-full shrink-0 shadow-sm"
                   style={{ backgroundColor: config.color }}
                 />
-                <span className="text-xs font-semibold text-slate-700">
+                <span className="text-sm text-theme-body">
                   {config.nombre}
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-800">
+                <span className="text-sm font-semibold tabular-nums text-theme-heading">
                   {item.cantidad}
                 </span>
-                <span className="rounded-md bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-500 shadow-2xs">
+                <span className="text-xs tabular-nums text-theme-muted">
                   {porcentaje}%
                 </span>
               </div>

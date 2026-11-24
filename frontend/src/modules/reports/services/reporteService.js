@@ -1,6 +1,10 @@
-import { obtenerToken } from './authService'
+import { obtenerToken } from '../../../services/authService'
 
-const API_URL = '/api/reportes'
+const API_BASE =
+  import.meta.env.VITE_API_URL ||
+  'http://localhost:8080'
+
+const API_URL = `${API_BASE}/api/reportes`
 
 function obtenerCabeceras(extraHeaders = {}) {
   const token = obtenerToken()

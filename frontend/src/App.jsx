@@ -1,11 +1,7 @@
-import {
-  Route,
-  Routes,
-} from 'react-router-dom'
+import { Route, Routes } from 'react-router-dom'
 
 import ProtectedRoute from './components/ProtectedRoute'
 import MainLayout from './layouts/MainLayout.jsx'
-
 import AccesoDenegadoPage from './pages/AccesoDenegadoPage'
 import InicioPage from './pages/InicioPage'
 import LoginPage from './pages/LoginPage'
@@ -35,7 +31,6 @@ function App() {
         path="/acceso-denegado"
         element={<AccesoDenegadoPage />}
       />
-
       {paymentPublicRoutes}
 
       {/* Rutas protegidas con Layout principal */}

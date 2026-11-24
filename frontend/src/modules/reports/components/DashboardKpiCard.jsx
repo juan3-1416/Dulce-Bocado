@@ -7,6 +7,8 @@ export default function DashboardKpiCard({
   badge,
   cargando = false,
   onClick,
+  className = '',
+  destacado = false,
 }) {
   // Configuración de estilos por variante usando tokens de marca y estados
   const estilosVariante = {
@@ -49,38 +51,38 @@ export default function DashboardKpiCard({
   return (
     <div
       onClick={onClick}
-      className={`relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 ${
-        onClick ? `cursor-pointer ${estilo.bordeHover} hover:shadow-md active:scale-[0.99]` : ''
-      }`}
+      className={`min-w-0 rounded-2xl border p-5 transition-colors duration-200 ${destacado ? 'border-pink-200 bg-pink-50' : 'border-theme-border-subtle bg-theme-surface'} ${
+        onClick ? `cursor-pointer ${estilo.bordeHover} hover:bg-theme-subtle` : ''
+      } ${className}`}
     >
       {cargando ? (
         <div className="animate-pulse space-y-3">
           <div className="flex items-center justify-between">
-            <div className="h-4 w-28 rounded bg-slate-200" />
-            <div className="h-10 w-10 rounded-xl bg-slate-200" />
+            <div className="h-4 w-28 rounded bg-theme-hover" />
+            <div className="h-10 w-10 rounded-xl bg-theme-hover" />
           </div>
-          <div className="h-7 w-20 rounded bg-slate-200" />
-          <div className="h-3 w-32 rounded bg-slate-200" />
+          <div className="h-7 w-20 rounded bg-theme-hover" />
+          <div className="h-3 w-32 rounded bg-theme-hover" />
         </div>
       ) : (
         <>
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              <p className="text-sm font-medium text-theme-muted">
                 {titulo}
               </p>
-              <p className="mt-2 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
+              <p className={`mt-3 break-words font-semibold tracking-tight tabular-nums text-theme-heading ${destacado ? 'text-3xl sm:text-4xl' : 'text-2xl'}`}>
                 {valor}
               </p>
             </div>
-            <div className={`flex h-12 w-12 items-center justify-center rounded-2xl p-2.5 transition-transform duration-200 hover:scale-105 ${estilo.iconoBg}`}>
+            <div aria-hidden="true" className={`ml-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg p-2 ${estilo.iconoBg}`}>
               {icono}
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-theme-border-subtle pt-3">
             {subtitulo && (
-              <span className="text-xs font-medium text-slate-600">
+              <span className="text-xs text-theme-muted">
                 {subtitulo}
               </span>
             )}
