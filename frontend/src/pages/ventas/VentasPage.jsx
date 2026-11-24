@@ -14,9 +14,16 @@ import {
 } from '../../services/ventaService'
 import { listarClientes } from '../../services/clienteService'
 import { listarPresentacionesVendibles } from '../../services/catalogoVentasService'
+import { obtenerCatalogosPago } from '../../services/pagoService'
+import {
+  crearRecibo,
+  listarRecibos,
+} from '../../services/reciboService'
 import { useAuth } from '../../context/AuthContext'
 import VentaModal from './VentaModal'
 import ConfirmarVentaModal from './ConfirmarVentaModal'
+import PagoModal from '../pagos/PagoModal'
+import ReciboDetalleModal from '../recibos/ReciboDetalleModal'
 
 const MIN_MOTIVO_ANULACION = 3
 
@@ -31,6 +38,18 @@ function VentasPage() {
   const [modalVentaAbierto, setModalVentaAbierto] = useState(false)
   const [ventaParaEditar, setVentaParaEditar] = useState(null)
   const [ventaParaConfirmar, setVentaParaConfirmar] = useState(null)
+
+  const [modalPagoAbierto, setModalPagoAbierto] = useState(false)
+
+  const [ventasParaPago, setVentasParaPago] = useState([])
+
+  const [metodosPago, setMetodosPago] = useState([
+    'EFECTIVO',
+    'QR',
+  ])
+
+  const [ventaPagoInicialId, setVentaPagoInicialId] = useState(null)
+  const [reciboSeleccionado, setReciboSeleccionado] = useState(null)
   const [ventas, setVentas] =
     useState([])
 
@@ -251,6 +270,162 @@ function VentasPage() {
 
   const cerrarModalConfirmar = () => {
     setVentaParaConfirmar(null)
+  }
+
+  const cerrarModalPago = () => {
+    setModalPagoAbierto(false)
+    setVentasParaPago([])
+    setVentaPagoInicialId(null)
+  }
+
+  const abrirCobroVentaConfirmada = async (
+    ventaConfirmada,
+  ) => {
+    if (!ventaConfirmada?.id_venta) {
+      return
+    }
+
+    try {
+      setError('')
+
+      const respuestaPago =
+        await obtenerCatalogosPago()
+
+      const ventasCobrables =
+        respuestaPago.ventas ?? []
+
+      const ventaCobrable =
+        ventasCobrables.find(
+          (venta) =>
+            Number(venta.id_venta) ===
+            Number(ventaConfirmada.id_venta),
+        )
+
+      if (!ventaCobrable) {
+        setError(
+          'La venta fue confirmada, pero todavía no está disponible para procesar el pago.',
+        )
+
+        return
+      }
+
+      setVentasParaPago([
+        ventaCobrable,
+      ])
+
+      setMetodosPago(
+        respuestaPago.metodos_pago ?? [
+          'EFECTIVO',
+          'QR',
+        ],
+      )
+
+      setVentaPagoInicialId(
+        ventaCobrable.id_venta,
+      )
+
+      setModalPagoAbierto(true)
+    } catch (errorPeticion) {
+      setError(
+        errorPeticion.message ||
+          'La venta fue confirmada, pero no se pudo abrir el proceso de pago.',
+      )
+    }
+  }
+
+  const manejarPagoGuardado = async (
+    mensajeRespuesta,
+    pagoGuardado,
+  ) => {
+    setMensaje(
+      mensajeRespuesta ||
+        'Pago registrado correctamente.',
+    )
+
+    if (!pagoGuardado?.id_pago) {
+      await cargarVentas()
+      return
+    }
+
+    try {
+      setError('')
+
+      const idPago =
+        Number(pagoGuardado.id_pago)
+
+      /*
+       * Cerramos Pago/QR antes de mostrar
+       * el comprobante.
+       */
+      cerrarModalPago()
+
+      await cargarVentas()
+
+      /*
+       * Primero comprobamos si el pago
+       * ya tiene un recibo emitido.
+       */
+      const respuestaRecibos =
+        await listarRecibos({
+          buscar: String(idPago),
+          estado: 'EMITIDO',
+        })
+
+      let recibo =
+        (
+          respuestaRecibos?.recibos ??
+          []
+        ).find(
+          (item) =>
+            Number(
+              item.id_pago ??
+                item.pago_id,
+            ) === idPago &&
+            item.estado === 'EMITIDO',
+        )
+
+      /*
+       * Si aún no existe, lo generamos.
+       */
+      if (!recibo) {
+        const respuestaRecibo =
+          await crearRecibo({
+            id_pago: idPago,
+          })
+
+        recibo =
+          respuestaRecibo?.recibo ??
+          null
+      }
+
+      if (!recibo?.id_recibo) {
+        throw new Error(
+          'No se obtuvo el identificador del recibo.',
+        )
+      }
+
+      setMensaje(
+        'Pago confirmado correctamente. Recibo generado.',
+      )
+
+      /*
+       * Abre automáticamente
+       * ReciboDetalleModal.
+       */
+      setReciboSeleccionado(
+        recibo.id_recibo,
+      )
+    } catch (errorPeticion) {
+      setMensaje(
+        'El pago fue confirmado correctamente.',
+      )
+
+      setError(
+        errorPeticion?.message
+          ? `El pago fue confirmado, pero no se pudo abrir automáticamente el recibo: ${errorPeticion.message}`
+          : 'El pago fue confirmado, pero no se pudo abrir automáticamente el recibo.',
+      )
+    }
   }
 
   const abrirModalAnular = (
@@ -1007,21 +1182,50 @@ function VentasPage() {
         </div>
       )}
 
+      <PagoModal
+        abierto={modalPagoAbierto}
+        onCerrar={cerrarModalPago}
+        onGuardado={manejarPagoGuardado}
+        ventas={ventasParaPago}
+        pedidos={[]}
+        metodosPago={metodosPago}
+        ventaInicialId={ventaPagoInicialId}
+      />
+
+      <ReciboDetalleModal
+        abierto={Boolean(
+          reciboSeleccionado,
+        )}
+        reciboId={reciboSeleccionado}
+        onCerrar={() =>
+          setReciboSeleccionado(null)
+        }
+        onActualizado={() =>
+          cargarVentas()
+        }
+      />
+
       <ConfirmarVentaModal
         abierto={Boolean(ventaParaConfirmar)}
         venta={ventaParaConfirmar}
         onCerrar={cerrarModalConfirmar}
         onConfirmado={async (mensajeExito, ventaConfirmada) => {
-          setMensaje(mensajeExito)
-          if (
-            ventaSeleccionada &&
-            ventaConfirmada &&
-            ventaSeleccionada.id_venta === ventaConfirmada.id_venta
-          ) {
-            setVentaSeleccionada(ventaConfirmada)
-          }
-          await cargarVentas()
-        }}
+            setMensaje(mensajeExito)
+
+            if (
+              ventaSeleccionada &&
+              ventaConfirmada &&
+              ventaSeleccionada.id_venta === ventaConfirmada.id_venta
+            ) {
+              setVentaSeleccionada(ventaConfirmada)
+            }
+
+            await cargarVentas()
+
+            await abrirCobroVentaConfirmada(
+              ventaConfirmada,
+            )
+          }}
         tienePermisoInventario={tienePermiso('inventario.ver')}
       />
     </section>

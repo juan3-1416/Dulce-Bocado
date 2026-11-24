@@ -3,6 +3,8 @@ import { Link, useLocation } from 'react-router-dom'
 
 import { useAuth } from '../../context/AuthContext'
 import { listarProduccionesGateway, obtenerProduccionGateway } from '../../services/produccionGatewayService'
+import { listarPresentaciones } from '../../services/presentacionService'
+import { listarMateriasPrimas } from '../../services/catalogoMateriaPrimaService'
 
 const ESTADOS = {
   EN_PROCESO: { texto: 'En proceso', clase: 'bg-amber-50 text-amber-800' },
@@ -33,6 +35,8 @@ export default function ProduccionList() {
   const [detalle, setDetalle] = useState(null)
   const [detalleCargando, setDetalleCargando] = useState(false)
   const [errorDetalle, setErrorDetalle] = useState('')
+  const [presentacionesCatalogo, setPresentacionesCatalogo] = useState([])
+  const [materiasPrimasCatalogo, setMateriasPrimasCatalogo] = useState([])
 
   const cargar = useCallback(async (signal) => {
     try {
@@ -53,6 +57,86 @@ export default function ProduccionList() {
     void cargar(controller.signal)
     return () => controller.abort()
   }, [cargar])
+
+  useEffect(() => {
+    let activo = true
+
+    const cargarCatalogos = async () => {
+      try {
+        const [
+          respuestaPresentaciones,
+          respuestaMaterias,
+        ] = await Promise.all([
+          listarPresentaciones(),
+          listarMateriasPrimas(),
+        ])
+
+        if (!activo) return
+
+        setPresentacionesCatalogo(
+          respuestaPresentaciones.presentaciones ?? [],
+        )
+
+        setMateriasPrimasCatalogo(
+          respuestaMaterias.materias_primas ?? [],
+        )
+      } catch {
+        if (!activo) return
+
+        setPresentacionesCatalogo([])
+        setMateriasPrimasCatalogo([])
+      }
+    }
+
+    void cargarCatalogos()
+
+    return () => {
+      activo = false
+    }
+  }, [])
+
+  const nombrePresentacion = (id) => {
+    const presentacion =
+      presentacionesCatalogo.find(
+        (item) =>
+          Number(item.presentacion_id) ===
+          Number(id),
+      )
+
+    if (!presentacion) {
+      return `Presentación #${id}`
+    }
+
+    const producto =
+      presentacion.producto?.nombre?.trim()
+
+    const nombre =
+      presentacion.nombre?.trim()
+
+    if (producto && nombre) {
+      return `${producto} — ${nombre}`
+    }
+
+    return (
+      nombre ||
+      producto ||
+      `Presentación #${id}`
+    )
+  }
+
+  const nombreMateriaPrima = (id) => {
+    const materia =
+      materiasPrimasCatalogo.find(
+        (item) =>
+          Number(item.id_materia_prima) ===
+          Number(id),
+      )
+
+    return (
+      materia?.nombre?.trim() ||
+      `Materia prima #${id}`
+    )
+  }
 
   const abrirDetalle = async (id) => {
     setDetalle(null)
@@ -114,7 +198,7 @@ export default function ProduccionList() {
                 : producciones.length === 0 ? <tr><td colSpan="6" className="px-5 py-10 text-center text-sm text-gray-500">No hay producciones para este estado.</td></tr>
                   : producciones.map((item) => <tr key={item.id_produccion}>
                     <td className="px-5 py-4 text-sm font-semibold text-gray-900">#{item.id_produccion}</td>
-                    <td className="px-5 py-4 text-sm text-gray-700">#{item.presentacion_id}</td>
+                    <td className="px-5 py-4 text-sm text-gray-700">{nombrePresentacion(item.presentacion_id)}</td>
                     <td className="px-5 py-4 text-right text-sm text-gray-700">{item.cantidad}</td>
                     <td className="px-5 py-4"><Estado valor={item.estado} /></td>
                     <td className="px-5 py-4 text-sm text-gray-600">{fechaLocal(item.created_at)}</td>
@@ -132,26 +216,160 @@ export default function ProduccionList() {
         </div>
       </div>
 
-      {(detalleCargando || errorDetalle || detalle) && <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm" aria-live="polite">
-        {detalleCargando ? <p className="text-sm text-gray-500">Cargando detalle...</p> : errorDetalle ? <p role="alert" className="text-sm text-red-700">{errorDetalle}</p> : <>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div><h2 className="text-lg font-semibold text-gray-900">Producción #{detalle.id_produccion}</h2><p className="mt-1 text-xs text-gray-500">Operación {detalle.operacion_id}</p></div>
-            <button type="button" onClick={() => setDetalle(null)} className="text-sm font-medium text-gray-600 underline">Cerrar detalle</button>
+      {(detalleCargando || errorDetalle || detalle) && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="detalle-produccion-titulo"
+        >
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+            <div className="flex items-start justify-between gap-4 border-b border-gray-200 pb-4">
+              <div>
+                <h2
+                  id="detalle-produccion-titulo"
+                  className="text-xl font-semibold text-gray-900"
+                >
+                  {detalle
+                    ? `Producción #${detalle.id_produccion}`
+                    : 'Detalle de producción'}
+                </h2>
+
+                {detalle?.operacion_id && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Operación {detalle.operacion_id}
+                  </p>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setDetalle(null)
+                  setErrorDetalle('')
+                }}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cerrar
+              </button>
+            </div>
+
+            {detalleCargando ? (
+              <p className="py-8 text-center text-sm text-gray-500">
+                Cargando detalle...
+              </p>
+            ) : errorDetalle ? (
+              <p
+                role="alert"
+                className="mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+              >
+                {errorDetalle}
+              </p>
+            ) : detalle ? (
+              <>
+                <div className="mt-5 grid gap-4 text-sm sm:grid-cols-3">
+                  <div>
+                    <span className="text-gray-500">
+                      Estado
+                    </span>
+                    <div className="mt-1">
+                      <Estado valor={detalle.estado} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-gray-500">
+                      Producto / presentación
+                    </span>
+                    <p className="mt-1 font-medium text-gray-900">
+                      {nombrePresentacion(
+                        detalle.presentacion_id,
+                      )}
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-gray-500">
+                      Unidades
+                    </span>
+                    <p className="mt-1 font-medium text-gray-900">
+                      {detalle.cantidad}
+                    </p>
+                  </div>
+                </div>
+
+                {detalle.receta_id && (
+                  <p className="mt-4 text-sm text-gray-600">
+                    Receta interna: #{detalle.receta_id}
+                  </p>
+                )}
+
+                {detalle.estado === 'EN_PROCESO' && (
+                  <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+                    Inventario aún no confirmó el asiento.
+                    Estas unidades no se consideran terminadas.
+                  </p>
+                )}
+
+                {detalle.codigo_rechazo && (
+                  <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">
+                    Motivo del rechazo: {detalle.codigo_rechazo}
+                  </p>
+                )}
+
+                {detalle.observaciones && (
+                  <p className="mt-4 text-sm text-gray-700">
+                    Observaciones: {detalle.observaciones}
+                  </p>
+                )}
+
+                <h3 className="mt-6 text-sm font-semibold text-gray-900">
+                  Consumo previsto al registrar
+                </h3>
+
+                {(detalle.consumo_snapshot?.ingredientes || []).length === 0 ? (
+                  <p className="mt-2 text-sm text-gray-500">
+                    No hay ingredientes registrados en el snapshot.
+                  </p>
+                ) : (
+                  <div className="mt-3 overflow-hidden rounded-lg border border-gray-200">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                            Materia prima
+                          </th>
+                          <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-600">
+                            Cantidad
+                          </th>
+                        </tr>
+                      </thead>
+
+                      <tbody className="divide-y divide-gray-100">
+                        {(detalle.consumo_snapshot?.ingredientes || []).map(
+                          (insumo) => (
+                            <tr key={insumo.materia_prima_id}>
+                              <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                                {nombreMateriaPrima(
+                                  insumo.materia_prima_id,
+                                )}
+                              </td>
+
+                              <td className="px-4 py-3 text-right text-sm text-gray-700">
+                                {insumo.cantidad} {insumo.unidad}
+                              </td>
+                            </tr>
+                          ),
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            ) : null}
           </div>
-          <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-            <p><span className="text-gray-500">Estado</span><br /><Estado valor={detalle.estado} /></p>
-            <p><span className="text-gray-500">Presentación / receta</span><br />#{detalle.presentacion_id} / #{detalle.receta_id}</p>
-            <p><span className="text-gray-500">Unidades</span><br />{detalle.cantidad}</p>
-          </div>
-          {detalle.estado === 'EN_PROCESO' && <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Inventario aún no confirmó el asiento. Estas unidades no se consideran terminadas.</p>}
-          {detalle.codigo_rechazo && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">Motivo del rechazo: {detalle.codigo_rechazo}</p>}
-          {detalle.observaciones && <p className="mt-4 text-sm text-gray-700">Observaciones: {detalle.observaciones}</p>}
-          <h3 className="mt-5 text-sm font-semibold text-gray-900">Consumo previsto al registrar</h3>
-          <ul className="mt-2 space-y-1 text-sm text-gray-700">
-            {(detalle.consumo_snapshot?.ingredientes || []).map((insumo) => <li key={insumo.materia_prima_id}>Materia prima #{insumo.materia_prima_id}: {insumo.cantidad} {insumo.unidad}</li>)}
-          </ul>
-        </>}
-      </div>}
+        </div>
+      )}
     </section>
   )
 }

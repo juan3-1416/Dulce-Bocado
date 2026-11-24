@@ -21,6 +21,28 @@ import {
  * @param {Function} params.onCerrar
  * @param {Function} params.setError  — setter compartido del PagoModal
  */
+const normalizarEstadoQr = (estado) => {
+  switch (estado) {
+    case 'INICIADA':
+    case 'PENDIENTE':
+      return 'PENDIENTE'
+
+    case 'CONFIRMADA':
+    case 'APROBADO':
+      return 'APROBADO'
+
+    case 'RECHAZADA':
+    case 'RECHAZADO':
+      return 'RECHAZADO'
+
+    case 'EXPIRADA':
+    case 'VENCIDO':
+      return 'VENCIDO'
+
+    default:
+      return estado || 'PENDIENTE'
+  }
+}
 export function usePagoQr({
   abierto,
   onGuardado,
@@ -87,11 +109,11 @@ export function usePagoQr({
         if (cancelado) return
 
         const intento = respuesta?.intento_qr ?? respuesta
-        const nuevoEstado = intento?.estado
+        const nuevoEstado = normalizarEstadoQr(intento?.estado)
 
         if (!nuevoEstado) return
 
-        if (nuevoEstado === 'CONFIRMADA' || nuevoEstado === 'APROBADO') {
+        if (nuevoEstado === 'APROBADO') {
           continuar = false
 
           if (qrNotificadoRef.current) return
@@ -110,7 +132,7 @@ export function usePagoQr({
           return
         }
 
-        if (nuevoEstado === 'RECHAZADA' || nuevoEstado === 'RECHAZADO') {
+        if (nuevoEstado === 'RECHAZADO') {
           continuar = false
           setEstadoQr('RECHAZADO')
           setError(
@@ -120,7 +142,7 @@ export function usePagoQr({
           return
         }
 
-        if (nuevoEstado === 'EXPIRADA' || nuevoEstado === 'VENCIDO') {
+        if (nuevoEstado === 'VENCIDO') {
           continuar = false
           setEstadoQr('VENCIDO')
           setError('El código QR ha expirado. Por favor, genere un nuevo cobro.')
@@ -175,7 +197,7 @@ export function usePagoQr({
   const iniciarQr = (transaccion) => {
     qrNotificadoRef.current = false
     setTransaccionQr(transaccion)
-    setEstadoQr(transaccion.estado || 'PENDIENTE')
+    setEstadoQr(normalizarEstadoQr(transaccion.estado))
   }
 
   const qrPendiente = estadoQr === 'PENDIENTE'
