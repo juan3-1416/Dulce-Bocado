@@ -198,7 +198,7 @@ const SECCIONES_MENU = [
       {
         nombre: 'Gestión de Pagos',
         ruta: '/pagos',
-        permiso: 'pagos.gestionar_pago',
+        permiso: 'pagos.ver',
       },
     ],
   },

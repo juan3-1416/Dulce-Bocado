@@ -43,7 +43,8 @@ export async function listarPresentacionesVendibles() {
   return presentaciones
     .filter((item) => item.disponible)
     .map((item) => ({
-      ...item,
+      
+      producto: item.producto ?? null,...item,
       etiqueta: item.producto?.nombre
         ? `${item.producto.nombre} — ${item.nombre}`
         : item.nombre,

@@ -6,7 +6,13 @@ import {
 
 import PagoModal from './PagoModal'
 import ReciboDetalleModal from '../recibos/ReciboDetalleModal'
+import {
+  listarRecibos,
+} from '../../services/reciboService'
 import { useAuth } from '../../context/AuthContext'
+import {
+  listarResumenPagos,
+} from '../../services/resumenPagosService'
 
 import {
   anularPago,
@@ -37,6 +43,54 @@ function PagosPage() {
   const [anulando, setAnulando] = useState(false)
   const [error, setError] = useState('')
   const [mensaje, setMensaje] = useState('')
+
+  const [operacionesPago, setOperacionesPago] =
+    useState([])
+
+  const [resumenGeneral, setResumenGeneral] =
+    useState(null)
+
+  const [cargandoResumen, setCargandoResumen] =
+    useState(true)
+
+  const [filtroTipoPago, setFiltroTipoPago] =
+    useState('')
+  const cargarResumenGeneral =
+    useCallback(
+      async (tipo = '') => {
+        try {
+          setCargandoResumen(true)
+
+          const respuesta =
+            await listarResumenPagos(tipo)
+
+          setOperacionesPago(
+            respuesta.operaciones ?? [],
+          )
+
+          setResumenGeneral(
+            respuesta.resumen ?? null,
+          )
+        } catch (err) {
+          setOperacionesPago([])
+          setResumenGeneral(null)
+
+          if (err.status === 403) {
+            setError(
+              'No tienes permiso para visualizar pagos.',
+            )
+          } else {
+            setError(
+              err.message ||
+                'No se pudo cargar el resumen general de pagos.',
+            )
+          }
+        } finally {
+          setCargandoResumen(false)
+        }
+      },
+      [],
+    )
 
   // Carga las ventas confirmadas y pedidos pagables desde sus microservicios
   const cargarCatalogos = useCallback(async () => {
@@ -95,6 +149,14 @@ function PagosPage() {
       setCargandoOperacion(false)
     }
   }, [])
+  useEffect(() => {
+    cargarResumenGeneral(
+      filtroTipoPago,
+    )
+  }, [
+    filtroTipoPago,
+    cargarResumenGeneral,
+  ])
 
   useEffect(() => {
     cargarCatalogos()
@@ -124,6 +186,7 @@ function PagosPage() {
       await cargarPagosOperacion(tipoOperacion, origenSeleccionadoId)
     }
     await cargarCatalogos()
+    await cargarResumenGeneral(filtroTipoPago)
   }
 
   const abrirModalAnular = (pago) => {
@@ -160,6 +223,83 @@ function PagosPage() {
       setError(err.message || 'No se pudo anular el pago.')
     } finally {
       setAnulando(false)
+    }
+  }
+
+  const abrirReciboVenta = async (operacion) => {
+    try {
+      setError('')
+
+      /*
+       * Primero obtenemos los pagos reales de la venta.
+       */
+      const respuestaPagos =
+        await consultarPagosOrigen(
+          'VENTA',
+          operacion.origen_id,
+        )
+
+      const pagos =
+        Array.isArray(respuestaPagos.pagos)
+          ? respuestaPagos.pagos
+          : []
+
+      const pagosConfirmados =
+        pagos
+          .filter(
+            (pago) =>
+              pago.estado === 'CONFIRMADO',
+          )
+          .sort(
+            (a, b) =>
+              Number(b.id_pago) -
+              Number(a.id_pago),
+          )
+
+      /*
+       * Una venta puede tener más de un pago.
+       * Buscamos el recibo emitido asociado a cualquiera
+       * de sus pagos, comenzando por el más reciente.
+       */
+      for (const pago of pagosConfirmados) {
+        const respuestaRecibos =
+          await listarRecibos({
+            buscar:
+              String(pago.id_pago),
+
+            estado:
+              'EMITIDO',
+          })
+
+        const recibo =
+          (
+            respuestaRecibos.recibos ??
+            []
+          ).find(
+            (item) =>
+              Number(item.id_pago) ===
+                Number(pago.id_pago) &&
+              item.estado ===
+                'EMITIDO',
+          )
+
+        if (recibo?.id_recibo) {
+          setReciboSeleccionado(
+            recibo.id_recibo,
+          )
+
+          return
+        }
+      }
+
+      setError(
+        `No se encontró un recibo emitido para la Venta #${operacion.origen_id}.`,
+      )
+    } catch (err) {
+      setError(
+        err.message ||
+          'No se pudo consultar el recibo de la venta.',
+      )
     }
   }
 
@@ -210,6 +350,228 @@ function PagosPage() {
           {error}
         </div>
       )}
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-4 border-b border-gray-200 bg-gray-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-semibold text-gray-900">
+              Resumen General de Pagos
+            </h2>
+
+            <p className="mt-1 text-sm text-gray-500">
+              Visualiza pagos realizados a ventas y pedidos, junto con su saldo pendiente.
+            </p>
+          </div>
+
+          <div className="w-full sm:w-48">
+            <label
+              htmlFor="filtro_tipo_pago"
+              className="mb-1 block text-xs font-semibold uppercase text-gray-500"
+            >
+              Tipo
+            </label>
+
+            <select
+              id="filtro_tipo_pago"
+              value={filtroTipoPago}
+              onChange={(event) =>
+                setFiltroTipoPago(
+                  event.target.value,
+                )
+              }
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            >
+              <option value="">
+                Ventas y pedidos
+              </option>
+              <option value="VENTA">
+                Solo ventas
+              </option>
+              <option value="PEDIDO">
+                Solo pedidos
+              </option>
+            </select>
+          </div>
+        </div>
+
+        {cargandoResumen ? (
+          <div className="p-8 text-center text-sm text-gray-500">
+            Cargando pagos...
+          </div>
+        ) : operacionesPago.length === 0 ? (
+          <div className="p-8 text-center text-sm text-gray-500">
+            No existen pagos registrados para este filtro.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                    Tipo
+                  </th>
+
+                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase text-gray-600">
+                    Operación
+                  </th>
+
+                  <th className="px-5 py-3 text-right text-xs font-semibold uppercase text-gray-600">
+                    Total
+                  </th>
+
+                  <th className="px-5 py-3 text-right text-xs font-semibold uppercase text-gray-600">
+                    Pagado
+                  </th>
+
+                  <th className="px-5 py-3 text-right text-xs font-semibold uppercase text-gray-600">
+                    Saldo
+                  </th>
+
+                  <th className="px-5 py-3 text-center text-xs font-semibold uppercase text-gray-600">
+                    Estado
+                  </th>
+
+                  <th className="px-5 py-3 text-center text-xs font-semibold uppercase text-gray-600">
+                    Pagos
+                  </th>
+
+                  <th className="px-5 py-3 text-right text-xs font-semibold uppercase text-gray-600">
+                    Acción
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-gray-200">
+                {operacionesPago.map(
+                  (operacion) => {
+                    const saldo =
+                      Number(
+                        operacion.saldo ??
+                          0,
+                      )
+
+                    const estado =
+                      operacion.estado_pago
+
+                    return (
+                      <tr
+                        key={`${operacion.origen_tipo}-${operacion.origen_id}`}
+                        className="hover:bg-gray-50"
+                      >
+                        <td className="px-5 py-4">
+                          <span
+                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                              operacion.origen_tipo ===
+                              'PEDIDO'
+                                ? 'bg-purple-100 text-purple-800'
+                                : 'bg-blue-100 text-blue-800'
+                            }`}
+                          >
+                            {operacion.origen_tipo}
+                          </span>
+                        </td>
+
+                        <td className="px-5 py-4 font-semibold text-gray-900">
+                          {operacion.origen_tipo ===
+                          'PEDIDO'
+                            ? 'Pedido'
+                            : 'Venta'}{' '}
+                          #{operacion.origen_id}
+                        </td>
+
+                        <td className="px-5 py-4 text-right font-medium tabular-nums">
+                          Bs{' '}
+                          {Number(
+                            operacion.total ??
+                              0,
+                          ).toFixed(2)}
+                        </td>
+
+                        <td className="px-5 py-4 text-right font-semibold text-emerald-700 tabular-nums">
+                          Bs{' '}
+                          {Number(
+                            operacion.pagado ??
+                              0,
+                          ).toFixed(2)}
+                        </td>
+
+                        <td
+                          className={`px-5 py-4 text-right font-bold tabular-nums ${
+                            saldo > 0
+                              ? 'text-amber-700'
+                              : 'text-emerald-700'
+                          }`}
+                        >
+                          Bs {saldo.toFixed(2)}
+                        </td>
+
+                        <td className="px-5 py-4 text-center">
+                          <span
+                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                              estado ===
+                              'PAGADO'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : estado ===
+                                    'PARCIAL'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-gray-100 text-gray-700'
+                            }`}
+                          >
+                            {estado ===
+                            'PARCIAL'
+                              ? 'PAGO PARCIAL'
+                              : estado}
+                          </span>
+                        </td>
+
+                        <td className="px-5 py-4 text-center font-semibold">
+                          {operacion.cantidad_pagos_confirmados ??
+                            operacion.cantidad_pagos ??
+                            0}
+                        </td>
+
+                        <td className="px-5 py-4 text-right">
+                          {operacion.origen_tipo ===
+                          'VENTA' ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                abrirReciboVenta(
+                                  operacion,
+                                )
+                              }
+                              className="rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                            >
+                              Ver recibo
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTipoOperacion(
+                                  'PEDIDO',
+                                )
+
+                                setOrigenSeleccionadoId(
+                                  String(
+                                    operacion.origen_id,
+                                  ),
+                                )
+                              }}
+                              className="rounded-lg border border-pink-200 px-3 py-1.5 text-xs font-semibold text-pink-700 hover:bg-pink-50"
+                            >
+                              Ver pagos
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  },
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Selector de Operación para consulta en Payment Service */}
       <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">

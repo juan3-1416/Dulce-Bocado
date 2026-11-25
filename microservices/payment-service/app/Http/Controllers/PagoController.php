@@ -55,6 +55,22 @@ class PagoController extends Controller
         Request $request,
         OrigenPagoService $origenes
     ): JsonResponse {
+        /*
+        |--------------------------------------------------------------------------
+        | Resumen general de operaciones con pagos
+        |--------------------------------------------------------------------------
+        |
+        | Cuando no se especifica origen/origen_id, devuelve una vista consolidada
+        | de ventas y pedidos que ya poseen al menos un pago registrado.
+        |
+        */
+        if (
+            !$request->filled('origen')
+            && !$request->filled('origen_id')
+        ) {
+            return $this->resumenGeneral($request);
+        }
+
         $request->merge([
             'origen' => strtoupper(
                 (string) $request->query(
@@ -140,6 +156,226 @@ class PagoController extends Controller
         ]);
     }
 
+    private function resumenGeneral(
+        Request $request
+    ): JsonResponse {
+        $request->merge([
+            'tipo' => strtoupper(
+                (string) $request->query(
+                    'tipo',
+                    ''
+                )
+            ),
+        ]);
+
+        $request->validate([
+            'tipo' => [
+                'nullable',
+                'in:VENTA,PEDIDO',
+            ],
+        ]);
+
+        $query = DB::table('pago')
+            ->select([
+                'origen_tipo',
+                'origen_id',
+            ])
+            ->selectRaw(
+                'MAX(total_origen_snapshot) AS total'
+            )
+            ->selectRaw(
+                "
+                SUM(
+                    CASE
+                        WHEN estado = 'CONFIRMADO'
+                        THEN monto
+                        ELSE 0
+                    END
+                ) AS pagado
+                "
+            )
+            ->selectRaw(
+                "
+                COUNT(
+                    CASE
+                        WHEN estado = 'CONFIRMADO'
+                        THEN 1
+                    END
+                ) AS cantidad_pagos_confirmados
+                "
+            )
+            ->selectRaw(
+                'COUNT(*) AS cantidad_pagos'
+            )
+            ->selectRaw(
+                "
+                MAX(
+                    COALESCE(
+                        confirmado_at,
+                        created_at
+                    )
+                ) AS ultimo_pago_at
+                "
+            );
+
+        if ($request->filled('tipo')) {
+            $query->where(
+                'origen_tipo',
+                $request->input('tipo')
+            );
+        }
+
+        $filas = $query
+            ->groupBy(
+                'origen_tipo',
+                'origen_id'
+            )
+            ->orderByDesc(
+                'ultimo_pago_at'
+            )
+            ->get();
+
+        $operaciones = $filas
+            ->map(function ($fila) {
+                $total = number_format(
+                    (float) $fila->total,
+                    2,
+                    '.',
+                    ''
+                );
+
+                $pagado = number_format(
+                    (float) $fila->pagado,
+                    2,
+                    '.',
+                    ''
+                );
+
+                $saldo = bcsub(
+                    $total,
+                    $pagado,
+                    2
+                );
+
+                if (
+                    bccomp(
+                        $pagado,
+                        '0.00',
+                        2
+                    ) === 0
+                ) {
+                    $estadoPago = 'PENDIENTE';
+                } elseif (
+                    bccomp(
+                        $saldo,
+                        '0.00',
+                        2
+                    ) <= 0
+                ) {
+                    $estadoPago = 'PAGADO';
+                } else {
+                    $estadoPago = 'PARCIAL';
+                }
+
+                return [
+                    'origen_tipo' =>
+                        $fila->origen_tipo,
+
+                    'origen_id' =>
+                        (int) $fila->origen_id,
+
+                    'total' =>
+                        $total,
+
+                    'pagado' =>
+                        $pagado,
+
+                    'saldo' =>
+                        $saldo,
+
+                    'estado_pago' =>
+                        $estadoPago,
+
+                    'cantidad_pagos' =>
+                        (int) $fila->cantidad_pagos,
+
+                    'cantidad_pagos_confirmados' =>
+                        (int) $fila
+                            ->cantidad_pagos_confirmados,
+
+                    'ultimo_pago_at' =>
+                        $fila->ultimo_pago_at,
+                ];
+            })
+            ->values();
+
+        $totalOperaciones = $operaciones->count();
+
+        $totalFacturado = number_format(
+            (float) $operaciones->sum(
+                fn ($item) =>
+                    (float) $item['total']
+            ),
+            2,
+            '.',
+            ''
+        );
+
+        $totalPagado = number_format(
+            (float) $operaciones->sum(
+                fn ($item) =>
+                    (float) $item['pagado']
+            ),
+            2,
+            '.',
+            ''
+        );
+
+        $saldoPendiente = number_format(
+            (float) $operaciones->sum(
+                fn ($item) =>
+                    (float) $item['saldo']
+            ),
+            2,
+            '.',
+            ''
+        );
+
+        return response()->json([
+            'resumen' => [
+                'cantidad_operaciones' =>
+                    $totalOperaciones,
+
+                'total_operaciones' =>
+                    $totalFacturado,
+
+                'total_pagado' =>
+                    $totalPagado,
+
+                'saldo_pendiente' =>
+                    $saldoPendiente,
+
+                'pagadas' =>
+                    $operaciones
+                        ->where(
+                            'estado_pago',
+                            'PAGADO'
+                        )
+                        ->count(),
+
+                'parciales' =>
+                    $operaciones
+                        ->where(
+                            'estado_pago',
+                            'PARCIAL'
+                        )
+                        ->count(),
+            ],
+
+            'operaciones' =>
+                $operaciones,
+        ]);
+    }
     public function storeQr(
         Request $request,
         PagoQrService $service

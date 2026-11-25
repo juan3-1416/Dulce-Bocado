@@ -419,27 +419,29 @@ class DashboardAggregatorService
 
     private function consultarInventario(string $token): array
     {
-        $url = config('integrations.inventory.url') . '/api/existencias';
+        $inventoryUrl = rtrim(
+            (string) config('integrations.inventory.url'),
+            '/'
+        );
+
+        $catalogUrl = rtrim(
+            (string) config('integrations.catalog.url'),
+            '/'
+        );
+
+        $headers = [
+            'Authorization' => 'Bearer '.$token,
+            'Accept' => 'application/json',
+        ];
+
         try {
-            $resp = Http::timeout(config('integrations.inventory.timeout', 4))
-                ->withHeaders([
-                    'Authorization' => 'Bearer ' . $token,
-                    'Accept' => 'application/json',
-                ])
-                ->get($url);
+            $respExistencias = Http::timeout(
+                config('integrations.inventory.timeout', 4)
+            )
+                ->withHeaders($headers)
+                ->get($inventoryUrl.'/api/existencias');
 
-            if (!$resp->successful()) {
-                // Intento alternativo con /api/inventarios
-                $urlAlt = config('integrations.inventory.url') . '/api/inventarios';
-                $resp = Http::timeout(config('integrations.inventory.timeout', 4))
-                    ->withHeaders([
-                        'Authorization' => 'Bearer ' . $token,
-                        'Accept' => 'application/json',
-                    ])
-                    ->get($urlAlt);
-            }
-
-            if (!$resp->successful()) {
+            if (!$respExistencias->successful()) {
                 return [
                     'alertas_criticas' => 0,
                     'items_stock_bajo' => [],
@@ -448,16 +450,252 @@ class DashboardAggregatorService
                 ];
             }
 
-            $existencias = $resp->json('existencias') ?? $resp->json('data') ?? [];
+            $existencias =
+                $respExistencias->json('existencias')
+                ?? $respExistencias->json('data')
+                ?? [];
+
+            /*
+            |--------------------------------------------------------------------------
+            | Almacenes
+            |--------------------------------------------------------------------------
+            */
+            $almacenesCatalogo = [];
+
+            try {
+                $respAlmacenes = Http::timeout(
+                    config('integrations.inventory.timeout', 4)
+                )
+                    ->withHeaders($headers)
+                    ->get($inventoryUrl.'/api/almacenes');
+
+                if ($respAlmacenes->successful()) {
+                    foreach (
+                        $respAlmacenes->json('almacenes') ?? []
+                        as $almacen
+                    ) {
+                        $id = (int) (
+                            $almacen['id_almacen']
+                            ?? $almacen['almacen_id']
+                            ?? 0
+                        );
+
+                        if ($id > 0) {
+                            $almacenesCatalogo[$id] =
+                                $almacen['nombre']
+                                ?? "Almacén #{$id}";
+                        }
+                    }
+                }
+            } catch (Throwable) {
+                // El Dashboard sigue funcionando con respaldo por ID.
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Presentaciones
+            |--------------------------------------------------------------------------
+            */
+            $presentaciones = [];
+
+            try {
+                $respPresentaciones = Http::timeout(
+                    config('integrations.catalog.timeout', 4)
+                )
+                    ->withHeaders($headers)
+                    ->get($catalogUrl.'/api/presentaciones');
+
+                if ($respPresentaciones->successful()) {
+                    foreach (
+                        $respPresentaciones->json('presentaciones') ?? []
+                        as $presentacion
+                    ) {
+                        $id = (int) (
+                            $presentacion['presentacion_id']
+                            ?? $presentacion['id_presentacion']
+                            ?? 0
+                        );
+
+                        if ($id < 1) {
+                            continue;
+                        }
+
+                        $producto =
+                            is_array(
+                                $presentacion['producto'] ?? null
+                            )
+                                ? trim(
+                                    (string) (
+                                        $presentacion['producto']['nombre']
+                                        ?? ''
+                                    )
+                                )
+                                : '';
+
+                        $nombrePresentacion = trim(
+                            (string) (
+                                $presentacion['nombre']
+                                ?? ''
+                            )
+                        );
+
+                        $presentaciones[$id] = [
+                            'nombre' =>
+                                $producto !== ''
+                                    ? $producto
+                                    : "Producto #{$id}",
+
+                            'detalle' =>
+                                $nombrePresentacion !== ''
+                                    ? $nombrePresentacion
+                                    : "Presentación #{$id}",
+                        ];
+                    }
+                }
+            } catch (Throwable) {
+                // El Dashboard sigue funcionando con respaldo por ID.
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Materias primas
+            |--------------------------------------------------------------------------
+            */
+            $materiasPrimas = [];
+
+            try {
+                $respMaterias = Http::timeout(
+                    config('integrations.catalog.timeout', 4)
+                )
+                    ->withHeaders($headers)
+                    ->get($catalogUrl.'/api/materias-primas');
+
+                if ($respMaterias->successful()) {
+                    foreach (
+                        $respMaterias->json('materias_primas') ?? []
+                        as $materia
+                    ) {
+                        $id = (int) (
+                            $materia['id_materia_prima']
+                            ?? 0
+                        );
+
+                        if ($id < 1) {
+                            continue;
+                        }
+
+                        $materiasPrimas[$id] = [
+                            'nombre' =>
+                                trim(
+                                    (string) (
+                                        $materia['nombre']
+                                        ?? ''
+                                    )
+                                ),
+
+                            'unidad' =>
+                                trim(
+                                    (string) (
+                                        $materia['unidad_medida']
+                                        ?? ''
+                                    )
+                                ),
+                        ];
+                    }
+                }
+            } catch (Throwable) {
+                // El Dashboard sigue funcionando con respaldo por ID.
+            }
+
             $alertas = 0;
             $itemsBajoStock = [];
             $almacenesMap = [];
 
             foreach ($existencias as $item) {
-                $cant = (float) ($item['stock_disponible'] ?? $item['cantidad'] ?? 0);
-                $nombre = $item['nombre'] ?? $item['articulo'] ?? 'Ítem';
-                $almacenNombre = $item['almacen_nombre'] ?? (is_array($item['almacen'] ?? null) ? $item['almacen']['nombre'] : ($item['almacen'] ?? 'Principal'));
-                $almacenId = $item['id_almacen'] ?? (is_array($item['almacen'] ?? null) ? $item['almacen']['id_almacen'] : 1);
+                $cantidad = (float) (
+                    $item['stock_disponible']
+                    ?? $item['cantidad']
+                    ?? 0
+                );
+
+                $almacenId = (int) (
+                    $item['almacen_id']
+                    ?? $item['id_almacen']
+                    ?? 0
+                );
+
+                $tipoArticulo = strtoupper(
+                    (string) (
+                        $item['tipo_articulo']
+                        ?? $item['tipo']
+                        ?? ''
+                    )
+                );
+
+                $articuloId = (int) (
+                    $item['articulo_id']
+                    ?? $item['presentacion_id']
+                    ?? $item['id_materia_prima']
+                    ?? 0
+                );
+
+                $almacenNombre =
+                    $almacenesCatalogo[$almacenId]
+                    ?? (
+                        $almacenId > 0
+                            ? "Almacén #{$almacenId}"
+                            : 'Almacén'
+                    );
+
+                $nombre = "Artículo #{$articuloId}";
+                $detalle = '';
+                $unidad = (string) (
+                    $item['unidad']
+                    ?? ''
+                );
+
+                if ($tipoArticulo === 'PRESENTACION') {
+                    $meta =
+                        $presentaciones[$articuloId]
+                        ?? null;
+
+                    if ($meta) {
+                        $nombre = $meta['nombre'];
+                        $detalle = $meta['detalle'];
+                    } else {
+                        $nombre =
+                            "Presentación #{$articuloId}";
+                    }
+
+                    if ($unidad === '') {
+                        $unidad = 'unidad';
+                    }
+                }
+
+                if ($tipoArticulo === 'MATERIA_PRIMA') {
+                    $meta =
+                        $materiasPrimas[$articuloId]
+                        ?? null;
+
+                    if ($meta) {
+                        $nombre =
+                            $meta['nombre'] !== ''
+                                ? $meta['nombre']
+                                : "Materia prima #{$articuloId}";
+
+                        if (
+                            $unidad === ''
+                            && $meta['unidad'] !== ''
+                        ) {
+                            $unidad = $meta['unidad'];
+                        }
+                    } else {
+                        $nombre =
+                            "Materia prima #{$articuloId}";
+                    }
+
+                    $detalle = $unidad;
+                }
 
                 if (!isset($almacenesMap[$almacenId])) {
                     $almacenesMap[$almacenId] = [
@@ -470,23 +708,56 @@ class DashboardAggregatorService
                 }
 
                 $almacenesMap[$almacenId]['total_items']++;
-                $almacenesMap[$almacenId]['stock_total'] += $cant;
+                $almacenesMap[$almacenId]['stock_total'] +=
+                    $cantidad;
 
-                if ($cant <= 5.0) {
+                if ($cantidad <= 5) {
                     $alertas++;
-                    $almacenesMap[$almacenId]['stock_critico']++;
 
-                    if (count($itemsBajoStock) < 5) {
-                        $itemsBajoStock[] = [
-                            'id_inventario' => $item['id_inventario'] ?? $item['id'] ?? 0,
-                            'nombre' => $nombre,
-                            'almacen' => $almacenNombre,
-                            'detalle' => $item['presentacion'] ?? $item['unidad_medida'] ?? '',
-                            'cantidad' => $cant,
-                        ];
-                    }
+                    $almacenesMap[
+                        $almacenId
+                    ]['stock_critico']++;
+
+                    $itemsBajoStock[] = [
+                        'id_inventario' =>
+                            "{$almacenId}-{$tipoArticulo}-{$articuloId}",
+
+                        'almacen' =>
+                            $almacenNombre,
+
+                        'nombre' =>
+                            $nombre,
+
+                        'detalle' =>
+                            $detalle,
+
+                        'cantidad' =>
+                            $cantidad,
+
+                        'unidad' =>
+                            $unidad,
+
+                        'tipo_articulo' =>
+                            $tipoArticulo,
+
+                        'articulo_id' =>
+                            $articuloId,
+                    ];
                 }
             }
+
+            usort(
+                $itemsBajoStock,
+                fn (array $a, array $b) =>
+                    $a['cantidad'] <=> $b['cantidad']
+            );
+
+            $itemsBajoStock =
+                array_slice(
+                    $itemsBajoStock,
+                    0,
+                    6
+                );
 
             return [
                 'alertas_criticas' => $alertas,

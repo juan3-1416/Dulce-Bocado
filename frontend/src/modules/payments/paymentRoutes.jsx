@@ -17,7 +17,7 @@ export const paymentRoutes = (
     <Route
       element={
         <ProtectedRoute
-          permiso="pagos.gestionar_pago"
+          permiso="pagos.ver"
         />
       }
     >

@@ -170,6 +170,34 @@ function VentasPage() {
       solicitudVentas.current += 1
     }
   }, [cargarVentas])
+  useEffect(() => {
+    let activo = true
+
+    const cargarClientesParaHistorial = async () => {
+      try {
+        const respuesta = await listarClientes()
+
+        if (!activo) return
+
+        setClientes(respuesta.clientes ?? [])
+        setErrorClientes('')
+      } catch (errorPeticion) {
+        if (!activo) return
+
+        setClientes([])
+        setErrorClientes(
+          errorPeticion.message ||
+            'No se pudieron cargar los clientes registrados.',
+        )
+      }
+    }
+
+    cargarClientesParaHistorial()
+
+    return () => {
+      activo = false
+    }
+  }, [])
 
   const cargarCatalogo = useCallback(async () => {
     setCargandoCatalogo(true)
@@ -203,7 +231,7 @@ function VentasPage() {
       const opciones = await cargarCatalogo()
       if (opciones.length === 0) return
       try {
-        const respuestaClientes = await listarClientes({ estado: '1' })
+        const respuestaClientes = await listarClientes()
         setClientes(respuestaClientes.clientes ?? [])
         setErrorClientes('')
       } catch (errorPeticion) {
@@ -511,12 +539,31 @@ function VentasPage() {
     }
 
     if (venta.id_cliente) {
+      const cliente = clientes.find(
+        (item) =>
+          Number(item.id_cliente) ===
+          Number(venta.id_cliente),
+      )
+
+      if (cliente) {
+        const nombreCompleto = [
+          cliente.nombre,
+          cliente.apellido,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .trim()
+
+        if (nombreCompleto) {
+          return nombreCompleto
+        }
+      }
+
       return `Cliente #${venta.id_cliente}`
     }
 
     return 'Cliente ocasional'
   }
-
   const formatearFecha = (
     fecha,
   ) => {
@@ -559,7 +606,7 @@ function VentasPage() {
         <button type="button" onClick={() => abrirFormulario(venta)} disabled={cargandoCatalogo || !catalogoDisponible || !tienePermiso('ventas.modificar')} title={!catalogoDisponible ? 'Pendiente de Catálogo.' : undefined} className="min-h-10 rounded-lg border border-theme-border-subtle px-3 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:cursor-not-allowed disabled:opacity-50">Editar</button>
         {tienePermiso('ventas.anular') && <button type="button" onClick={() => abrirModalAnular(venta)} className="min-h-10 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600">Anular</button>}
       </>}
-      {venta.estado === 'CONFIRMADA' && tienePermiso('pagos.crear') && <Link to="/pagos" className="inline-flex min-h-10 items-center rounded-lg border border-pink-200 bg-pink-50 px-3 py-2 text-sm font-semibold text-pink-700 hover:bg-pink-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600">Cobrar</Link>}
+      
     </div>
   )
 
@@ -950,10 +997,39 @@ function VentasPage() {
                           }
                           className="rounded-lg border border-gray-200 p-4"
                         >
-                          <p className="font-semibold text-gray-900">
-                            {detalle.nombre_presentacion_snapshot ||
-                              `Presentación #${detalle.presentacion_id}`}
-                          </p>
+                          {(() => {
+  const opcionCatalogo =
+    presentaciones.find(
+      (item) =>
+        Number(item.presentacion_id) ===
+        Number(detalle.presentacion_id),
+    )
+
+  const nombreProducto =
+    detalle.nombre_producto_snapshot ||
+    opcionCatalogo?.producto?.nombre ||
+    'Producto'
+
+  const nombrePresentacion =
+    detalle.nombre_presentacion_snapshot ||
+    opcionCatalogo?.nombre ||
+    `Presentación #${detalle.presentacion_id}`
+
+  return (
+    <>
+      <p className="font-semibold text-gray-900">
+        {nombreProducto}
+      </p>
+
+      <p className="mt-1 text-sm text-gray-600">
+        Presentación:{' '}
+        <span className="font-medium">
+          {nombrePresentacion}
+        </span>
+      </p>
+    </>
+  )
+})()}
 
                           <p className="mt-1 text-sm text-gray-600">
                             Cantidad:{' '}
@@ -1041,12 +1117,7 @@ function VentasPage() {
 
               {ventaSeleccionada.estado === 'CONFIRMADA' && tienePermiso('pagos.crear') && (
                 <div className="flex items-center justify-end border-t border-gray-200 pt-4">
-                  <Link
-                    to="/pagos"
-                    className="rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-pink-700"
-                  >
-                    Ir a Pagos y Cobros
-                  </Link>
+
                 </div>
               )}
             </div>
