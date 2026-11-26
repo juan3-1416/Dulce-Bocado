@@ -10,7 +10,7 @@ function PagoFormularioCampos({
   metodosPago = ['EFECTIVO', 'QR'],
   documentoSeleccionado,
   usarSaldoCompleto,
-  _tipoCobro,
+  tipoCobro,
 }) {
   const saldoPendiente = Number(documentoSeleccionado?.saldo ?? 0)
 
@@ -60,7 +60,7 @@ function PagoFormularioCampos({
           {documentoSeleccionado && (
             <p className="mt-1 text-xs text-gray-500">
               {saldoPendiente > 0
-                ? `Saldo pendiente: Bs ${saldoPendiente.toFixed(2)} (Se aceptan pagos parciales)`
+                ? `Saldo pendiente: Bs ${saldoPendiente.toFixed(2)} (${tipoCobro === 'pedido' ? 'Se aceptan anticipos y pagos parciales' : 'Se requiere el pago completo'})`
                 : 'Esta operación ya no tiene saldo pendiente por cobrar.'}
             </p>
           )}

@@ -10,11 +10,14 @@ class AutorizarServicioInternoPagos
 {
     public function handle(
         Request $request,
-        Closure $next
+        Closure $next,
+        string $servicio = 'sales'
     ): Response {
-        $esperada = config(
-            'services.sales_internal.key'
-        );
+        $esperada = match ($servicio) {
+            'sales' => config('services.sales_internal.key'),
+            'order' => config('services.order_internal.key'),
+            default => null,
+        };
 
         $recibida = $request->header(
             'X-Internal-Service-Key'

@@ -3,6 +3,7 @@
 use App\Http\Controllers\PagoController;
 use App\Http\Controllers\ReciboController;
 use App\Http\Controllers\VentaPagoInternoController;
+use App\Http\Controllers\PedidoPagoInternoController;
 use App\Http\Middleware\AutorizarPermisoPagos;
 use App\Http\Middleware\AutorizarServicioInternoPagos;
 use Illuminate\Support\Facades\Route;
@@ -13,6 +14,14 @@ Route::get(
 )->whereNumber('venta')
     ->middleware(
         AutorizarServicioInternoPagos::class
+    );
+
+Route::get(
+    '/internal/pedidos/{pedido}/pagos',
+    [PedidoPagoInternoController::class, 'show']
+)->whereNumber('pedido')
+    ->middleware(
+        AutorizarServicioInternoPagos::class.':order'
     );
 
 Route::post(

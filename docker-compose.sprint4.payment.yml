@@ -31,6 +31,7 @@ services:
       - payment_vendor:/var/www/html/vendor
 
     environment:
+      PAYMENT_ORDER_INTERNAL_KEY: ${PAYMENT_ORDER_INTERNAL_KEY:?Clave interna de Order requerida}
       APP_NAME: Dulce Bocado Payment
       APP_ENV: local
       APP_DEBUG: "true"

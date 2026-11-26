@@ -240,6 +240,7 @@ services:
     restart: unless-stopped
     working_dir: /var/www/html
     environment:
+      PAYMENT_ORDER_INTERNAL_KEY: ${PAYMENT_ORDER_INTERNAL_KEY:?Clave interna de Order requerida}
       APP_NAME: "Dulce Bocado Orders"
       APP_ENV: local
       APP_DEBUG: "true"
@@ -338,6 +339,7 @@ services:
     restart: unless-stopped
     working_dir: /var/www/html
     environment:
+      PAYMENT_ORDER_INTERNAL_KEY: ${PAYMENT_ORDER_INTERNAL_KEY:?Clave interna de Order requerida}
       APP_NAME: "Dulce Bocado Payment"
       APP_ENV: local
       APP_DEBUG: "true"

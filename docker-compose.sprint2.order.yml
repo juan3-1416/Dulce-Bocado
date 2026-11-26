@@ -28,6 +28,7 @@ services:
       - ./microservices/order-service:/var/www/html
       - order_vendor:/var/www/html/vendor
     environment:
+      PAYMENT_ORDER_INTERNAL_KEY: ${PAYMENT_ORDER_INTERNAL_KEY:?Clave interna de Order requerida}
       APP_NAME: Dulce Bocado Orders
       APP_ENV: local
       APP_DEBUG: "true"

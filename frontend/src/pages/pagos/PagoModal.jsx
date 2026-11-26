@@ -9,6 +9,9 @@ import PagoDocumentoSelector from './components/PagoDocumentoSelector'
 import PagoResumenDocumento from './components/PagoResumenDocumento'
 import PagoFormularioCampos from './components/PagoFormularioCampos'
 
+const DOCUMENTOS_VACIOS = []
+const METODOS_PAGO_PREDETERMINADOS = ['EFECTIVO', 'QR']
+
 /**
  * Modal de registro de pagos.
  *
@@ -29,9 +32,9 @@ function PagoModal({
   abierto,
   onCerrar,
   onGuardado,
-  ventas = [],
-  pedidos = [],
-  metodosPago = [],
+  ventas = DOCUMENTOS_VACIOS,
+  pedidos = DOCUMENTOS_VACIOS,
+  metodosPago = METODOS_PAGO_PREDETERMINADOS,
   ventaInicialId = null,
   pedidoSeleccionadoInicial = null,
 }) {

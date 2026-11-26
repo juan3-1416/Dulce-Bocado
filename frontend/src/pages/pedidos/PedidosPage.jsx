@@ -14,6 +14,7 @@ import PedidoModal from './PedidoModal.jsx';
 import PedidoDetalleModal from './PedidoDetalleModal.jsx';
 import CancelarPedidoModal from './CancelarPedidoModal.jsx';
 import PagoModal from '../pagos/PagoModal';
+import { consultarPagosOrigen } from '../../services/pagoService';
 import { useAuth } from '../../context/AuthContext';
 import './pedidos.css';
 
@@ -25,6 +26,10 @@ function PedidosPage() {
             'pedidos.gestionar_estado_entrega'
         );
     const puedeCrearPago = tienePermiso('pagos.crear');
+
+    const [pedidoParaEntregar, setPedidoParaEntregar] = useState(null);
+    const [cobroParaEntrega, setCobroParaEntrega] = useState(false);
+    const [verificandoEntrega, setVerificandoEntrega] = useState(false);
 
     const [pedidos, setPedidos] =
         useState([]);
@@ -407,7 +412,122 @@ function PedidosPage() {
     |--------------------------------------------------------------------------
     */
 
+    const importeEnCentavos = (valor) => {
+        if (valor == null || !/^\d+(?:\.\d{1,2})?$/.test(String(valor))) {
+            return null;
+        }
+
+        const centavos = Math.round(Number(valor) * 100);
+
+        return Number.isSafeInteger(centavos) ? centavos : null;
+    };
+
+    const consultarEstadoPagoEntrega = async (pedido) => {
+        const resumen = await consultarPagosOrigen(
+            'PEDIDO',
+            pedido.id_pedido
+        );
+
+        const total = importeEnCentavos(resumen.total);
+        const pagado = importeEnCentavos(resumen.pagado);
+        const saldo = importeEnCentavos(resumen.saldo);
+
+        if (
+            total === null ||
+            pagado === null ||
+            saldo === null ||
+            total <= 0 ||
+            pagado > total ||
+            total - pagado !== saldo
+        ) {
+            throw new Error(
+                'No se pudo verificar el saldo real del pedido.'
+            );
+        }
+
+        return {
+            resumen,
+            pagadoCompleto: pagado === total && saldo === 0,
+        };
+    };
+
+    const iniciarEntrega = async (pedido) => {
+        if (!puedeGestionarEstado || verificandoEntrega) return;
+
+        setError('');
+        setMensajeExito('');
+        setVerificandoEntrega(true);
+
+        try {
+            const { resumen, pagadoCompleto } =
+                await consultarEstadoPagoEntrega(pedido);
+
+            if (pagadoCompleto) {
+                await finalizarEntrega(pedido);
+                return;
+            }
+
+            if (!puedeCrearPago) {
+                setError(
+                    'El pedido tiene saldo pendiente. Un usuario autorizado debe registrar el cobro antes de entregarlo.'
+                );
+                return;
+            }
+
+            setPedidoParaEntregar(pedido);
+            setCobroParaEntrega(true);
+
+            setPedidoParaPagar({
+                ...pedido,
+                total: resumen.total,
+                total_pagado: resumen.pagado,
+                saldo: resumen.saldo,
+            });
+
+            setModalPagoAbierto(true);
+        } catch (err) {
+            setError(
+                err.message ||
+                'No se pudo verificar el pago del pedido.'
+            );
+        } finally {
+            setVerificandoEntrega(false);
+        }
+    };
+
+    const finalizarEntrega = async (pedido) => {
+        if (!pedido || !puedeGestionarEstado) {
+            throw new Error('No tiene permiso para entregar el pedido.');
+        }
+
+        const { pagadoCompleto } =
+            await consultarEstadoPagoEntrega(pedido);
+
+        if (!pagadoCompleto) {
+            throw new Error(
+                'No se puede entregar el pedido porque tiene saldo pendiente.'
+            );
+        }
+
+        await cambiarEstadoPedido(
+            pedido.id_pedido,
+            { estado: 'ENTREGADO' }
+        );
+
+        setPedidoParaEntregar(null);
+
+        await cargarPedidos();
+
+        setMensajeExito(
+            'Pedido entregado correctamente. Pago completo verificado.'
+        );
+    };
+
     const manejarCambioEstado = async (pedido, nuevoEstado) => {
+        if (nuevoEstado === 'ENTREGADO') {
+            return iniciarEntrega(pedido);
+        }
+
         const id_pedido =
             typeof pedido === 'object'
                 ? pedido.id_pedido
@@ -828,10 +948,12 @@ function PedidosPage() {
                                                             Ver detalle
                                                         </button>
 
-                                                        {puedeCrearPago && pedido.estado !== 'CANCELADO' && (
+                                                        {puedeCrearPago && !['CANCELADO', 'ENTREGADO'].includes(pedido.estado) && (
                                                             <button
                                                                 type="button"
                                                                 onClick={() => {
+                                                                    setCobroParaEntrega(false);
+                                                                    setPedidoParaEntregar(null);
                                                                     setPedidoParaPagar(pedido);
                                                                     setModalPagoAbierto(true);
                                                                 }}
@@ -991,12 +1113,49 @@ function PedidosPage() {
                     onCerrar={() => {
                         setModalPagoAbierto(false);
                         setPedidoParaPagar(null);
+                        setCobroParaEntrega(false);
+                        setPedidoParaEntregar(null);
                     }}
                     onGuardado={async (msg) => {
+                        const pedidoEntrega = cobroParaEntrega
+                            ? pedidoParaEntregar
+                            : null;
+
                         setModalPagoAbierto(false);
                         setPedidoParaPagar(null);
+                        setCobroParaEntrega(false);
+                        setPedidoParaEntregar(null);
+                        setError('');
                         setMensajeExito(msg);
-                        await cargarPedidos();
+
+                        if (!pedidoEntrega) {
+                            await cargarPedidos();
+                            return;
+                        }
+
+                        setVerificandoEntrega(true);
+
+                        try {
+                            const { pagadoCompleto } =
+                                await consultarEstadoPagoEntrega(pedidoEntrega);
+
+                            if (pagadoCompleto) {
+                                await finalizarEntrega(pedidoEntrega);
+                            } else {
+                                await cargarPedidos();
+
+                                setMensajeExito(
+                                    'Pago parcial registrado. El pedido todavia tiene saldo pendiente y no puede entregarse.'
+                                );
+                            }
+                        } catch (err) {
+                            setError(
+                                'Pago registrado, pero no se pudo completar la entrega. No vuelva a cobrar. ' +
+                                (err.message || '')
+                            );
+                        } finally {
+                            setVerificandoEntrega(false);
+                        }
                     }}
                     pedidos={pedidoParaPagar ? [pedidoParaPagar] : []}
                     pedidoSeleccionadoInicial={pedidoParaPagar}

@@ -1,6 +1,12 @@
 <?php
 
 return [
+    'payment' => [
+        'url' => env('PAYMENT_SERVICE_URL', 'http://payment-service:8000'),
+        'key' => env('PAYMENT_ORDER_INTERNAL_KEY'),
+    ],
+
+
 
     'security' => [
         'url' => env('SECURITY_SERVICE_URL', 'http://security-service:8000'),

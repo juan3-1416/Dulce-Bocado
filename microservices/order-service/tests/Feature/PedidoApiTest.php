@@ -32,15 +32,65 @@ class PedidoApiTest extends TestCase
         config()->set('services.customer.key', 'customer-test');
         config()->set('services.catalog.url', 'http://catalog-service:8000');
         config()->set('services.catalog.key', 'catalog-test');
+        config()->set('services.payment.url', 'http://payment-service:8000');
+        config()->set('services.payment.key', 'payment-order-test');
         Http::preventStrayRequests();
         $this->withToken('token-test');
     }
 
-    private function dependencias(bool $clienteActivo = true, int $catalogoEstado = 200, array $permisos = ['pedidos.gestionar_pedido', 'pedidos.gestionar_estado_entrega']): void
+    private function dependencias(
+        bool $clienteActivo = true,
+        int $catalogoEstado = 200,
+        array $permisos = ['pedidos.gestionar_pedido', 'pedidos.gestionar_estado_entrega'],
+        string $totalPagado = '0.00',
+        int $cantidadPagos = 0,
+        int $paymentEstado = 200,
+        bool $respuestaInvalida = false
+    ): void
     {
         Http::swap(new Factory());
         Http::preventStrayRequests();
-        Http::fake(function ($request) use ($clienteActivo, $catalogoEstado, $permisos) {
+        Http::fake(function ($request) use (
+            $clienteActivo,
+            $catalogoEstado,
+            $permisos,
+            $totalPagado,
+            $cantidadPagos,
+            $paymentEstado,
+            $respuestaInvalida
+        ) {
+            if (preg_match(
+                '~^http://payment-service:8000/api/internal/pedidos/(\d+)/pagos$~',
+                $request->url(),
+                $matches
+            )) {
+                $this->assertTrue(
+                    $request->hasHeader(
+                        'X-Internal-Service-Key',
+                        'payment-order-test'
+                    )
+                );
+
+                $this->assertTrue(
+                    $request->hasHeader('X-Actor-User-Id', '17')
+                );
+
+                if ($paymentEstado !== 200) {
+                    return Http::response([], $paymentEstado);
+                }
+
+                if ($respuestaInvalida) {
+                    return Http::response(['total_pagado' => $totalPagado]);
+                }
+
+                return Http::response([
+                    'pedido_id' => (int) $matches[1],
+                    'tiene_pago_confirmado' => $cantidadPagos > 0,
+                    'cantidad_pagos_confirmados' => $cantidadPagos,
+                    'total_pagado' => $totalPagado,
+                ]);
+            }
+
             if (str_contains($request->url(), '/api/internal/introspect')) {
                 return Http::response(['usuario' => ['id_usuario' => 17, 'activo' => true, 'permisos' => $permisos]]);
             }
@@ -109,7 +159,10 @@ class PedidoApiTest extends TestCase
 
     public function test_transiciones_validas_y_estado_final(): void
     {
-        $this->dependencias();
+        $this->dependencias(
+            totalPagado: '20.50',
+            cantidadPagos: 2
+        );
         $id = $this->postJson('/api/pedidos', $this->datos())->assertCreated()->json('pedido.id_pedido');
         $this->patchJson('/api/pedidos/'.$id.'/estado', ['estado' => 'EN_PROCESO'])
             ->assertOk()->assertJsonPath('pedido.estado', 'EN_PROCESO');
@@ -118,6 +171,135 @@ class PedidoApiTest extends TestCase
         $this->patchJson('/api/pedidos/'.$id.'/estado', ['estado' => 'CANCELADO', 'motivo_cancelacion' => 'Error'])
             ->assertStatus(409)->assertJsonPath('error.code', 'PEDIDO_ESTADO_FINAL');
         $this->assertDatabaseCount('pedido', 1);
+    }
+
+    public function test_no_entrega_pedido_sin_pago(): void
+    {
+        $this->dependencias();
+
+        $id = $this->postJson('/api/pedidos', $this->datos())
+            ->assertCreated()->json('pedido.id_pedido');
+
+        $this->patchJson('/api/pedidos/'.$id.'/estado', [
+            'estado' => 'ENTREGADO',
+        ])->assertConflict()
+            ->assertJsonPath('error.code', 'PEDIDO_SIN_PAGO');
+
+        $this->assertDatabaseHas('pedido', [
+            'id_pedido' => $id,
+            'estado' => 'PROGRAMADO',
+            'id_usuario_entrega' => null,
+            'fecha_entrega_efectiva' => null,
+        ]);
+    }
+
+    public function test_no_entrega_pedido_con_pago_parcial(): void
+    {
+        $this->dependencias(
+            totalPagado: '10.00',
+            cantidadPagos: 1
+        );
+
+        $id = $this->postJson('/api/pedidos', $this->datos())
+            ->assertCreated()->json('pedido.id_pedido');
+
+        $this->patchJson('/api/pedidos/'.$id.'/estado', [
+            'estado' => 'EN_PROCESO',
+        ])->assertOk();
+
+        $this->patchJson('/api/pedidos/'.$id.'/estado', [
+            'estado' => 'ENTREGADO',
+        ])->assertConflict()
+            ->assertJsonPath('error.code', 'PEDIDO_PAGO_INCOMPLETO');
+
+        $this->assertDatabaseHas('pedido', [
+            'id_pedido' => $id,
+            'estado' => 'EN_PROCESO',
+            'id_usuario_entrega' => null,
+        ]);
+    }
+
+    public function test_entrega_pedido_con_pago_completo(): void
+    {
+        $this->dependencias(
+            totalPagado: '20.50',
+            cantidadPagos: 2
+        );
+
+        $id = $this->postJson('/api/pedidos', $this->datos())
+            ->assertCreated()->json('pedido.id_pedido');
+
+        $this->patchJson('/api/pedidos/'.$id.'/estado', [
+            'estado' => 'ENTREGADO',
+        ])->assertOk()
+            ->assertJsonPath('pedido.estado', 'ENTREGADO')
+            ->assertJsonPath('pedido.id_usuario_entrega', 17);
+
+        $this->assertDatabaseHas('pedido', [
+            'id_pedido' => $id,
+            'estado' => 'ENTREGADO',
+            'id_usuario_entrega' => 17,
+        ]);
+    }
+
+    public function test_no_entrega_pedido_con_sobrepago(): void
+    {
+        $this->dependencias(
+            totalPagado: '21.00',
+            cantidadPagos: 1
+        );
+
+        $id = $this->postJson('/api/pedidos', $this->datos())
+            ->assertCreated()->json('pedido.id_pedido');
+
+        $this->patchJson('/api/pedidos/'.$id.'/estado', [
+            'estado' => 'ENTREGADO',
+        ])->assertConflict()
+            ->assertJsonPath('error.code', 'PEDIDO_PAGO_EXCEDENTE');
+
+        $this->assertDatabaseHas('pedido', [
+            'id_pedido' => $id,
+            'estado' => 'PROGRAMADO',
+        ]);
+    }
+
+    public function test_no_entrega_si_payment_no_esta_disponible(): void
+    {
+        $this->dependencias(paymentEstado: 503);
+
+        $id = $this->postJson('/api/pedidos', $this->datos())
+            ->assertCreated()->json('pedido.id_pedido');
+
+        $this->patchJson('/api/pedidos/'.$id.'/estado', [
+            'estado' => 'ENTREGADO',
+        ])->assertStatus(503)
+            ->assertJsonPath('error.code', 'PAYMENT_NO_DISPONIBLE');
+
+        $this->assertDatabaseHas('pedido', [
+            'id_pedido' => $id,
+            'estado' => 'PROGRAMADO',
+        ]);
+    }
+
+    public function test_no_entrega_si_respuesta_de_payment_es_invalida(): void
+    {
+        $this->dependencias(
+            totalPagado: '20.50',
+            respuestaInvalida: true
+        );
+
+        $id = $this->postJson('/api/pedidos', $this->datos())
+            ->assertCreated()->json('pedido.id_pedido');
+
+        $this->patchJson('/api/pedidos/'.$id.'/estado', [
+            'estado' => 'ENTREGADO',
+        ])->assertStatus(503)
+            ->assertJsonPath('error.code', 'PAYMENT_RESPUESTA_INVALIDA');
+
+        $this->assertDatabaseHas('pedido', [
+            'id_pedido' => $id,
+            'estado' => 'PROGRAMADO',
+        ]);
     }
 
     public function test_cancelacion_exige_motivo_y_guarda_auditoria(): void

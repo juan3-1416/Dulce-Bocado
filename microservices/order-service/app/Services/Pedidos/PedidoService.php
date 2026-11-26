@@ -6,6 +6,8 @@ use App\Models\Pedido;
 use App\Services\Catalogo\CatalogoService;
 use App\Services\Clientes\ClienteService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Client\ConnectionException;
 
 class PedidoService
 {
@@ -208,6 +210,11 @@ class PedidoService
             }
 
             if ($nuevoEstado === 'ENTREGADO') {
+                $this->exigirPagoCompleto(
+                    $bloqueado,
+                    $actorId
+                );
+
                 $bloqueado->update([
                     'estado' => 'ENTREGADO',
                     'id_usuario_entrega' => $actorId,
@@ -240,6 +247,142 @@ class PedidoService
                 ->fresh()
                 ->load('detalles');
         });
+    }
+
+    private function importeEnCentavos(mixed $valor): ?int
+    {
+        if (!is_string($valor) && !is_int($valor)) {
+            return null;
+        }
+
+        if (!preg_match(
+            '/^\d{1,10}(?:\.\d{1,2})?$/D',
+            (string) $valor
+        )) {
+            return null;
+        }
+
+        $partes = explode('.', (string) $valor, 2);
+
+        return ((int) $partes[0] * 100)
+            + (int) str_pad($partes[1] ?? '', 2, '0');
+    }
+
+    private function exigirPagoCompleto(
+        Pedido $pedido,
+        int $actorId
+    ): void {
+        $url = config('services.payment.url');
+        $clave = config('services.payment.key');
+
+        if (
+            !is_string($url) ||
+            trim($url) === '' ||
+            !is_string($clave) ||
+            trim($clave) === ''
+        ) {
+            throw new PedidoException(
+                503,
+                'PAYMENT_NO_CONFIGURADO',
+                'No se encuentra configurada la verificacion de pagos.'
+            );
+        }
+
+        try {
+            $respuesta = Http::acceptJson()
+                ->withoutRedirecting()
+                ->connectTimeout(3)
+                ->timeout(5)
+                ->withHeaders([
+                    'X-Internal-Service-Key' => $clave,
+                    'X-Actor-User-Id' => (string) $actorId,
+                ])
+                ->get(
+                    rtrim($url, '/')
+                    .'/api/internal/pedidos/'
+                    .$pedido->id_pedido
+                    .'/pagos'
+                );
+        } catch (ConnectionException $e) {
+            throw new PedidoException(
+                503,
+                'PAYMENT_NO_DISPONIBLE',
+                'No se pudo verificar el pago del pedido.'
+            );
+        }
+
+        if (!$respuesta->successful()) {
+            throw new PedidoException(
+                503,
+                'PAYMENT_NO_DISPONIBLE',
+                'No fue posible consultar los pagos registrados.'
+            );
+        }
+
+        $datos = $respuesta->json();
+
+        if (
+            !is_array($datos) ||
+            ($datos['pedido_id'] ?? null) !== (int) $pedido->id_pedido ||
+            !is_bool($datos['tiene_pago_confirmado'] ?? null) ||
+            !is_int($datos['cantidad_pagos_confirmados'] ?? null) ||
+            $datos['cantidad_pagos_confirmados'] < 0
+        ) {
+            throw new PedidoException(
+                503,
+                'PAYMENT_RESPUESTA_INVALIDA',
+                'No se pudo validar la respuesta del servicio de pagos.'
+            );
+        }
+
+        $total = $this->importeEnCentavos(
+            $pedido->total
+        );
+
+        $pagado = $this->importeEnCentavos(
+            $datos['total_pagado'] ?? null
+        );
+
+        if (
+            $total === null ||
+            $total <= 0 ||
+            $pagado === null ||
+            $datos['tiene_pago_confirmado'] !==
+                ($datos['cantidad_pagos_confirmados'] > 0)
+        ) {
+            throw new PedidoException(
+                503,
+                'PEDIDO_PAGO_NO_VERIFICABLE',
+                'No se pudo verificar el importe pagado del pedido.'
+            );
+        }
+
+        if (
+            !$datos['tiene_pago_confirmado'] ||
+            $datos['cantidad_pagos_confirmados'] === 0
+        ) {
+            throw new PedidoException(
+                409,
+                'PEDIDO_SIN_PAGO',
+                'No se puede entregar el pedido sin registrar su pago.'
+            );
+        }
+
+        if ($pagado < $total) {
+            throw new PedidoException(
+                409,
+                'PEDIDO_PAGO_INCOMPLETO',
+                'El pedido tiene saldo pendiente. Debe completar el pago antes de entregarlo.'
+            );
+        }
+
+        if ($pagado > $total) {
+            throw new PedidoException(
+                409,
+                'PEDIDO_PAGO_EXCEDENTE',
+                'El importe pagado supera el total del pedido. Verifique los pagos registrados.'
+            );
+        }
     }
 
     private function prepararDetalles(

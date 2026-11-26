@@ -43,6 +43,24 @@ export function usePagoFormulario({
 
   const intentoPago = useRef(null)
 
+  const pedidoInicialId =
+    pedidoSeleccionadoInicial?.id_pedido ?? null
+
+  const montoPedidoInicial = String(
+    pedidoSeleccionadoInicial?.saldo ??
+    pedidoSeleccionadoInicial?.total ??
+    '',
+  )
+
+  const montoVentaInicial = String(
+    ventas.find(
+      (v) => Number(v.id_venta) === Number(ventaInicialId),
+    )?.total ?? '',
+  )
+
+  const soloPedidos =
+    pedidos.length > 0 && ventas.length === 0
+
   // Consultar saldo autorizado directamente en payment-service
   const consultarSaldoServidor = useCallback(async (tipo, id) => {
     if (!id || Number(id) <= 0) {
@@ -85,11 +103,11 @@ export function usePagoFormulario({
     intentoPago.current = null
     setError('')
 
-    if (pedidoSeleccionadoInicial) {
+    if (pedidoInicialId) {
       setTipoCobro('pedido')
-      const id = String(pedidoSeleccionadoInicial.id_pedido)
+      const id = String(pedidoInicialId)
       setIdPedido(id)
-      setMonto(String(pedidoSeleccionadoInicial.saldo ?? pedidoSeleccionadoInicial.total ?? ''))
+      setMonto(montoPedidoInicial)
       void consultarSaldoServidor('PEDIDO', id)
       return
     }
@@ -98,15 +116,12 @@ export function usePagoFormulario({
       setTipoCobro('venta')
       const id = String(ventaInicialId)
       setIdVenta(id)
-      const ventaInicial = ventas.find((v) => Number(v.id_venta) === Number(id))
-      if (ventaInicial) {
-        setMonto(String(ventaInicial.total ?? ''))
-      }
+      setMonto(montoVentaInicial)
       void consultarSaldoServidor('VENTA', id)
       return
     }
 
-    if (pedidos.length > 0 && ventas.length === 0) {
+    if (soloPedidos) {
       setTipoCobro('pedido')
     } else {
       setTipoCobro('venta')
@@ -114,9 +129,10 @@ export function usePagoFormulario({
   }, [
     abierto,
     ventaInicialId,
-    pedidoSeleccionadoInicial,
-    ventas,
-    pedidos,
+    pedidoInicialId,
+    montoPedidoInicial,
+    montoVentaInicial,
+    soloPedidos,
     setError,
     consultarSaldoServidor,
   ])
