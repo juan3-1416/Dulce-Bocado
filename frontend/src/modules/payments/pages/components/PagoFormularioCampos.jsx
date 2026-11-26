@@ -97,10 +97,8 @@ function PagoFormularioCampos({
       {/* Aviso informativo de QR según acuerdo PO */}
       {metodoPago === 'QR' && (
         <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-xs text-blue-900">
-          <p className="font-semibold">Integración de Pasarela de Pago Oficial</p>
-          <p className="mt-1 text-blue-800">
-            La integración de pagos QR se realizará al cierre del Sprint 4 directamente con la API y documentación oficial de la pasarela que entregará el Product Owner. Seleccione <strong>Efectivo</strong> para registrar los cobros presenciales de esta etapa.
-          </p>
+          
+          
         </div>
       )}
 
