@@ -396,7 +396,7 @@ class PagoController extends Controller
         $datos = $request->validate([
             'origen_tipo' => ['required', 'in:VENTA,PEDIDO'],
             'origen_id' => ['required', 'integer', 'min:1'],
-            'monto' => ['required', 'numeric', 'min:0.01'],
+            'monto' => ['required', 'numeric', 'min:0.01', 'max:9999999999.99', 'regex:/^\d+(?:\.\d{1,2})?$/D'],
             'moneda' => ['sometimes', 'in:BOB'],
         ]);
 

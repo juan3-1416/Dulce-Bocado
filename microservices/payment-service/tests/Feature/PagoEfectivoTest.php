@@ -28,7 +28,7 @@ class PagoEfectivoTest extends TestCase
         $this->fakeDependencies();
     }
 
-    private function fakeDependencies(array $permissions = ['pagos.crear', 'pagos.ver'], string $state = 'CONFIRMADA', int $status = 200): void
+    private function fakeDependencies(array $permissions = ['pagos.crear', 'pagos.ver'], string $state = 'BORRADOR', int $status = 200): void
     {
         Http::swap(new Factory);
         Http::preventStrayRequests();
@@ -45,7 +45,7 @@ class PagoEfectivoTest extends TestCase
         ]);
     }
 
-    private function pay(string $amount = '40.00', string $key = 'payment-test-key-0001', string $type = 'VENTA'): TestResponse
+    private function pay(string $amount = '100.00', string $key = 'payment-test-key-0001', string $type = 'VENTA'): TestResponse
     {
         return $this->withHeaders(['Authorization' => 'Bearer test-token', 'Idempotency-Key' => $key])
             ->postJson('/api/pagos/efectivo', ['origen_tipo' => $type, 'origen_id' => 1, 'monto' => $amount]);
@@ -53,10 +53,10 @@ class PagoEfectivoTest extends TestCase
 
     public function test_partial_payments_balance_and_replay(): void
     {
-        $first = $this->pay()->assertCreated()->assertJsonPath('resumen.saldo', '60.00');
-        $this->pay()->assertCreated()->assertExactJson($first->json());
-        $this->pay('60.00', 'payment-test-key-0002')->assertCreated()->assertJsonPath('resumen.saldo', '0.00');
-        $this->getJson('/api/pagos?origen=VENTA&origen_id=1')->assertOk()->assertJsonPath('pagado', '100.00')->assertJsonCount(2, 'pagos');
+        $first = $this->pay('40.00', 'payment-test-key-0001', 'PEDIDO')->assertCreated()->assertJsonPath('resumen.saldo', '60.00');
+        $this->pay('40.00', 'payment-test-key-0001', 'PEDIDO')->assertCreated()->assertExactJson($first->json());
+        $this->pay('60.00', 'payment-test-key-0002', 'PEDIDO')->assertCreated()->assertJsonPath('resumen.saldo', '0.00');
+        $this->getJson('/api/pagos?origen=PEDIDO&origen_id=1')->assertOk()->assertJsonPath('pagado', '100.00')->assertJsonCount(2, 'pagos');
         $this->assertDatabaseCount('pago', 2);
         DB::purge('pgsql');
         $this->assertSame('100.00', DB::table('pago')->sum('monto'));
@@ -92,18 +92,48 @@ class PagoEfectivoTest extends TestCase
         $this->assertDatabaseCount('pago', 0);
     }
 
-    public function test_unconfirmed_sale_and_unavailable_origin_are_rejected(): void
+    public function test_sale_requires_full_payment(): void
     {
         $this->fakeDependencies(state: 'BORRADOR');
-        $this->pay()->assertConflict()->assertJsonPath('error.code', 'VENTA_NO_CONFIRMADA');
+
+        $this->pay('40.00')
+            ->assertConflict()
+            ->assertJsonPath('error.code', 'VENTA_PAGO_INCOMPLETO');
+
+        $this->pay('40.00')
+            ->assertConflict()
+            ->assertJsonPath('error.code', 'VENTA_PAGO_INCOMPLETO');
+
+        $this->pay('99.99', 'payment-test-key-0002')
+            ->assertConflict()
+            ->assertJsonPath('error.code', 'VENTA_PAGO_INCOMPLETO');
+
+        $this->assertDatabaseCount('pago', 0);
+
+        $this->pay('100.00', 'payment-test-key-0003')
+            ->assertCreated()
+            ->assertJsonPath('resumen.saldo', '0.00');
+
+        $this->assertDatabaseCount('pago', 1);
+    }
+
+    public function test_cancelled_sale_and_unavailable_origin_are_rejected(): void
+    {
+        $this->fakeDependencies(state: 'CANCELADA');
+
+        $this->pay()
+            ->assertConflict()
+            ->assertJsonPath('error.code', 'ORIGEN_CANCELADO');
+
         $this->fakeDependencies(status: 503);
-        $this->pay()->assertStatus(503);
+        $this->pay(key: 'payment-test-key-0002')->assertStatus(503);
+
         $this->assertDatabaseCount('pago', 0);
     }
 
     public function test_order_payment_does_not_write_to_order_service(): void
     {
-        $this->pay(type: 'PEDIDO')->assertCreated();
+        $this->pay(amount: '40.00', type: 'PEDIDO')->assertCreated();
         Http::assertNotSent(fn ($r) => str_contains($r->url(), 'order-service') && $r->method() !== 'GET');
         $this->assertDatabaseHas('pago', ['origen_tipo' => 'PEDIDO', 'actor_usuario_id' => 9]);
     }
@@ -155,7 +185,7 @@ class PagoEfectivoTest extends TestCase
         sort($statuses);
         $this->assertSame($sameKey ? [201, 201] : [201, 409], $statuses);
         $this->assertDatabaseCount('pago', 1);
-        $this->assertSame('70.00', DB::table('pago')->sum('monto'));
+        $this->assertSame('100.00', DB::table('pago')->sum('monto'));
     }
 
     public function test_invalid_idempotency_key_and_spoofed_actor(): void

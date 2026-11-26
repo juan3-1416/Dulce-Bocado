@@ -67,4 +67,17 @@ return [
             3
         ),
     ],
+    'payment' => [
+        'url' => env(
+            'PAYMENT_SERVICE_URL',
+            'http://payment-service:8000'
+        ),
+        'sales_key' => env(
+            'PAYMENT_SALES_KEY'
+        ),
+        'timeout' => (int) env(
+            'PAYMENT_TIMEOUT',
+            3
+        ),
+    ],
 ];

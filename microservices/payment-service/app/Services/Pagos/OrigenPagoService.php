@@ -402,11 +402,20 @@ class OrigenPagoService
                 );
             }
 
-            if ($estado !== 'CONFIRMADA') {
+            if (
+                !in_array(
+                    $estado,
+                    [
+                        'BORRADOR',
+                        'CONFIRMADA',
+                    ],
+                    true
+                )
+            ) {
                 throw new PagoException(
                     409,
-                    'VENTA_NO_CONFIRMADA',
-                    'La venta debe estar confirmada antes de registrar pagos.'
+                    'VENTA_NO_PAGABLE',
+                    'La venta no se encuentra en un estado pagable.'
                 );
             }
 

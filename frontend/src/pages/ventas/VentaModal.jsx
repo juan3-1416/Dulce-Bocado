@@ -115,9 +115,13 @@ function VentaModal({ abierto, onCerrar, onGuardado, clientes, presentaciones, e
       const respuesta = venta
         ? await actualizarVenta(venta.id_venta, datos, intentoGuardar.current.clave)
         : await crearVenta(datos, intentoGuardar.current.clave)
-      await onGuardado(respuesta?.message || (venta
-        ? 'Venta actualizada correctamente.'
-        : 'Venta registrada correctamente.'), !venta)
+      await onGuardado(
+        venta
+          ? 'Borrador actualizado correctamente.'
+          : 'Borrador registrado. Pendiente de pago.',
+        !venta,
+        respuesta?.venta ?? null,
+      )
       intentoGuardar.current = null
       onCerrar()
     } catch (errorPeticion) {
@@ -204,13 +208,13 @@ function VentaModal({ abierto, onCerrar, onGuardado, clientes, presentaciones, e
           </section>
 
           <p className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-            La venta se guardará como <strong>borrador</strong>. Las existencias de Mostrador se comprobarán y descontarán cuando confirmes la venta.
+            La venta se guardará como <strong>borrador</strong>. La venta deberá pagarse completamente antes de confirmarse y descontar existencias de Mostrador.
           </p>
 
           <div className="flex flex-wrap justify-end gap-2 border-t border-theme-border-subtle pt-5">
             <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto">
               <button type="button" onClick={onCerrar} disabled={guardando} className="min-h-11 rounded-lg border border-theme-border-subtle px-4 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:opacity-50">Cancelar</button>
-              <button type="submit" disabled={guardando} className="min-h-11 rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold text-theme-brand-text hover:bg-pink-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:opacity-50">{guardando ? 'Guardando…' : venta ? 'Guardar cambios' : 'Registrar venta'}</button>
+              <button type="submit" disabled={guardando} className="min-h-11 rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold text-theme-brand-text hover:bg-pink-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:opacity-50">{guardando ? 'Guardando…' : venta ? 'Guardar cambios' : 'Continuar al pago'}</button>
             </div>
           </div>
         </form>

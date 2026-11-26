@@ -157,6 +157,35 @@ class PagoEfectivoService
                 [$lockKey]
             );
 
+            if (
+                $tipo === 'VENTA' &&
+                DB::table('intento_qr')
+                    ->where('origen_tipo', $tipo)
+                    ->where('origen_id', $origenId)
+                    ->whereIn('estado', ['INICIADA', 'PENDIENTE'])
+                    ->exists()
+            ) {
+                $body = [
+                    'error' => [
+                        'code' => 'QR_PENDIENTE',
+                        'message' =>
+                            'La venta tiene un cobro QR pendiente. Verifique su estado antes de cobrar en efectivo.',
+                        'details' => [],
+                    ],
+                ];
+
+                $idempotencia->update([
+                    'estado' => 'RECHAZADA',
+                    'status_code' => 409,
+                    'respuesta_snapshot' => $body,
+                ]);
+
+                return [
+                    'status' => 409,
+                    'body' => $body,
+                ];
+            }
+
             $pagado = bcadd(
                 (string) DB::table('pago')
                     ->where(
@@ -203,6 +232,36 @@ class PagoEfectivoService
                                 $saldo,
                             'monto_solicitado' =>
                                 $monto,
+                        ],
+                    ],
+                ];
+
+                $idempotencia->update([
+                    'estado' => 'RECHAZADA',
+                    'status_code' => 409,
+                    'respuesta_snapshot' => $body,
+                ]);
+
+                return [
+                    'status' => 409,
+                    'body' => $body,
+                ];
+            }
+
+            if (
+                $tipo === 'VENTA' &&
+                bccomp($monto, $saldo, 2) < 0
+            ) {
+                $body = [
+                    'error' => [
+                        'code' => 'VENTA_PAGO_INCOMPLETO',
+                        'message' =>
+                            'La venta debe pagarse completamente.',
+                        'details' => [
+                            'total' => $origen['total'],
+                            'pagado' => $pagado,
+                            'saldo' => $saldo,
+                            'monto_solicitado' => $monto,
                         ],
                     ],
                 ];

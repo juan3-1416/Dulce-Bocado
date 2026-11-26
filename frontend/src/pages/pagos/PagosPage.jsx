@@ -7,6 +7,7 @@ import {
 import PagoModal from './PagoModal'
 import ReciboDetalleModal from '../recibos/ReciboDetalleModal'
 import {
+  crearRecibo,
   listarRecibos,
 } from '../../services/reciboService'
 import { useAuth } from '../../context/AuthContext'
@@ -226,21 +227,35 @@ function PagosPage() {
     }
   }
 
-  const abrirReciboVenta = async (operacion) => {
+  const abrirReciboOperacion = async (operacion) => {
     try {
       setError('')
 
-      /*
-       * Primero obtenemos los pagos reales de la venta.
-       */
+      const tipo =
+        String(
+          operacion.origen_tipo,
+        ).toUpperCase()
+
+      if (
+        !['VENTA', 'PEDIDO'].includes(
+          tipo,
+        )
+      ) {
+        throw new Error(
+          'El tipo de operación no es válido.',
+        )
+      }
+
       const respuestaPagos =
         await consultarPagosOrigen(
-          'VENTA',
+          tipo,
           operacion.origen_id,
         )
 
       const pagos =
-        Array.isArray(respuestaPagos.pagos)
+        Array.isArray(
+          respuestaPagos.pagos,
+        )
           ? respuestaPagos.pagos
           : []
 
@@ -248,7 +263,8 @@ function PagosPage() {
         pagos
           .filter(
             (pago) =>
-              pago.estado === 'CONFIRMADO',
+              pago.estado ===
+              'CONFIRMADO',
           )
           .sort(
             (a, b) =>
@@ -257,15 +273,23 @@ function PagosPage() {
           )
 
       /*
-       * Una venta puede tener más de un pago.
-       * Buscamos el recibo emitido asociado a cualquiera
-       * de sus pagos, comenzando por el más reciente.
+       * Buscamos el recibo del pago confirmado
+       * más reciente.
+       *
+       * En PEDIDOS completamente pagados,
+       * ese recibo final contiene además
+       * pagos_origen con todos los abonos.
        */
-      for (const pago of pagosConfirmados) {
+      for (
+        const pago of
+        pagosConfirmados
+      ) {
         const respuestaRecibos =
           await listarRecibos({
             buscar:
-              String(pago.id_pago),
+              String(
+                pago.id_pago,
+              ),
 
             estado:
               'EMITIDO',
@@ -277,13 +301,19 @@ function PagosPage() {
             []
           ).find(
             (item) =>
-              Number(item.id_pago) ===
-                Number(pago.id_pago) &&
+              Number(
+                item.id_pago,
+              ) ===
+                Number(
+                  pago.id_pago,
+                ) &&
               item.estado ===
                 'EMITIDO',
           )
 
-        if (recibo?.id_recibo) {
+        if (
+          recibo?.id_recibo
+        ) {
           setReciboSeleccionado(
             recibo.id_recibo,
           )
@@ -292,13 +322,58 @@ function PagosPage() {
         }
       }
 
+      /*
+       * Un pedido puede haber quedado totalmente pagado
+       * sin que sus pagos anteriores hayan generado recibo.
+       *
+       * Si no encontramos ningún recibo EMITIDO,
+       * generamos el recibo del último pago confirmado.
+       * Ese recibo contiene el acumulado y pagos_origen.
+       */
+      if (
+        tipo === 'PEDIDO' &&
+        pagosConfirmados.length > 0
+      ) {
+        const ultimoPago =
+          pagosConfirmados[0]
+
+        const respuestaRecibo =
+          await crearRecibo({
+            id_pago:
+              Number(
+                ultimoPago.id_pago,
+              ),
+          })
+
+        const nuevoRecibo =
+          respuestaRecibo?.recibo
+
+        if (
+          nuevoRecibo?.id_recibo
+        ) {
+          setMensaje(
+            `Recibo final del Pedido #${operacion.origen_id} generado correctamente.`,
+          )
+
+          setReciboSeleccionado(
+            nuevoRecibo.id_recibo,
+          )
+
+          return
+        }
+      }
+      const nombreOrigen =
+        tipo === 'PEDIDO'
+          ? 'Pedido'
+          : 'Venta'
+
       setError(
-        `No se encontró un recibo emitido para la Venta #${operacion.origen_id}.`,
+        `No se encontró un recibo emitido para ${nombreOrigen} #${operacion.origen_id}.`,
       )
     } catch (err) {
       setError(
         err.message ||
-          'No se pudo consultar el recibo de la venta.',
+          'No se pudo consultar el recibo de la operación.',
       )
     }
   }
@@ -531,11 +606,19 @@ function PagosPage() {
 
                         <td className="px-5 py-4 text-right">
                           {operacion.origen_tipo ===
-                          'VENTA' ? (
+                            'VENTA' ||
+                          (
+                            operacion.origen_tipo ===
+                              'PEDIDO' &&
+                            (
+                              saldo <= 0 ||
+                              estado === 'PAGADO'
+                            )
+                          ) ? (
                             <button
                               type="button"
                               onClick={() =>
-                                abrirReciboVenta(
+                                abrirReciboOperacion(
                                   operacion,
                                 )
                               }

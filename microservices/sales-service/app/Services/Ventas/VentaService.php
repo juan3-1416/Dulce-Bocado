@@ -7,6 +7,8 @@ use App\Services\Catalogo\CatalogoService;
 use App\Services\Clientes\ClienteService;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Client\ConnectionException;
 
 class VentaService
 {
@@ -50,9 +52,10 @@ class VentaService
         $cliente = $this->clientes->validarParaVenta($datos['id_cliente'] ?? null, $datos['nombre_cliente_ocasional'] ?? null, $actor);
         [$detalles, $total] = $this->prepararDetalles($datos['items'], $actor);
 
-        return $this->ejecutar($operacion, $clave, $hash, $actor, 200, function () use ($venta, $cliente, $detalles, $total, $datos) {
+        return $this->ejecutar($operacion, $clave, $hash, $actor, 200, function () use ($venta, $cliente, $detalles, $total, $datos, $actor) {
             $actual = Venta::whereKey($venta->getKey())->lockForUpdate()->firstOrFail();
             $this->exigirBorrador($actual);
+            $this->exigirVentaSinCobros($actual, $actor);
             $actual->update([...$cliente, 'total' => $total, 'observaciones' => $datos['observaciones'] ?? null]);
             $actual->detalles()->delete();
             $actual->detalles()->createMany($detalles);
@@ -73,6 +76,7 @@ class VentaService
         return $this->ejecutar($operacion, $clave, $hash, $actor, 200, function () use ($venta, $motivo, $actor) {
             $actual = Venta::whereKey($venta->getKey())->lockForUpdate()->firstOrFail();
             $this->exigirBorrador($actual);
+            $this->exigirVentaSinCobros($actual, $actor, permitirQrPendiente: true);
             $actual->update([
                 'estado' => 'CANCELADA',
                 'id_usuario_cancelacion' => $actor,
@@ -107,6 +111,91 @@ class VentaService
         }
 
         return [$detalles, $total];
+    }
+
+    private function exigirVentaSinCobros(
+        Venta $venta,
+        int $actor,
+        bool $permitirQrPendiente = false
+    ): void {
+        $url = config('services.payment.url');
+        $key = config('services.payment.sales_key');
+
+        if (
+            !is_string($url) || $url === '' ||
+            !is_string($key) || $key === ''
+        ) {
+            throw new VentaException(
+                503,
+                'PAYMENT_NO_CONFIGURADO',
+                'No se puede verificar el estado de los cobros.'
+            );
+        }
+
+        try {
+            $respuesta = Http::timeout(
+                max(1, (int) config('services.payment.timeout', 3))
+            )
+                ->connectTimeout(1)
+                ->acceptJson()
+                ->withHeaders([
+                    'X-Internal-Service-Key' => $key,
+                    'X-Actor-User-Id' => (string) $actor,
+                ])
+                ->get(
+                    rtrim($url, '/').
+                    '/api/internal/ventas/'.
+                    $venta->id_venta.
+                    '/pagos'
+                );
+        } catch (ConnectionException) {
+            throw new VentaException(
+                503,
+                'PAYMENT_NO_DISPONIBLE',
+                'No se pudo verificar si la venta tiene cobros registrados.'
+            );
+        }
+
+        if (!$respuesta->ok()) {
+            throw new VentaException(
+                503,
+                'PAYMENT_NO_DISPONIBLE',
+                'Payment no pudo verificar el estado de los cobros.'
+            );
+        }
+
+        $ventaRespuesta = $respuesta->json('venta_id');
+        $tienePago = $respuesta->json('tiene_pago_confirmado');
+        $tieneQr = $respuesta->json('tiene_qr_pendiente');
+
+        if (
+            !is_numeric($ventaRespuesta) ||
+            (int) $ventaRespuesta !== (int) $venta->id_venta ||
+            !is_bool($tienePago) ||
+            !is_bool($tieneQr)
+        ) {
+            throw new VentaException(
+                503,
+                'RESPUESTA_PAYMENT_INVALIDA',
+                'No se pudo verificar correctamente el estado de los cobros.'
+            );
+        }
+
+        if ($tienePago) {
+            throw new VentaException(
+                409,
+                'VENTA_CON_PAGOS',
+                'No se puede modificar ni anular una venta con pagos confirmados.'
+            );
+        }
+
+        if ($tieneQr && !$permitirQrPendiente) {
+            throw new VentaException(
+                409,
+                'VENTA_CON_QR_PENDIENTE',
+                'No se puede modificar ni anular una venta con un cobro QR pendiente.'
+            );
+        }
     }
 
     private function exigirBorrador(Venta $venta): void

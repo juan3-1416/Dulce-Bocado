@@ -15,7 +15,7 @@ $origin = new class extends OrigenPagoService
 {
     public function obtener(string $tipo, int $id, string $token, bool $requierePagable = true): array
     {
-        return ['tipo' => $tipo, 'id' => $id, 'total' => '100.00', 'moneda' => 'BOB', 'estado' => 'CONFIRMADA'];
+        return ['tipo' => $tipo, 'id' => $id, 'total' => '100.00', 'moneda' => 'BOB', 'estado' => 'BORRADOR'];
     }
 };
 while (microtime(true) < (float) $argv[2]) {
@@ -23,7 +23,7 @@ while (microtime(true) < (float) $argv[2]) {
 }
 try {
     $result = (new PagoEfectivoService($origin))->registrar(
-        ['origen_tipo' => 'VENTA', 'origen_id' => 1, 'monto' => '70.00'], 9, $argv[1], 'test-token'
+        ['origen_tipo' => 'VENTA', 'origen_id' => 1, 'monto' => '100.00'], 9, $argv[1], 'test-token'
     );
     echo json_encode(['status' => $result['status']]);
 } catch (PagoException $e) {

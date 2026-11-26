@@ -41,6 +41,25 @@ const CONFIG = {
   },
 }
 
+const MOTIVOS_POR_MODO = {
+  INGRESO: [
+    'Compra',
+    'Devolución',
+    'Inventario inicial',
+    'Ajuste positivo',
+  ],
+  EGRESO: [
+    'Pérdida',
+    'Vencimiento',
+    'Desecho',
+    'Merma',
+    'Consumo interno',
+    'Ajuste negativo',
+  ],
+  TRASLADO: [
+    'Reposición a mostrador',
+  ],
+}
 export default function MovimientoInventarioPage({
   modo,
 }) {
@@ -1024,20 +1043,31 @@ export default function MovimientoInventarioPage({
         <label className="text-sm font-medium text-theme-body">
           Motivo
 
-          <input
+          <select
             value={motivo}
-            onChange={(
-              evento,
-            ) =>
+            onChange={(evento) =>
               setMotivo(
-                evento.target
-                  .value,
+                evento.target.value,
               )
             }
-            maxLength={200}
             required
-            className="mt-1 w-full rounded-lg border border-theme-border-subtle px-3 py-2"
-          />
+            className="mt-1 w-full rounded-lg border border-theme-border bg-theme-surface px-3 py-2 text-theme-body"
+          >
+            <option value="">
+              Seleccionar motivo
+            </option>
+
+            {(MOTIVOS_POR_MODO[modo] ?? []).map(
+              (opcion) => (
+                <option
+                  key={opcion}
+                  value={opcion}
+                >
+                  {opcion}
+                </option>
+              ),
+            )}
+          </select>
         </label>
 
         <label className="text-sm font-medium text-theme-body sm:col-span-2">

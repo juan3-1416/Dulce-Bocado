@@ -59,8 +59,12 @@ class StoreIngresoRequest extends FormRequest
 
             'motivo' => [
                 'required',
-                'string',
-                'max:200',
+                Rule::in([
+                    'Compra',
+                    'Devolución',
+                    'Inventario inicial',
+                    'Ajuste positivo',
+                ]),
             ],
 
             'observaciones' => [

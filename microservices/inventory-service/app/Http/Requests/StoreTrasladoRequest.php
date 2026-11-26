@@ -63,8 +63,9 @@ class StoreTrasladoRequest extends FormRequest
 
             'motivo' => [
                 'required',
-                'string',
-                'max:200',
+                Rule::in([
+                    'Reposición a mostrador',
+                ]),
             ],
 
             'observaciones' => [

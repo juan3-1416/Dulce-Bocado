@@ -34,18 +34,31 @@ class VentaApiTest extends TestCase
         config()->set('services.customer.key', 'customer-test');
         config()->set('services.catalog.url', 'http://catalog-service:8000');
         config()->set('services.catalog.key', 'catalog-test');
+        config()->set('services.payment.url', 'http://payment-service:8000');
+        config()->set('services.payment.sales_key', 'payment-test');
         Http::preventStrayRequests();
         $this->withToken('token-test');
     }
 
-    private function simularDependencias(array $permisos = ['ventas.ver', 'ventas.crear', 'ventas.modificar', 'ventas.anular'], string $precio = '10.25', bool $clienteActivo = true, bool $catalogDisponible = true): void
+    private function simularDependencias(array $permisos = ['ventas.ver', 'ventas.crear', 'ventas.modificar', 'ventas.anular'], string $precio = '10.25', bool $clienteActivo = true, bool $catalogDisponible = true, bool $tienePago = false, bool $tieneQr = false): void
     {
         Http::swap(new Factory());
         Http::preventStrayRequests();
-        Http::fake(function ($request) use ($permisos, $precio, $clienteActivo, $catalogDisponible) {
+        Http::fake(function ($request) use ($permisos, $precio, $clienteActivo, $catalogDisponible, $tienePago, $tieneQr) {
             if (str_contains($request->url(), '/api/internal/introspect')) {
                 return Http::response(['usuario' => ['id_usuario' => 17, 'activo' => true, 'permisos' => $permisos]]);
             }
+            if (preg_match('~/api/internal/ventas/(\d+)/pagos$~', $request->url(), $matches)) {
+                return Http::response([
+                    'venta_id' => (int) $matches[1],
+                    'tiene_pago_confirmado' => $tienePago,
+                    'cantidad_pagos_confirmados' => $tienePago ? 1 : 0,
+                    'total_pagado' => $tienePago ? '30.75' : '0.00',
+                    'tiene_qr_pendiente' => $tieneQr,
+                    'cantidad_qr_pendientes' => $tieneQr ? 1 : 0,
+                ]);
+            }
+
             if (str_contains($request->url(), '/api/clientes/')) {
                 return Http::response(['cliente' => ['id_cliente' => 42, 'estado' => $clienteActivo]]);
             }
@@ -274,6 +287,240 @@ class VentaApiTest extends TestCase
         $this->assertSame('41.00', Venta::find($id)->total);
         $this->assertDatabaseCount('detalle_venta', 2);
         $this->assertDatabaseCount('venta_idempotencia', 2);
+    }
+
+    private function simularPagoVenta(
+        int $id,
+        string $pagado,
+        int $cantidad,
+        bool $inventarioDisponible = false
+    ): void {
+        config()->set('services.payment.url', 'http://payment-service:8000');
+        config()->set('services.payment.sales_key', 'payment-test');
+        config()->set('services.inventory.url', 'http://inventory-service:8000');
+        config()->set('services.inventory.sales_key', 'inventory-test');
+
+        Http::swap(new Factory());
+        Http::preventStrayRequests();
+
+        Http::fake([
+            'security-service:8000/*' => Http::response([
+                'usuario' => [
+                    'id_usuario' => 17,
+                    'activo' => true,
+                    'permisos' => ['ventas.ver', 'ventas.confirmar'],
+                ],
+            ]),
+            'payment-service:8000/api/internal/ventas/'.$id.'/pagos' =>
+                Http::response([
+                    'venta_id' => $id,
+                    'tiene_pago_confirmado' => $cantidad > 0,
+                    'cantidad_pagos_confirmados' => $cantidad,
+                    'total_pagado' => $pagado,
+                ]),
+
+            'inventory-service:8000/*' => function ($request) use ($inventarioDisponible) {
+                if (!$inventarioDisponible) {
+                    return Http::response([], 503);
+                }
+
+                $datos = $request->data();
+
+                return Http::response([
+                    'estado' => 'APLICADA',
+                    'operacion_id' => $datos['operacion_id'],
+                    'venta_id' => $datos['venta_id'],
+                ], 200);
+            },
+        ]);
+    }
+
+    public function test_no_modifica_ni_anula_venta_con_pago(): void
+    {
+        $this->simularDependencias();
+
+        $id = $this->postJson(
+            '/api/ventas',
+            $this->datos(),
+            $this->clave()
+        )->assertCreated()->json('venta.id_venta');
+
+        $this->simularDependencias(tienePago: true);
+
+        $this->putJson(
+            '/api/ventas/'.$id,
+            $this->datos(),
+            $this->clave('b')
+        )->assertConflict()
+            ->assertJsonPath('error.code', 'VENTA_CON_PAGOS');
+
+        $this->postJson(
+            '/api/ventas/'.$id.'/anular',
+            ['motivo' => 'Prueba de anulacion'],
+            $this->clave('c')
+        )->assertConflict()
+            ->assertJsonPath('error.code', 'VENTA_CON_PAGOS');
+
+        $this->assertSame('BORRADOR', Venta::findOrFail($id)->estado);
+        $this->assertSame('30.75', Venta::findOrFail($id)->total);
+    }
+
+    public function test_permite_anular_pero_no_editar_venta_con_qr_pendiente(): void
+    {
+        $this->simularDependencias();
+
+        $id = $this->postJson(
+            '/api/ventas',
+            $this->datos(),
+            $this->clave()
+        )->assertCreated()->json('venta.id_venta');
+
+        $this->simularDependencias(tieneQr: true);
+
+        $this->putJson(
+            '/api/ventas/'.$id,
+            $this->datos(),
+            $this->clave('b')
+        )->assertConflict()
+            ->assertJsonPath('error.code', 'VENTA_CON_QR_PENDIENTE');
+
+        $this->postJson(
+            '/api/ventas/'.$id.'/anular',
+            ['motivo' => 'Cliente no realizo el pago QR'],
+            $this->clave('c')
+        )->assertOk()
+            ->assertJsonPath('venta.estado', 'CANCELADA');
+
+        $this->assertSame('CANCELADA', Venta::findOrFail($id)->estado);
+    }
+
+    public function test_confirma_venta_pagada_y_no_duplica_descuento(): void
+    {
+        $this->simularDependencias();
+
+        $id = $this->postJson(
+            '/api/ventas',
+            $this->datos(),
+            $this->clave()
+        )->assertCreated()->json('venta.id_venta');
+
+        $this->simularPagoVenta($id, '30.75', 1, true);
+
+        $primera = $this->postJson(
+            '/api/ventas/'.$id.'/confirmar',
+            [],
+            $this->clave('b')
+        )->assertOk()
+            ->assertJsonPath('venta.estado', 'CONFIRMADA')
+            ->assertJsonPath('confirmacion.estado', 'APLICADA');
+
+        $operacionId = $primera->json('confirmacion.operacion_id');
+
+        $this->assertNotEmpty($operacionId);
+
+        $this->postJson(
+            '/api/ventas/'.$id.'/confirmar',
+            [],
+            $this->clave('b')
+        )->assertOk()
+            ->assertJsonPath('confirmacion.operacion_id', $operacionId)
+            ->assertJsonPath('venta.estado', 'CONFIRMADA');
+
+        $venta = Venta::findOrFail($id);
+
+        $this->assertSame('CONFIRMADA', $venta->estado);
+        $this->assertSame($operacionId, $venta->operacion_stock_id);
+        $this->assertNotNull($venta->fecha_confirmacion);
+        $this->assertDatabaseCount('venta_confirmacion', 1);
+
+        $descuentos = Http::recorded(
+            fn ($request) =>
+                str_contains($request->url(), '/internal/ventas/descontar') &&
+                $request->method() === 'POST'
+        );
+
+        $this->assertCount(1, $descuentos);
+    }
+
+    public function test_no_confirma_venta_sin_pago(): void
+    {
+        $this->simularDependencias();
+
+        $id = $this->postJson(
+            '/api/ventas',
+            $this->datos(),
+            $this->clave()
+        )->assertCreated()->json('venta.id_venta');
+
+        $this->simularPagoVenta($id, '0.00', 0);
+
+        $this->postJson(
+            '/api/ventas/'.$id.'/confirmar',
+            [],
+            $this->clave('b')
+        )->assertConflict()
+            ->assertJsonPath('error.code', 'VENTA_SIN_PAGO');
+
+        $this->assertSame('BORRADOR', Venta::findOrFail($id)->estado);
+        $this->assertDatabaseCount('venta_confirmacion', 0);
+
+        Http::assertNotSent(
+            fn ($r) => str_contains($r->url(), 'inventory-service')
+        );
+    }
+
+    public function test_no_confirma_venta_con_pago_incompleto(): void
+    {
+        $this->simularDependencias();
+
+        $id = $this->postJson(
+            '/api/ventas',
+            $this->datos(),
+            $this->clave()
+        )->assertCreated()->json('venta.id_venta');
+
+        $this->simularPagoVenta($id, '30.74', 1);
+
+        $this->postJson(
+            '/api/ventas/'.$id.'/confirmar',
+            [],
+            $this->clave('b')
+        )->assertConflict()
+            ->assertJsonPath('error.code', 'VENTA_PAGO_INCOMPLETO');
+
+        $this->assertSame('BORRADOR', Venta::findOrFail($id)->estado);
+        $this->assertDatabaseCount('venta_confirmacion', 0);
+
+        Http::assertNotSent(
+            fn ($r) => str_contains($r->url(), 'inventory-service')
+        );
+    }
+
+    public function test_no_confirma_venta_con_pago_excedente(): void
+    {
+        $this->simularDependencias();
+
+        $id = $this->postJson(
+            '/api/ventas',
+            $this->datos(),
+            $this->clave()
+        )->assertCreated()->json('venta.id_venta');
+
+        $this->simularPagoVenta($id, '30.76', 1);
+
+        $this->postJson(
+            '/api/ventas/'.$id.'/confirmar',
+            [],
+            $this->clave('b')
+        )->assertConflict()
+            ->assertJsonPath('error.code', 'VENTA_PAGO_EXCEDENTE');
+
+        $this->assertSame('BORRADOR', Venta::findOrFail($id)->estado);
+        $this->assertDatabaseCount('venta_confirmacion', 0);
+
+        Http::assertNotSent(
+            fn ($r) => str_contains($r->url(), 'inventory-service')
+        );
     }
 
     public function test_total_fuera_del_limite_de_bd_se_rechaza_sin_escritura(): void

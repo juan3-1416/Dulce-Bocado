@@ -120,6 +120,153 @@ class VentaConfirmacionService
         );
     }
 
+    private function validarPagoConfirmado(
+        int $ventaId,
+        int $actor,
+        string $totalVenta
+    ): void {
+        $url = config(
+            'services.payment.url'
+        );
+
+        $key = config(
+            'services.payment.sales_key'
+        );
+
+        if (
+            !is_string($url) ||
+            $url === '' ||
+            !is_string($key) ||
+            $key === ''
+        ) {
+            throw new VentaException(
+                503,
+                'PAYMENT_NO_CONFIGURADO',
+                'Payment no está configurado para validar el pago de la venta.'
+            );
+        }
+
+        try {
+            $respuesta = Http::timeout(
+                max(
+                    1,
+                    (int) config(
+                        'services.payment.timeout',
+                        3
+                    )
+                )
+            )
+                ->connectTimeout(1)
+                ->acceptJson()
+                ->withHeaders([
+                    'X-Internal-Service-Key' =>
+                        $key,
+
+                    'X-Actor-User-Id' =>
+                        (string) $actor,
+                ])
+                ->get(
+                    rtrim($url, '/').
+                    '/api/internal/ventas/'.
+                    $ventaId.
+                    '/pagos'
+                );
+        } catch (ConnectionException) {
+            throw new VentaException(
+                503,
+                'PAYMENT_NO_DISPONIBLE',
+                'No se pudo validar el pago de la venta.'
+            );
+        }
+
+        if ($respuesta->status() === 403) {
+            throw new VentaException(
+                503,
+                'PAYMENT_NO_AUTORIZADO',
+                'Sales no está autorizado para consultar Payment.'
+            );
+        }
+
+        if (!$respuesta->ok()) {
+            throw new VentaException(
+                503,
+                'PAYMENT_NO_DISPONIBLE',
+                'Payment no pudo validar el pago de la venta.'
+            );
+        }
+
+        $ventaRespuesta =
+            $respuesta->json(
+                'venta_id'
+            );
+
+        $tienePago =
+            $respuesta->json(
+                'tiene_pago_confirmado'
+            );
+
+        $cantidad =
+            $respuesta->json(
+                'cantidad_pagos_confirmados'
+            );
+
+        $totalPagado =
+            $respuesta->json('total_pagado');
+
+        if (
+            !is_numeric($ventaRespuesta) ||
+            (int) $ventaRespuesta !==
+                $ventaId ||
+            !is_bool($tienePago) ||
+            !is_numeric($cantidad) ||
+            (!is_string($totalPagado) && !is_int($totalPagado)) ||
+            !preg_match('/^\d+(?:\.\d{1,2})?$/D', (string) $totalPagado)
+        ) {
+            throw new VentaException(
+                503,
+                'RESPUESTA_PAYMENT_INVALIDA',
+                'Payment devolvió una respuesta inválida al validar la venta.'
+            );
+        }
+
+        if (
+            $tienePago !== true ||
+            (int) $cantidad < 1
+        ) {
+            throw new VentaException(
+                409,
+                'VENTA_SIN_PAGO',
+                'Debe registrar al menos un pago confirmado antes de confirmar la venta.'
+            );
+        }
+
+        if (
+            !preg_match('/^\d+(?:\.\d{1,2})?$/D', $totalVenta) ||
+            bccomp($totalVenta, '0.00', 2) <= 0
+        ) {
+            throw new VentaException(
+                409,
+                'VENTA_TOTAL_INVALIDO',
+                'La venta no posee un total valido.'
+            );
+        }
+
+        if (bccomp((string) $totalPagado, $totalVenta, 2) < 0) {
+            throw new VentaException(
+                409,
+                'VENTA_PAGO_INCOMPLETO',
+                'Debe completar el pago antes de confirmar la venta.'
+            );
+        }
+
+        if (bccomp((string) $totalPagado, $totalVenta, 2) > 0) {
+            throw new VentaException(
+                409,
+                'VENTA_PAGO_EXCEDENTE',
+                'El importe pagado supera el total de la venta. Se requiere conciliacion.'
+            );
+        }
+    }
     private function prepararIntento(
         Venta $venta,
         int $actor,
@@ -146,6 +293,15 @@ class VentaConfirmacionService
                     409,
                     'VENTA_NO_CONFIRMABLE',
                     'La venta no puede confirmarse.'
+                );
+            }
+
+            // Validar el pago utilizando el total actual de la venta bloqueada.
+            if ($actual->estado === 'BORRADOR') {
+                $this->validarPagoConfirmado(
+                    (int) $actual->id_venta,
+                    $actor,
+                    (string) $actual->total
                 );
             }
 

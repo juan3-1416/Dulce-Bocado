@@ -35,4 +35,7 @@ return [
         ],
     ],
 
+    'sales_internal' => [
+        'key' => env('PAYMENT_SALES_KEY'),
+    ],
 ];

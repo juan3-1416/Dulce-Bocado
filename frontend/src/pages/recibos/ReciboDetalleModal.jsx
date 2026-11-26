@@ -644,15 +644,128 @@ export default function ReciboDetalleModal({
                     </div>
                   )}
 
-                  <div className="mt-6 rounded-xl bg-gray-900 p-5 text-right text-white dark:bg-gray-950">
-                    <p className="text-sm text-gray-300">
-                      Monto recibido
-                    </p>
+                  {String(
+                      recibo.snapshot?.origen_tipo ??
+                        '',
+                    ).toUpperCase() === 'PEDIDO' &&
+                      Array.isArray(
+                        recibo.snapshot?.pagos_origen,
+                      ) &&
+                      recibo.snapshot.pagos_origen.length > 0 && (
+                        <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
+                          <div className="border-b border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
+                            <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+                              Historial de pagos del pedido
+                            </h3>
 
-                    <p className="text-3xl font-bold">
-                      Bs {Number(recibo.monto).toFixed(2)}
-                    </p>
-                  </div>
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                              Pagos confirmados acumulados para completar el pedido.
+                            </p>
+                          </div>
+
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
+                              <thead>
+                                <tr className="text-left text-gray-500 dark:text-gray-400">
+                                  <th className="px-3 py-2">
+                                    Pago
+                                  </th>
+
+                                  <th className="px-3 py-2">
+                                    Medio
+                                  </th>
+
+                                  <th className="px-3 py-2">
+                                    Fecha
+                                  </th>
+
+                                  <th className="px-3 py-2 text-right">
+                                    Monto
+                                  </th>
+                                </tr>
+                              </thead>
+
+                              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                {recibo.snapshot.pagos_origen.map(
+                                  (pago) => (
+                                    <tr key={pago.id_pago}>
+                                      <td className="px-3 py-2 font-medium text-gray-900 dark:text-gray-100">
+                                        #{pago.id_pago}
+                                      </td>
+
+                                      <td className="px-3 py-2 text-gray-600 dark:text-gray-300">
+                                        {pago.medio ?? '-'}
+                                      </td>
+
+                                      <td className="px-3 py-2 text-gray-600 dark:text-gray-300">
+                                        {formatearFecha(
+                                          pago.fecha_pago,
+                                        )}
+                                      </td>
+
+                                      <td className="px-3 py-2 text-right font-semibold text-gray-900 dark:text-gray-100">
+                                        Bs{' '}
+                                        {Number(
+                                          pago.monto ?? 0,
+                                        ).toFixed(2)}
+                                      </td>
+                                    </tr>
+                                  ),
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                    <div className="mt-6 rounded-xl bg-gray-900 p-5 text-right text-white dark:bg-gray-950">
+                      <p className="text-sm text-gray-300">
+                        {String(
+                          recibo.snapshot?.origen_tipo ??
+                            '',
+                        ).toUpperCase() === 'PEDIDO' &&
+                        Array.isArray(
+                          recibo.snapshot?.pagos_origen,
+                        ) &&
+                        recibo.snapshot.pagos_origen.length > 0
+                          ? 'Total pagado'
+                          : 'Monto recibido'}
+                      </p>
+
+                      <p className="text-3xl font-bold">
+                        Bs{' '}
+                        {Number(
+                          String(
+                            recibo.snapshot?.origen_tipo ??
+                              '',
+                          ).toUpperCase() === 'PEDIDO' &&
+                          Array.isArray(
+                            recibo.snapshot?.pagos_origen,
+                          ) &&
+                          recibo.snapshot.pagos_origen.length > 0
+                            ? recibo.snapshot
+                                ?.total_pagado_acumulado ??
+                              recibo.monto
+                            : recibo.monto,
+                        ).toFixed(2)}
+                      </p>
+
+                      {String(
+                        recibo.snapshot?.origen_tipo ??
+                          '',
+                      ).toUpperCase() === 'PEDIDO' &&
+                        Array.isArray(
+                          recibo.snapshot?.pagos_origen,
+                        ) &&
+                        recibo.snapshot.pagos_origen.length > 1 && (
+                          <p className="mt-2 text-xs text-gray-400">
+                            Último pago: Bs{' '}
+                            {Number(
+                              recibo.monto ?? 0,
+                            ).toFixed(2)}
+                          </p>
+                        )}
+                    </div>
 
                   <div className="mt-5 grid gap-4 md:grid-cols-2">
                     <Dato

@@ -225,6 +225,18 @@ export function usePagoFormulario({
       return
     }
 
+    // Las ventas directas deben pagarse completamente.
+    // Los pedidos mantienen la posibilidad de pagos parciales.
+    if (
+      tipoCobro === 'venta' &&
+      Math.round(montoNumero * 100) !== Math.round(saldoPendiente * 100)
+    ) {
+      setError(
+        `La venta debe pagarse completamente. Saldo pendiente: Bs ${saldoPendiente.toFixed(2)}.`,
+      )
+      return
+    }
+
     const origenTipo = tipoCobro === 'venta' ? 'VENTA' : 'PEDIDO'
     const origenId = tipoCobro === 'venta' ? Number(idVenta) : Number(idPedido)
 
@@ -265,8 +277,8 @@ export function usePagoFormulario({
           setError(
             `Sobrepago rechazado: El monto supera el saldo disponible (Saldo actual: Bs ${Number(details?.saldo ?? 0).toFixed(2)}).`,
           )
-        } else if (code === 'VENTA_NO_CONFIRMADA') {
-          setError('La venta debe estar en estado CONFIRMADA antes de poder cobrar por QR.')
+        } else if (code === 'VENTA_NO_PAGABLE' || code === 'VENTA_NO_CONFIRMADA') {
+          setError('La venta no se encuentra en un estado que permita cobrar por QR.')
         } else if (code === 'PEDIDO_NO_PAGABLE') {
           setError('El pedido no se encuentra en un estado que admita cobros.')
         } else if (code === 'ORIGEN_CANCELADO') {
@@ -334,9 +346,9 @@ export function usePagoFormulario({
         setError(
           `Sobrepago rechazado: El monto supera el saldo disponible (Saldo actual: Bs ${Number(details?.saldo ?? 0).toFixed(2)}).`,
         )
-      } else if (code === 'VENTA_NO_CONFIRMADA') {
+      } else if (code === 'VENTA_NO_PAGABLE' || code === 'VENTA_NO_CONFIRMADA') {
         setError(
-          'La venta debe estar en estado CONFIRMADA antes de poder registrar pagos.',
+          'La venta no se encuentra en un estado que permita registrar pagos.',
         )
       } else if (code === 'PEDIDO_NO_PAGABLE') {
         setError(

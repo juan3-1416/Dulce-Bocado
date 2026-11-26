@@ -10,6 +10,152 @@ class PasarelaLibelulaService
 {
     public const PROVEEDOR = 'LIBELULA';
 
+    public function verificarPago(
+        string $identificador,
+        string $idTransaccion,
+        string $montoEsperado,
+        string $fechaInicial
+    ): bool {
+        return $this->buscarPagoVerificado(
+            $identificador,
+            $idTransaccion,
+            $montoEsperado,
+            $fechaInicial
+        ) !== null;
+    }
+
+    public function buscarPagoVerificado(
+        string $identificador,
+        string $idTransaccion,
+        string $montoEsperado,
+        string $fechaInicial
+    ): ?string {
+        $appKey = config('libelula.app_key');
+        $url = config('libelula.consultar_pagos_url');
+
+        if (
+            !is_string($appKey) || $appKey === '' ||
+            !is_string($url) ||
+            parse_url($url, PHP_URL_SCHEME) !== 'https' ||
+            $identificador === ''
+        ) {
+            throw new PagoException(
+                503,
+                'CONCILIACION_NO_CONFIGURADA',
+                'No se puede verificar el pago con Libelula.'
+            );
+        }
+
+        try {
+            $respuesta = Http::acceptJson()
+                ->asJson()
+                ->withoutRedirecting()
+                ->connectTimeout(5)
+                ->timeout(15)
+                ->post($url, [
+                    'appkey' => $appKey,
+                    'fecha_inicial' => $fechaInicial.' 00:00:00',
+                    'fecha_final' => now('America/La_Paz')
+                        ->format('Y-m-d H:i:s'),
+                ]);
+        } catch (ConnectionException) {
+            throw new PagoException(
+                503,
+                'CONCILIACION_NO_DISPONIBLE',
+                'No se pudo consultar el pago con Libelula.'
+            );
+        }
+
+        $datos = $respuesta->json();
+
+        if (
+            !$respuesta->successful() ||
+            !is_array($datos) ||
+            !in_array($datos['error'] ?? null, [0, '0', false], true) ||
+            !is_array($datos['datos'] ?? null)
+        ) {
+            throw new PagoException(
+                503,
+                'CONCILIACION_RESPUESTA_INVALIDA',
+                'Libelula no devolvio una respuesta de conciliacion valida.'
+            );
+        }
+
+        $coincidencias = [];
+
+        foreach ($datos['datos'] as $pago) {
+            if (
+                !is_array($pago) ||
+                (string) ($pago['identificador'] ?? '') !== $identificador
+            ) {
+                continue;
+            }
+
+            $idProveedor = $pago['id_transaccion'] ?? null;
+
+            if (!is_string($idProveedor) && !is_int($idProveedor)) {
+                throw new PagoException(
+                    503,
+                    'CONCILIACION_RESPUESTA_INVALIDA',
+                    'Libelula no devolvio una transaccion valida.'
+                );
+            }
+
+            $idProveedor = (string) $idProveedor;
+
+            if ($idProveedor === '') {
+                throw new PagoException(
+                    503,
+                    'CONCILIACION_RESPUESTA_INVALIDA',
+                    'La transaccion de Libelula no posee identificador.'
+                );
+            }
+
+            if ($idTransaccion !== '' && $idProveedor !== $idTransaccion) {
+                continue;
+            }
+
+            if (!in_array(
+                $pago['pago_anulado'] ?? null,
+                [false, 0, '0'],
+                true
+            )) {
+                throw new PagoException(
+                    409,
+                    'PAGO_QR_ANULADO_O_NO_VERIFICABLE',
+                    'El pago fue anulado o su estado no puede verificarse.'
+                );
+            }
+
+            $monto = (string) ($pago['monto_pagado'] ?? '');
+
+            if (
+                !preg_match('/^\d+(?:\.\d{1,2})?$/D', $monto) ||
+                bccomp($monto, $montoEsperado, 2) !== 0 ||
+                strtoupper((string) ($pago['moneda'] ?? '')) !== 'BOB' ||
+                empty($pago['fecha_pago'])
+            ) {
+                throw new PagoException(
+                    409,
+                    'PAGO_QR_INCONSISTENTE',
+                    'El pago informado por Libelula no coincide con el cobro registrado.'
+                );
+            }
+
+            $coincidencias[] = $idProveedor;
+        }
+
+        if (count($coincidencias) > 1) {
+            throw new PagoException(
+                409,
+                'QR_CONCILIACION_AMBIGUA',
+                'Existe mas de un pago coincidente. Se requiere conciliacion manual.'
+            );
+        }
+
+        return $coincidencias[0] ?? null;
+    }
+
     /**
      * Registra una deuda en Libélula y obtiene la URL del QR y la pasarela.
      */

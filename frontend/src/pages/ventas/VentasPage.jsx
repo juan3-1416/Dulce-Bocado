@@ -14,7 +14,7 @@ import {
 } from '../../services/ventaService'
 import { listarClientes } from '../../services/clienteService'
 import { listarPresentacionesVendibles } from '../../services/catalogoVentasService'
-import { obtenerCatalogosPago } from '../../services/pagoService'
+import { consultarPagosOrigen } from '../../services/pagoService'
 import {
   crearRecibo,
   listarRecibos,
@@ -27,6 +27,27 @@ import PagoModal from '../pagos/PagoModal'
 import ReciboDetalleModal from '../recibos/ReciboDetalleModal'
 
 const MIN_MOTIVO_ANULACION = 3
+
+const importeEnCentavos = (valor) => {
+  if (valor == null || !/^\d+(?:\.\d{1,2})?$/.test(String(valor))) {
+    return null
+  }
+
+  const centavos = Math.round(Number(valor) * 100)
+
+  return Number.isSafeInteger(centavos) ? centavos : null
+}
+
+const tienePagoCompleto = (venta, resumen) => {
+  const total = importeEnCentavos(venta?.total)
+  const pagado = importeEnCentavos(resumen?.pagado)
+  const saldo = importeEnCentavos(resumen?.saldo)
+
+  return total !== null &&
+    total > 0 &&
+    pagado === total &&
+    saldo === 0
+}
 
 function VentasPage() {
   const { tienePermiso } = useAuth()
@@ -277,21 +298,48 @@ function VentasPage() {
   }
 
   const abrirModalConfirmar = async (venta) => {
+    if (!venta?.id_venta || !tienePermiso('ventas.confirmar')) {
+      return false
+    }
+
     setError('')
     setMensaje('')
+
     try {
-      if (!venta.detalles || venta.detalles.length === 0) {
-        setCargandoDetalle(true)
-        const resp = await obtenerVenta(venta.id_venta)
-        setVentaParaConfirmar(resp.venta ?? resp)
-      } else {
-        setVentaParaConfirmar(venta)
+      setCargandoDetalle(true)
+
+      const respuesta = await obtenerVenta(venta.id_venta)
+      const ventaActual = respuesta?.venta ?? respuesta
+
+      if (ventaActual.estado !== 'BORRADOR') {
+        setError('Solo se pueden confirmar ventas en borrador.')
+        return false
       }
+
+      // Sales vuelve a validar obligatoriamente el pago al confirmar.
+      // No exigir un permiso adicional a quien solo puede confirmar ventas.
+      if (tienePermiso('pagos.ver') || tienePermiso('pagos.crear')) {
+        const resumen = await consultarPagosOrigen(
+          'VENTA',
+          ventaActual.id_venta,
+        )
+
+        if (!tienePagoCompleto(ventaActual, resumen)) {
+          setError(
+            'No se puede confirmar la venta. Debe tener registrado y confirmado el pago por el importe total.',
+          )
+          return false
+        }
+      }
+
+      setVentaParaConfirmar(ventaActual)
+      return true
     } catch (errorPeticion) {
       setError(
         errorPeticion.message ||
-          'No se pudo obtener la información de la venta para confirmar.',
+          'No se pudo verificar el pago de la venta.',
       )
+      return false
     } finally {
       setCargandoDetalle(false)
     }
@@ -307,62 +355,129 @@ function VentasPage() {
     setVentaPagoInicialId(null)
   }
 
-  const abrirCobroVentaConfirmada = async (
-    ventaConfirmada,
-  ) => {
-    if (!ventaConfirmada?.id_venta) {
+  const abrirCobroVenta = async (venta) => {
+    if (!venta?.id_venta || venta.estado !== 'BORRADOR') return
+
+    if (!tienePermiso('pagos.crear')) {
+      setError('No tiene permisos para registrar pagos.')
       return
     }
 
     try {
       setError('')
+      setMensaje('')
 
-      const respuestaPago =
-        await obtenerCatalogosPago()
+      const respuestaVenta = await obtenerVenta(venta.id_venta)
+      const ventaCobrable = respuestaVenta?.venta ?? respuestaVenta
 
-      const ventasCobrables =
-        respuestaPago.ventas ?? []
-
-      const ventaCobrable =
-        ventasCobrables.find(
-          (venta) =>
-            Number(venta.id_venta) ===
-            Number(ventaConfirmada.id_venta),
-        )
-
-      if (!ventaCobrable) {
-        setError(
-          'La venta fue confirmada, pero todavía no está disponible para procesar el pago.',
-        )
-
+      if (
+        !ventaCobrable?.id_venta ||
+        ventaCobrable.estado !== 'BORRADOR'
+      ) {
+        setError('La venta no se encuentra disponible para cobrar.')
         return
       }
 
-      setVentasParaPago([
-        ventaCobrable,
-      ])
-
-      setMetodosPago(
-        respuestaPago.metodos_pago ?? [
-          'EFECTIVO',
-          'QR',
-        ],
-      )
-
-      setVentaPagoInicialId(
+      const resumen = await consultarPagosOrigen(
+        'VENTA',
         ventaCobrable.id_venta,
       )
 
+      const saldo = Number(resumen.saldo)
+
+      if (resumen.saldo == null || !Number.isFinite(saldo) || saldo < 0) {
+        setError('El saldo requiere verificacion antes de continuar.')
+        return
+      }
+
+      if (saldo === 0) {
+        if (!tienePagoCompleto(ventaCobrable, resumen)) {
+          setError('El importe registrado no coincide con el total de la venta.')
+          return
+        }
+
+        if (tienePermiso('ventas.confirmar')) {
+          const abierto = await abrirModalConfirmar(ventaCobrable)
+
+          if (!abierto) return
+        }
+
+        setMensaje('La venta ya está pagada. No debe cobrarse nuevamente.')
+        return
+      }
+
+      setVentasParaPago([{
+        ...ventaCobrable,
+        total_pagado: resumen.pagado,
+        saldo: resumen.saldo,
+      }])
+
+      setMetodosPago(['EFECTIVO', 'QR'])
+      setVentaPagoInicialId(ventaCobrable.id_venta)
       setModalPagoAbierto(true)
     } catch (errorPeticion) {
       setError(
         errorPeticion.message ||
-          'La venta fue confirmada, pero no se pudo abrir el proceso de pago.',
+          'No se pudo abrir el proceso de pago.',
       )
     }
   }
 
+
   const manejarPagoGuardado = async (
+    mensajeRespuesta,
+    pagoGuardado,
+  ) => {
+    cerrarModalPago()
+    setError('')
+
+    const idVenta = Number(
+      pagoGuardado?.origen_id ?? ventaPagoInicialId,
+    )
+
+    try {
+      if (!Number.isInteger(idVenta) || idVenta <= 0) {
+        throw new Error('No se pudo identificar la venta.')
+      }
+
+      const resumen = await consultarPagosOrigen('VENTA', idVenta)
+
+      await cargarVentas()
+
+      const respuesta = await obtenerVenta(idVenta)
+      const ventaPagada = respuesta?.venta ?? respuesta
+
+      if (!tienePagoCompleto(ventaPagada, resumen)) {
+        setError('La venta todavía no tiene confirmado el pago completo.')
+        return
+      }
+
+      if (ventaPagada.estado === 'CONFIRMADA') {
+        setMensaje('La venta ya se encuentra confirmada.')
+        return
+      }
+
+      if (ventaPagada.estado !== 'BORRADOR') {
+        setError('El pago está registrado, pero la venta no se puede confirmar.')
+        return
+      }
+
+      if (tienePermiso('ventas.confirmar')) {
+        const abierto = await abrirModalConfirmar(ventaPagada)
+
+        if (!abierto) return
+      }
+
+      setMensaje('Pago completo registrado. Pendiente de confirmar la venta.')
+    } catch (errorPeticion) {
+      setError(
+        'No se pudo verificar el cobro. Consulte los pagos antes de volver a cobrar. ' +
+          (errorPeticion.message || ''),
+      )
+    }
+  }
+
+  const abrirReciboPago = async (
     mensajeRespuesta,
     pagoGuardado,
   ) => {
@@ -434,7 +549,7 @@ function VentasPage() {
       }
 
       setMensaje(
-        'Pago confirmado correctamente. Recibo generado.',
+        'Venta confirmada correctamente. Recibo generado.',
       )
 
       /*
@@ -446,13 +561,13 @@ function VentasPage() {
       )
     } catch (errorPeticion) {
       setMensaje(
-        'El pago fue confirmado correctamente.',
+        'La venta fue confirmada correctamente.',
       )
 
       setError(
         errorPeticion?.message
-          ? `El pago fue confirmado, pero no se pudo abrir automáticamente el recibo: ${errorPeticion.message}`
-          : 'El pago fue confirmado, pero no se pudo abrir automáticamente el recibo.',
+          ? `La venta fue confirmada, pero no se pudo abrir automáticamente el recibo: ${errorPeticion.message}`
+          : 'La venta fue confirmada, pero no se pudo abrir automáticamente el recibo.',
       )
     }
   }
@@ -601,7 +716,16 @@ function VentasPage() {
   const accionesVenta = (venta) => (
     <div className="flex flex-wrap gap-2" aria-label={`Acciones de la venta ${venta.id_venta}`}>
       <button type="button" onClick={() => abrirDetalle(venta)} disabled={cargandoDetalle} className="min-h-10 rounded-lg border border-theme-border-subtle px-3 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:opacity-50">Ver</button>
-      {venta.estado === 'BORRADOR' && <>
+        {venta.estado === 'BORRADOR' && <>
+          {tienePermiso('pagos.crear') && (
+            <button
+              type="button"
+              onClick={() => abrirCobroVenta(venta)}
+              className="min-h-10 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+            >
+              Cobrar
+            </button>
+          )}
         {tienePermiso('ventas.confirmar') && <button type="button" onClick={() => abrirModalConfirmar(venta)} disabled={cargandoDetalle} className="min-h-10 rounded-lg bg-pink-600 px-3 py-2 text-sm font-semibold text-theme-brand-text hover:bg-pink-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:opacity-50">Confirmar</button>}
         <button type="button" onClick={() => abrirFormulario(venta)} disabled={cargandoCatalogo || !catalogoDisponible || !tienePermiso('ventas.modificar')} title={!catalogoDisponible ? 'Pendiente de Catálogo.' : undefined} className="min-h-10 rounded-lg border border-theme-border-subtle px-3 py-2 text-sm font-semibold text-theme-body hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:cursor-not-allowed disabled:opacity-50">Editar</button>
         {tienePermiso('ventas.anular') && <button type="button" onClick={() => abrirModalAnular(venta)} className="min-h-10 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600">Anular</button>}
@@ -619,7 +743,7 @@ function VentasPage() {
           </h1>
 
           <p className="mt-2 text-sm text-theme-muted">
-            Consulta ventas, registra borradores y confirma operaciones.
+            Registra ventas, realiza el cobro y confirma únicamente las operaciones pagadas.
           </p>
         </div>
 
@@ -876,7 +1000,7 @@ function VentasPage() {
       <VentaModal
         abierto={modalVentaAbierto}
         onCerrar={() => setModalVentaAbierto(false)}
-        onGuardado={async (mensajeGuardado, esNueva) => {
+        onGuardado={async (mensajeGuardado, esNueva, ventaGuardada) => {
           setMensaje(mensajeGuardado)
           if (esNueva && (estado !== '' || pagina !== 1)) {
             setCargando(true)
@@ -886,8 +1010,16 @@ function VentasPage() {
             setPagina(1)
           } else {
             await cargarVentas()
-          }
-        }}
+            }
+
+            if (
+              esNueva &&
+              ventaGuardada?.id_venta &&
+              tienePermiso('pagos.crear')
+            ) {
+              await abrirCobroVenta(ventaGuardada)
+            }
+          }}
         clientes={clientes}
         errorClientes={errorClientes}
         presentaciones={presentaciones}
@@ -1099,6 +1231,20 @@ function VentasPage() {
                       Editar
                     </button>
                   )}
+                  {tienePermiso('pagos.crear') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const v = ventaSeleccionada
+                        setVentaSeleccionada(null)
+                        abrirCobroVenta(v)
+                      }}
+                      className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                    >
+                      Cobrar venta
+                    </button>
+                  )}
+
                   {tienePermiso('ventas.confirmar') && (
                     <button
                       type="button"
@@ -1115,11 +1261,6 @@ function VentasPage() {
                 </div>
               )}
 
-              {ventaSeleccionada.estado === 'CONFIRMADA' && tienePermiso('pagos.crear') && (
-                <div className="flex items-center justify-end border-t border-gray-200 pt-4">
-
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -1251,9 +1392,28 @@ function VentasPage() {
 
             await cargarVentas()
 
-            await abrirCobroVentaConfirmada(
-              ventaConfirmada,
-            )
+              if (!ventaConfirmada?.id_venta) return
+
+              try {
+                const resumen = await consultarPagosOrigen(
+                  'VENTA',
+                  ventaConfirmada.id_venta,
+                )
+
+                const pagos = (resumen.pagos ?? [])
+                  .filter((pago) => pago.estado === 'CONFIRMADO')
+                  .sort((a, b) => Number(b.id_pago) - Number(a.id_pago))
+
+                if (pagos.length > 0) {
+                  await abrirReciboPago(mensajeExito, pagos[0])
+                }
+              } catch (errorPeticion) {
+                setError(
+                  'La venta fue confirmada, pero no se pudo abrir el recibo: ' +
+                    (errorPeticion.message || ''),
+                )
+              }
+
           }}
         tienePermisoInventario={tienePermiso('inventario.ver')}
       />

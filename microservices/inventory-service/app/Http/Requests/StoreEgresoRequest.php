@@ -59,8 +59,14 @@ class StoreEgresoRequest extends FormRequest
 
             'motivo' => [
                 'required',
-                'string',
-                'max:200',
+                Rule::in([
+                    'Pérdida',
+                    'Vencimiento',
+                    'Desecho',
+                    'Merma',
+                    'Consumo interno',
+                    'Ajuste negativo',
+                ]),
             ],
 
             'observaciones' => [

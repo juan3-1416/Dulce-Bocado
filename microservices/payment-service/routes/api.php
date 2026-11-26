@@ -2,8 +2,18 @@
 
 use App\Http\Controllers\PagoController;
 use App\Http\Controllers\ReciboController;
+use App\Http\Controllers\VentaPagoInternoController;
 use App\Http\Middleware\AutorizarPermisoPagos;
+use App\Http\Middleware\AutorizarServicioInternoPagos;
 use Illuminate\Support\Facades\Route;
+
+Route::get(
+    '/internal/ventas/{venta}/pagos',
+    [VentaPagoInternoController::class, 'show']
+)->whereNumber('venta')
+    ->middleware(
+        AutorizarServicioInternoPagos::class
+    );
 
 Route::post(
     '/pagos/efectivo',

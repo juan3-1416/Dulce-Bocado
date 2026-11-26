@@ -161,6 +161,43 @@ class ReciboService
                 2
             );
 
+            $pagosOrigen = Pago::query()
+                ->where(
+                    'origen_tipo',
+                    $pago->origen_tipo
+                )
+                ->where(
+                    'origen_id',
+                    $pago->origen_id
+                )
+                ->where(
+                    'estado',
+                    'CONFIRMADO'
+                )
+                ->orderBy('id_pago')
+                ->get()
+                ->map(function (Pago $item): array {
+                    return [
+                        'id_pago' =>
+                            $item->id_pago,
+
+                        'monto' =>
+                            (string) $item->monto,
+
+                        'medio' =>
+                            $item->medio,
+
+                        'estado' =>
+                            $item->estado,
+
+                        'fecha_pago' =>
+                            $item->confirmado_at
+                                ? $item->confirmado_at->toISOString()
+                                : (string) $item->created_at,
+                    ];
+                })
+                ->values()
+                ->all();
             $snapshot = [
                 'numero' => $numero,
                 'pago_id' => $pago->id_pago,
@@ -172,6 +209,7 @@ class ReciboService
                 'medio' => $pago->medio,
                 'total_origen' => (string) $pago->total_origen_snapshot,
                 'total_pagado_acumulado' => $totalPagadoAcumulado,
+                'pagos_origen' => $pagosOrigen,
                 'fecha_pago' => $pago->confirmado_at
                     ? $pago->confirmado_at->toISOString()
                     : (string) $pago->created_at,

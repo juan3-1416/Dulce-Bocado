@@ -140,20 +140,41 @@ export default function ConfirmarVentaModal({
         intentoConfirmar.current.clave,
       )
 
+      if (
+        respuesta?.venta?.estado !== 'CONFIRMADA' ||
+        respuesta?.confirmacion?.estado !== 'APLICADA' ||
+        Number(respuesta.venta.id_venta) !== Number(venta.id_venta)
+      ) {
+        throw new Error(
+          'El servidor no confirmó la venta. Verifique su estado antes de volver a intentarlo.',
+        )
+      }
+
       const mensajeExito =
-        respuesta?.message ||
-        `Venta #${venta.id_venta} confirmada exitosamente con descuento de existencias en Mostrador.`
+        `Venta #${venta.id_venta} confirmada correctamente.`
 
       intentoConfirmar.current = null
-      onConfirmado(mensajeExito, respuesta?.venta ?? null)
+      onConfirmado(mensajeExito, respuesta.venta)
       onCerrar()
     } catch (err) {
       const code = err.data?.error?.code || (err.status === 409 ? 'CONFLICTO' : '')
       setCodigoError(code)
 
-      if (code === 'STOCK_INSUFICIENTE') {
+      if (code === 'VENTA_SIN_PAGO') {
         setErrorConfirmacion(
-          'Stock insuficiente: El almacén Mostrador no cuenta con las existencias requeridas para esta venta. Repón existencias desde producción o modifica los artículos del borrador.',
+          'La venta no tiene ningún pago confirmado. Registre el pago antes de confirmar.',
+        )
+      } else if (code === 'VENTA_PAGO_INCOMPLETO') {
+        setErrorConfirmacion(
+          'El pago registrado no cubre el importe total de la venta.',
+        )
+      } else if (code === 'VENTA_PAGO_EXCEDENTE') {
+        setErrorConfirmacion(
+          'El importe pagado supera el total de la venta. Verifique el cobro antes de confirmar.',
+        )
+      } else if (code === 'STOCK_INSUFICIENTE') {
+        setErrorConfirmacion(
+          'Stock insuficiente: El almacén Mostrador no cuenta con las existencias requeridas para esta venta. Repón existencias desde producción y vuelve a intentar la confirmación. No registres nuevamente un pago que ya fue confirmado.',
         )
       } else if (code === 'VENTA_NO_CONFIRMABLE') {
         setErrorConfirmacion(
@@ -207,7 +228,7 @@ export default function ConfirmarVentaModal({
               Confirmar venta #{venta.id_venta}
             </h2>
             <p className="mt-1 text-sm text-theme-muted">
-              Revisa los artículos antes de descontar existencias de Mostrador.
+              El servidor verificará el pago completo antes de confirmar la venta y descontar existencias.
             </p>
           </div>
           <button
@@ -359,7 +380,7 @@ export default function ConfirmarVentaModal({
           </div>
 
           <div className="rounded-lg bg-theme-subtle p-3 text-sm text-theme-body">
-            Al confirmar, la venta pasará a confirmada y se descontarán las existencias de Mostrador. Si no hay stock suficiente, la venta seguirá en borrador.
+            La venta únicamente será confirmada si tiene el pago completo registrado y el descuento de inventario se realiza correctamente.
           </div>
         </div>
 

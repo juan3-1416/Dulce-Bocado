@@ -145,12 +145,12 @@ export async function consultarPagosOrigen(origen, origenId) {
 
 /**
  * Obtiene los documentos disponibles para cobro consultando los microservicios propietarios:
- * - Ventas en estado CONFIRMADA desde Sales Service
+ * - Ventas en estado BORRADOR desde Sales Service
  * - Pedidos pagables desde Order Service
  */
 export async function obtenerCatalogosPago() {
   const [ventasResp, pedidosResp] = await Promise.allSettled([
-    listarVentas({ estado: 'CONFIRMADA', per_page: 50 }),
+    listarVentas({ estado: 'BORRADOR', per_page: 50 }),
     listarPedidos({ per_page: 50 }),
   ])
 

@@ -1,0 +1,27 @@
+[35mfrontend/src/modules/orders/pages/PedidoDetalleModal.jsx[m[36m:[m[32m4[m[36m:[m[1;31mimport PagoModal from '../pagos/PagoModal[m';
+[35mfrontend/src/modules/orders/pages/PedidosPage.jsx[m[36m:[m[32m16[m[36m:[m[1;31mimport PagoModal from '../pagos/PagoModal[m';
+[35mfrontend/src/modules/payments/pages/PagoModal.jsx[m[36m:[m[32m4[m[36m:[mimport { [1;31musePagoFormulario[m } from './hooks/[1;31musePagoFormulario[m'
+[35mfrontend/src/modules/payments/pages/PagoModal.jsx[m[36m:[m[32m6[m[36m:[m[1;31mimport PagoModalCabecera from './components/PagoModal[mCabecera'
+[35mfrontend/src/modules/payments/pages/PagoModal.jsx[m[36m:[m[32m15[m[36m:[m * Actúa como orquestador: conecta usePagoQr y [1;31musePagoFormulario[m
+[35mfrontend/src/modules/payments/pages/PagoModal.jsx[m[36m:[m[32m50[m[36m:[m  const form = [1;31musePagoFormulario[m({
+[35mfrontend/src/modules/payments/pages/PagosPage.jsx[m[36m:[m[32m7[m[36m:[m[1;31mimport PagoModal from './PagoModal[m'
+[35mfrontend/src/modules/payments/pages/hooks/usePagoFormulario.js[m[36m:[m[32m21[m[36m:[mexport function [1;31musePagoFormulario[m({
+[35mfrontend/src/modules/payments/paymentRoutes.jsx[m[36m:[m[32m3[m[36m:[m[1;31mimport PagosPage from '../../pages/pagos/PagosPage[m'
+[35mfrontend/src/modules/payments/services/pagoService.js[m[36m:[m[32m168[m[36m:[m * Compatibilidad con [1;31musePagoFormulario[m existente.
+[35mfrontend/src/modules/sales/pages/VentasPage.jsx[m[36m:[m[32m26[m[36m:[m[1;31mimport PagoModal from '../pagos/PagoModal[m'
+[35mfrontend/src/modules/sales/pages/VentasPage.jsx.bak-recibo[m[36m:[m[32m25[m[36m:[m[1;31mimport PagoModal from '../pagos/PagoModal[m'
+[35mfrontend/src/modules/sales/salesRoutes.jsx[m[36m:[m[32m3[m[36m:[m[1;31mimport VentasPage from '../../pages/ventas/VentasPage[m'
+[35mfrontend/src/pages/pagos/PagoModal.jsx[m[36m:[m[32m4[m[36m:[mimport { [1;31musePagoFormulario[m } from './hooks/[1;31musePagoFormulario[m'
+[35mfrontend/src/pages/pagos/PagoModal.jsx[m[36m:[m[32m6[m[36m:[m[1;31mimport PagoModalCabecera from './components/PagoModal[mCabecera'
+[35mfrontend/src/pages/pagos/PagoModal.jsx[m[36m:[m[32m15[m[36m:[m * Actúa como orquestador: conecta usePagoQr y [1;31musePagoFormulario[m
+[35mfrontend/src/pages/pagos/PagoModal.jsx[m[36m:[m[32m50[m[36m:[m  const form = [1;31musePagoFormulario[m({
+[35mfrontend/src/pages/pagos/PagosPage.jsx[m[36m:[m[32m7[m[36m:[m[1;31mimport PagoModal from './PagoModal[m'
+[35mfrontend/src/pages/pagos/PagosPage.jsx.bak-acciones-pagos[m[36m:[m[32m7[m[36m:[m[1;31mimport PagoModal from './PagoModal[m'
+[35mfrontend/src/pages/pagos/PagosPage.jsx.bak-ver-recibo-fix[m[36m:[m[32m7[m[36m:[m[1;31mimport PagoModal from './PagoModal[m'
+[35mfrontend/src/pages/pagos/PagosPage.jsx.bak-visualizar-pagos[m[36m:[m[32m7[m[36m:[m[1;31mimport PagoModal from './PagoModal[m'
+[35mfrontend/src/pages/pagos/hooks/usePagoFormulario.js[m[36m:[m[32m21[m[36m:[mexport function [1;31musePagoFormulario[m({
+[35mfrontend/src/pages/pedidos/PedidoDetalleModal.jsx[m[36m:[m[32m4[m[36m:[m[1;31mimport PagoModal from '../pagos/PagoModal[m';
+[35mfrontend/src/pages/pedidos/PedidosPage.jsx[m[36m:[m[32m16[m[36m:[m[1;31mimport PagoModal from '../pagos/PagoModal[m';
+[35mfrontend/src/pages/ventas/VentasPage.jsx[m[36m:[m[32m26[m[36m:[m[1;31mimport PagoModal from '../pagos/PagoModal[m'
+[35mfrontend/src/pages/ventas/VentasPage.jsx.bak-recibo[m[36m:[m[32m25[m[36m:[m[1;31mimport PagoModal from '../pagos/PagoModal[m'
+[35mfrontend/src/services/pagoService.js[m[36m:[m[32m168[m[36m:[m * Compatibilidad con [1;31musePagoFormulario[m existente.
