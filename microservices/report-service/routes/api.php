@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ReporteController;
+use App\Http\Controllers\Api\Visitas\VisitaController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
@@ -75,4 +76,14 @@ Route::prefix('reportes')->group(function () {
         Route::post('/{tipo}/enviar', [ReporteController::class, 'enviar'])
             ->where('tipo', 'ventas|pedidos|inventario');
     });
+});
+
+/*
+|--------------------------------------------------------------------------
+| CU22 - Registrar visitas por pagina
+|--------------------------------------------------------------------------
+*/
+Route::prefix('visitas')->group(function () {
+    Route::get('/', [VisitaController::class, 'index']);
+    Route::post('/registrar', [VisitaController::class, 'registrar']);
 });
