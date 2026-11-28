@@ -17,10 +17,49 @@ class VentaController extends Controller
     {
         $filtros = $request->validate([
             'estado' => ['sometimes', 'in:BORRADOR,CONFIRMADA,CANCELADA'],
+            'fecha_venta' => ['sometimes', 'date_format:Y-m-d'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'incluir_detalles' => ['sometimes', 'boolean'],
         ]);
-        $ventas = Venta::query()->when(isset($filtros['estado']), fn ($q) => $q->where('estado', $filtros['estado']))
-            ->orderByDesc('fecha_venta')->orderByDesc('id_venta')->paginate($filtros['per_page'] ?? 15);
+
+        $ventas = Venta::query()
+            ->when(
+                $request->boolean('incluir_detalles'),
+                fn ($q) => $q->with('detalles')
+            )
+            ->when(
+                isset($filtros['estado']),
+                fn ($q) => $q->where('estado', $filtros['estado'])
+            )
+            ->when(
+                isset($filtros['fecha_venta']),
+                function ($q) use ($filtros) {
+                    $inicio = \Carbon\CarbonImmutable::createFromFormat(
+                        '!Y-m-d',
+                        $filtros['fecha_venta'],
+                        'America/La_Paz'
+                    );
+
+                    $fin = $inicio->addDay();
+
+                    $zonaAlmacenamiento = config('app.timezone', 'UTC');
+                    $formato = $q->getModel()->getConnection()->getDriverName() === 'pgsql' ? 'Y-m-d H:i:sP' : 'Y-m-d H:i:s';
+
+                    $q->where(
+                        'fecha_venta',
+                        '>=',
+                        $inicio->setTimezone($zonaAlmacenamiento)->format($formato)
+                    )->where(
+                        'fecha_venta',
+                        '<',
+                        $fin->setTimezone($zonaAlmacenamiento)->format($formato)
+                    );
+                }
+            )
+            ->orderByDesc('fecha_venta')
+            ->orderByDesc('id_venta')
+            ->paginate($filtros['per_page'] ?? 15)
+            ->withQueryString();
 
         return response()->json($ventas);
     }

@@ -97,6 +97,13 @@ export async function listarVentas(
     )
   }
 
+  if (parametros.fecha_venta) {
+    query.set(
+      'fecha_venta',
+      parametros.fecha_venta,
+    )
+  }
+
   if (parametros.per_page) {
     query.set(
       'per_page',

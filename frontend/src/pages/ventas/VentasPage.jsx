@@ -78,6 +78,9 @@ function VentasPage() {
   const [estado, setEstado] =
     useState('')
 
+  const [fechaVenta, setFechaVenta] =
+    useState('')
+
   const [pagina, setPagina] =
     useState(1)
 
@@ -130,6 +133,7 @@ function VentasPage() {
         const respuesta =
           await listarVentas({
             estado,
+            fecha_venta: fechaVenta,
             page: pagina,
             per_page: 15,
           })
@@ -183,7 +187,7 @@ function VentasPage() {
           setCargando(false)
         }
       }
-    }, [estado, pagina])
+    }, [estado, fechaVenta, pagina])
 
   useEffect(() => {
     cargarVentas()
@@ -688,7 +692,7 @@ function VentasPage() {
 
     return new Date(
       fecha,
-    ).toLocaleString('es-BO')
+    ).toLocaleString('es-BO', { timeZone: 'America/La_Paz' })
   }
 
   const obtenerClaseEstado = (
@@ -784,38 +788,64 @@ function VentasPage() {
       )}
 
       <div className="rounded-xl border border-theme-border-subtle bg-theme-surface p-4">
-        <label
-          htmlFor="estado_venta"
-          className="mb-1.5 block text-sm font-medium text-theme-body"
-        >
-          Estado
-        </label>
+        <div className="grid grid-cols-1 items-end gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+          <div>
+            <label
+              htmlFor="estado_venta"
+              className="mb-1.5 block text-sm font-medium text-theme-body"
+            >
+              Estado
+            </label>
 
-        <select
-          id="estado_venta"
-          value={estado}
-          onChange={(event) => {
-            setPagina(1)
-            setEstado(event.target.value)
-          }}
-          className="w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2.5 text-sm text-theme-main focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 md:max-w-sm"
-        >
-          <option value="">
-            Todas
-          </option>
+            <select
+              id="estado_venta"
+              value={estado}
+              onChange={(event) => {
+                setPagina(1)
+                setEstado(event.target.value)
+              }}
+              className="min-h-11 w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2.5 text-sm text-theme-main focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
+            >
+              <option value="">Todas</option>
+              <option value="BORRADOR">Borrador</option>
+              <option value="CONFIRMADA">Confirmada</option>
+              <option value="CANCELADA">Anulada</option>
+            </select>
+          </div>
 
-          <option value="BORRADOR">
-            Borrador
-          </option>
+          <div>
+            <label
+              htmlFor="fecha_venta"
+              className="mb-1.5 block text-sm font-medium text-theme-body"
+            >
+              Fecha de venta
+            </label>
 
-          <option value="CONFIRMADA">
-            Confirmada
-          </option>
+            <input
+              id="fecha_venta"
+              type="date"
+              value={fechaVenta}
+              onChange={(event) => {
+                setPagina(1)
+                setFechaVenta(event.target.value)
+              }}
+              className="min-h-11 w-full rounded-lg border border-theme-border-subtle bg-theme-surface px-3 py-2.5 text-sm text-theme-main focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600"
+            />
+          </div>
 
-          <option value="CANCELADA">
-            Anulada
-          </option>
-        </select>
+          <button
+            type="button"
+            disabled={!estado && !fechaVenta}
+            onClick={() => {
+              setPagina(1)
+              setEstado('')
+              setFechaVenta('')
+            }}
+            className="min-h-11 rounded-lg border border-theme-border-subtle px-4 py-2.5 text-sm font-semibold text-theme-body hover:bg-theme-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Limpiar filtros
+          </button>
+        </div>
       </div>
 
       <div className="min-w-0 overflow-hidden rounded-xl border border-theme-border-subtle bg-theme-surface">
@@ -836,7 +866,9 @@ function VentasPage() {
                   Reintentar ventas
                 </button>
               </>
-            ) : estado ? 'No hay ventas con este estado.' : 'Todavía no hay ventas registradas.'}
+            ) : estado || fechaVenta
+                ? 'No hay ventas que coincidan con los filtros seleccionados.'
+                : 'Todavía no hay ventas registradas.'}
           </div>
         ) : (
           <>
@@ -1002,11 +1034,12 @@ function VentasPage() {
         onCerrar={() => setModalVentaAbierto(false)}
         onGuardado={async (mensajeGuardado, esNueva, ventaGuardada) => {
           setMensaje(mensajeGuardado)
-          if (esNueva && (estado !== '' || pagina !== 1)) {
+          if (esNueva && (estado !== '' || fechaVenta !== '' || pagina !== 1)) {
             setCargando(true)
             setVentas([])
             setPaginacion(null)
             setEstado('')
+            setFechaVenta('')
             setPagina(1)
           } else {
             await cargarVentas()

@@ -168,12 +168,20 @@ class PagoController extends Controller
             ),
         ]);
 
-        $request->validate([
+        $filtros = $request->validate([
             'tipo' => [
                 'nullable',
                 'in:VENTA,PEDIDO',
             ],
+            'page' => ['sometimes', 'integer', 'min:1', 'max:2147483647'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ]);
+
+        $usarPaginacion = $request->has('page')
+            || $request->has('per_page');
+
+        $pagina = (int) ($filtros['page'] ?? 1);
+        $porPagina = (int) ($filtros['per_page'] ?? 15);
 
         $query = DB::table('pago')
             ->select([
@@ -225,15 +233,52 @@ class PagoController extends Controller
             );
         }
 
-        $filas = $query
-            ->groupBy(
-                'origen_tipo',
-                'origen_id'
-            )
-            ->orderByDesc(
-                'ultimo_pago_at'
-            )
-            ->get();
+        $agrupadas = $query->groupBy(
+            'origen_tipo',
+            'origen_id'
+        );
+
+        $totales = DB::query()
+            ->fromSub(clone $agrupadas, 'operaciones')
+            ->selectRaw("
+                COUNT(*) AS cantidad_operaciones,
+                COALESCE(SUM(total), 0) AS total_operaciones,
+                COALESCE(SUM(pagado), 0) AS total_pagado,
+                COALESCE(SUM(
+                    COALESCE(total, 0) - COALESCE(pagado, 0)
+                ), 0) AS saldo_pendiente,
+                COUNT(CASE
+                    WHEN pagado <> 0
+                    AND COALESCE(total, 0) - pagado <= 0
+                    THEN 1
+                END) AS pagadas,
+                COUNT(CASE
+                    WHEN pagado <> 0
+                    AND COALESCE(total, 0) - pagado > 0
+                    THEN 1
+                END) AS parciales
+            ")
+            ->first();
+
+        $totalOperaciones = (int) $totales->cantidad_operaciones;
+
+        $ultimaPagina = max(
+            1,
+            (int) ceil($totalOperaciones / $porPagina)
+        );
+
+        $consulta = (clone $agrupadas)
+            ->orderByDesc('ultimo_pago_at')
+            ->orderBy('origen_tipo')
+            ->orderByDesc('origen_id');
+
+        if ($usarPaginacion) {
+            $filas = $pagina <= $ultimaPagina
+                ? $consulta->forPage($pagina, $porPagina)->get()
+                : collect();
+        } else {
+            $filas = $consulta->get();
+        }
 
         $operaciones = $filas
             ->map(function ($fila) {
@@ -309,72 +354,35 @@ class PagoController extends Controller
             })
             ->values();
 
-        $totalOperaciones = $operaciones->count();
-
-        $totalFacturado = number_format(
-            (float) $operaciones->sum(
-                fn ($item) =>
-                    (float) $item['total']
-            ),
-            2,
-            '.',
-            ''
-        );
-
-        $totalPagado = number_format(
-            (float) $operaciones->sum(
-                fn ($item) =>
-                    (float) $item['pagado']
-            ),
-            2,
-            '.',
-            ''
-        );
-
-        $saldoPendiente = number_format(
-            (float) $operaciones->sum(
-                fn ($item) =>
-                    (float) $item['saldo']
-            ),
-            2,
-            '.',
-            ''
-        );
-
-        return response()->json([
+        $respuesta = [
             'resumen' => [
-                'cantidad_operaciones' =>
-                    $totalOperaciones,
-
-                'total_operaciones' =>
-                    $totalFacturado,
-
-                'total_pagado' =>
-                    $totalPagado,
-
-                'saldo_pendiente' =>
-                    $saldoPendiente,
-
-                'pagadas' =>
-                    $operaciones
-                        ->where(
-                            'estado_pago',
-                            'PAGADO'
-                        )
-                        ->count(),
-
-                'parciales' =>
-                    $operaciones
-                        ->where(
-                            'estado_pago',
-                            'PARCIAL'
-                        )
-                        ->count(),
+                'cantidad_operaciones' => $totalOperaciones,
+                'total_operaciones' => bcadd(
+                    (string) $totales->total_operaciones, '0', 2
+                ),
+                'total_pagado' => bcadd(
+                    (string) $totales->total_pagado, '0', 2
+                ),
+                'saldo_pendiente' => bcadd(
+                    (string) $totales->saldo_pendiente, '0', 2
+                ),
+                'pagadas' => (int) $totales->pagadas,
+                'parciales' => (int) $totales->parciales,
             ],
 
-            'operaciones' =>
-                $operaciones,
-        ]);
+            'operaciones' => $operaciones,
+        ];
+
+        if ($usarPaginacion) {
+            $respuesta['paginacion'] = [
+                'current_page' => $pagina,
+                'last_page' => $ultimaPagina,
+                'per_page' => $porPagina,
+                'total' => $totalOperaciones,
+            ];
+        }
+
+        return response()->json($respuesta);
     }
     public function storeQr(
         Request $request,

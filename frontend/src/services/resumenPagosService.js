@@ -9,9 +9,14 @@ const API_BASE =
 
 export async function listarResumenPagos(
   tipo = '',
+  pagina = 1,
+  porPagina = 15,
 ) {
   const token = obtenerToken()
   const query = new URLSearchParams()
+
+  query.set('page', String(pagina))
+  query.set('per_page', String(porPagina))
 
   if (tipo) {
     query.set('tipo', tipo)

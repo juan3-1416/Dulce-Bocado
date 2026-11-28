@@ -168,9 +168,9 @@ export default function DashboardPage() {
 
         {/* KPI 3: Producción */}
         <DashboardKpiCard
-          titulo="Producción activa"
-          valor={kpis.produccion_activa ?? 0}
-          subtitulo={`${kpis.produccion_finalizada || 0} completadas en período`}
+          titulo="Producciones realizadas"
+          valor={kpis.produccion_finalizada ?? 0}
+          subtitulo="Completadas en el período"
           variante="info"
           cargando={cargando}
           icono={

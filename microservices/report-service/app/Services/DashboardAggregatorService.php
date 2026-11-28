@@ -124,20 +124,64 @@ class DashboardAggregatorService
 
     private function consultarVentas(Carbon $inicio, Carbon $fin, string $token): array
     {
-        $url = config('integrations.sales.url') . '/api/ventas?per_page=100';
+        $url = rtrim(
+            (string) config('integrations.sales.url'),
+            '/'
+        ) . '/api/ventas';
+
         try {
-            $resp = Http::timeout(config('integrations.sales.timeout', 4))
-                ->withHeaders([
-                    'Authorization' => 'Bearer ' . $token,
-                    'Accept' => 'application/json',
-                ])
-                ->get($url);
+            $ventas = [];
+            $pagina = 1;
 
-            if (!$resp->successful()) {
-                return $this->ventasFallback('HTTP ' . $resp->status());
-            }
+            do {
+                $resp = Http::timeout(
+                    config('integrations.sales.timeout', 4)
+                )
+                    ->withHeaders([
+                        'Authorization' => 'Bearer ' . $token,
+                        'Accept' => 'application/json',
+                    ])
+                    ->get($url, [
+                        'estado' => 'CONFIRMADA',
+                        'incluir_detalles' => 1,
+                        'per_page' => 100,
+                        'page' => $pagina,
+                    ]);
 
-            $ventas = $resp->json('data') ?? $resp->json('ventas') ?? [];
+                if (!$resp->successful()) {
+                    return $this->ventasFallback(
+                        'HTTP ' . $resp->status()
+                    );
+                }
+
+                $datos = $resp->json();
+
+                if (
+                    !is_array($datos['data'] ?? null) ||
+                    !isset($datos['last_page'])
+                ) {
+                    return $this->ventasFallback(
+                        'Respuesta de Sales Service no valida.'
+                    );
+                }
+
+                foreach ($datos['data'] as $venta) {
+                    if (!is_array($venta['detalles'] ?? null)) {
+                        return $this->ventasFallback(
+                            'Sales Service no devolvio los detalles.'
+                        );
+                    }
+
+                    $ventas[] = $venta;
+                }
+
+                $ultimaPagina = max(
+                    1,
+                    (int) $datos['last_page']
+                );
+
+                $pagina++;
+            } while ($pagina <= $ultimaPagina);
 
             $totalMonto = 0.0;
             $cantidad = 0;
@@ -146,14 +190,75 @@ class DashboardAggregatorService
             $porFecha = [];
             $productosVendidos = [];
             $ultimasVentas = [];
+            $catalogoPresentaciones = [];
+
+            try {
+                $catalogUrl = rtrim(
+                    (string) config('integrations.catalog.url'),
+                    '/'
+                );
+
+                $respCatalogo = Http::timeout(
+                    config('integrations.catalog.timeout', 4)
+                )
+                    ->withHeaders([
+                        'Authorization' => 'Bearer ' . $token,
+                        'Accept' => 'application/json',
+                    ])
+                    ->get($catalogUrl . '/api/presentaciones');
+
+                if ($respCatalogo->successful()) {
+                    $presentaciones =
+                        $respCatalogo->json('presentaciones')
+                        ?? $respCatalogo->json('data')
+                        ?? [];
+
+                    foreach ($presentaciones as $presentacion) {
+                        $id = (int) (
+                            $presentacion['presentacion_id']
+                            ?? $presentacion['id_presentacion']
+                            ?? 0
+                        );
+
+                        if ($id <= 0) {
+                            continue;
+                        }
+
+                        $catalogoPresentaciones[$id] = [
+                            'producto' => trim(
+                                (string) (
+                                    $presentacion['producto']['nombre']
+                                    ?? ''
+                                )
+                            ),
+                            'presentacion' => trim(
+                                (string) (
+                                    $presentacion['nombre']
+                                    ?? ''
+                                )
+                            ),
+                        ];
+                    }
+                }
+            } catch (Throwable $e) {
+                // Conservar los datos historicos si Catalog no responde.
+            }
 
             foreach ($ventas as $v) {
-                $estado = $v['estado'] ?? 'REGISTRADA';
-                if ($estado === 'ANULADA' || $estado === 'CANCELADA') {
+                $estado = $v['estado'] ?? '';
+
+                if ($estado !== 'CONFIRMADA') {
                     continue;
                 }
 
-                $fechaVenta = isset($v['fecha_venta']) ? Carbon::parse($v['fecha_venta']) : null;
+                $fechaVenta = isset($v['fecha_venta'])
+                    ? Carbon::parse($v['fecha_venta'])
+                        ->setTimezone('America/La_Paz')
+                    : null;
+
+                if (!$fechaVenta) {
+                    continue;
+                }
                 if ($fechaVenta && ($fechaVenta->lt($inicio) || $fechaVenta->gt($fin))) {
                     continue;
                 }
@@ -202,11 +307,73 @@ class DashboardAggregatorService
                 $detalles = $v['detalles'] ?? $v['items'] ?? [];
                 if (is_array($detalles)) {
                     foreach ($detalles as $d) {
-                        $prodId = $d['id_producto_presentacion'] ?? $d['producto_id'] ?? 1;
-                        $nombreProd = $d['producto'] ?? $d['producto_snapshot'] ?? ('Producto #' . $prodId);
-                        $nombrePres = $d['presentacion'] ?? 'Unidad';
-                        $cantItem = (int) ($d['cantidad'] ?? 1);
-                        $subtotalItem = (float) ($d['subtotal'] ?? ($cantItem * ($d['precio_unitario'] ?? 0)));
+                        $prodId = (int) (
+                            $d['presentacion_id']
+                            ?? $d['id_producto_presentacion']
+                            ?? 0
+                        );
+
+                        if ($prodId <= 0) {
+                            continue;
+                        }
+
+                        $metaCatalogo =
+                            $catalogoPresentaciones[$prodId]
+                            ?? [];
+
+                        $nombreProd = trim(
+                            (string) (
+                                $d['nombre_producto_snapshot']
+                                ?? ''
+                            )
+                        );
+
+                        $nombrePres = trim(
+                            (string) (
+                                $d['nombre_presentacion_snapshot']
+                                ?? ''
+                            )
+                        );
+
+                        if (
+                            $nombreProd === '' ||
+                            preg_match('/^Producto\s*#\d+$/i', $nombreProd)
+                        ) {
+                            $nombreProd =
+                                $metaCatalogo['producto']
+                                ?? '';
+                        }
+
+                        if ($nombrePres === '') {
+                            $nombrePres =
+                                $metaCatalogo['presentacion']
+                                ?? '';
+                        }
+
+                        if ($nombreProd === '') {
+                            $nombreProd = $nombrePres !== ''
+                                ? $nombrePres
+                                : 'Producto no identificado';
+                        }
+
+                        if ($nombrePres === $nombreProd) {
+                            $nombrePres = '';
+                        }
+
+                        $cantItem = (float) (
+                            $d['cantidad'] ?? 0
+                        );
+
+                        $subtotalItem = (float) (
+                            $d['subtotal']
+                            ?? (
+                                $cantItem * (
+                                    $d['precio_unitario_snapshot']
+                                    ?? $d['precio_unitario']
+                                    ?? 0
+                                )
+                            )
+                        );
 
                         if (!isset($productosVendidos[$prodId])) {
                             $productosVendidos[$prodId] = [
@@ -777,39 +944,133 @@ class DashboardAggregatorService
 
     private function consultarProduccion(Carbon $inicio, Carbon $fin, string $token): array
     {
-        $url = config('integrations.production.url') . '/api/producciones';
+        $url = rtrim(
+            (string) config('integrations.production.url'),
+            '/'
+        ) . '/api/producciones';
+
+        $campoFecha = 'fecha_completada';
+        $zonaOrigen = 'UTC';
+
         try {
-            $resp = Http::timeout(config('integrations.production.timeout', 4))
-                ->withHeaders([
-                    'Authorization' => 'Bearer ' . $token,
-                    'Accept' => 'application/json',
-                ])
-                ->get($url);
-
-            if (!$resp->successful()) {
-                return ['activas' => 0, 'completadas' => 0, 'estado_fuente' => 'NO_DISPONIBLE'];
-            }
-
-            $producciones = $resp->json('producciones') ?? $resp->json('data') ?? [];
             $activas = 0;
             $completadas = 0;
+            $pagina = 1;
+            $procesadas = [];
 
-            foreach ($producciones as $prod) {
-                $estado = strtoupper($prod['estado'] ?? 'PROGRAMADA');
-                if (in_array($estado, ['PROGRAMADA', 'EN_PROCESO', 'INICIADA'], true)) {
-                    $activas++;
-                } elseif (in_array($estado, ['COMPLETADA', 'FINALIZADA'], true)) {
+            do {
+                $resp = Http::timeout(
+                    config('integrations.production.timeout', 4)
+                )
+                    ->withHeaders([
+                        'Authorization' => 'Bearer ' . $token,
+                        'Accept' => 'application/json',
+                    ])
+                    ->get($url, [
+                        'page' => $pagina,
+                    ]);
+
+                if (!$resp->successful()) {
+                    throw new \RuntimeException(
+                        'Production Service no disponible.'
+                    );
+                }
+
+                $datos = $resp->json();
+
+                if (
+                    !is_array($datos['producciones'] ?? null) ||
+                    !isset($datos['pagination']['last_page']) ||
+                    (int) ($datos['pagination']['page'] ?? 0) !== $pagina
+                ) {
+                    throw new \RuntimeException(
+                        'Respuesta de produccion invalida.'
+                    );
+                }
+
+                foreach ($datos['producciones'] as $prod) {
+                    $id = (int) ($prod['id_produccion'] ?? 0);
+
+                    if ($id <= 0) {
+                        throw new \RuntimeException(
+                            'Produccion sin identificador.'
+                        );
+                    }
+
+                    if (isset($procesadas[$id])) {
+                        continue;
+                    }
+
+                    $procesadas[$id] = true;
+
+                    $estado = strtoupper(
+                        (string) ($prod['estado'] ?? '')
+                    );
+
+                    if (in_array($estado, [
+                        'PROGRAMADA',
+                        'EN_PROCESO',
+                        'INICIADA',
+                    ], true)) {
+                        $activas++;
+                    }
+
+                    if ($estado !== 'COMPLETADA') {
+                        continue;
+                    }
+
+                    $fechaRaw = $prod[$campoFecha] ?? null;
+
+                    if (!$fechaRaw) {
+                        throw new \RuntimeException(
+                            'Produccion completada sin fecha.'
+                        );
+                    }
+
+                    $zona = preg_match(
+                        '/^\d{4}-\d{2}-\d{2}$/D',
+                        (string) $fechaRaw
+                    )
+                        ? 'America/La_Paz'
+                        : $zonaOrigen;
+
+                    $fechaProduccion = Carbon::parse(
+                        $fechaRaw,
+                        $zona
+                    )->setTimezone('America/La_Paz');
+
+                    if (
+                        $fechaProduccion->lt($inicio) ||
+                        $fechaProduccion->gt($fin)
+                    ) {
+                        continue;
+                    }
+
                     $completadas++;
                 }
-            }
+
+                $ultimaPagina = max(
+                    1,
+                    (int) $datos['pagination']['last_page']
+                );
+
+                $pagina++;
+            } while ($pagina <= $ultimaPagina);
 
             return [
                 'activas' => $activas,
                 'completadas' => $completadas,
                 'estado_fuente' => 'DISPONIBLE',
             ];
-        } catch (Throwable) {
-            return ['activas' => 0, 'completadas' => 0, 'estado_fuente' => 'TIMEOUT'];
+
+        } catch (Throwable $e) {
+            report($e);
+
+            return [
+                'activas' => 0,
+                'completadas' => 0,
+                'estado_fuente' => 'NO_DISPONIBLE',
+            ];
         }
     }
 }

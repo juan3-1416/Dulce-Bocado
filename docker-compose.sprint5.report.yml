@@ -69,6 +69,9 @@ services:
       MAIL_ENCRYPTION: ${MAIL_ENCRYPTION:-null}
       MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-reportes@dulcebocado.com}
       MAIL_FROM_NAME: "Dulce Bocado"
+      MAIL_GMAIL_USERNAME: ${MAIL_GMAIL_USERNAME:-null}
+      MAIL_GMAIL_PASSWORD: ${MAIL_GMAIL_PASSWORD:-null}
+      MAIL_GMAIL_FROM_ADDRESS: ${MAIL_GMAIL_FROM_ADDRESS:-null}
 
     depends_on:
       report-db:

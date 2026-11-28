@@ -69,64 +69,149 @@ class ReporteMailService
             report($e);
         }
 
-        // 5. Enviar correo vía SMTP / Mailer configurado
-        try {
-            $nombreArchivo = $archivoInfo['nombre_archivo'];
+        // 5. Enviar el mismo PDF mediante el transporte correspondiente.
+        $nombreArchivo = $archivoInfo['nombre_archivo'];
 
-            Mail::send(
-                'emails.reporte',
-                [
-                    'titulo' => $titulo,
-                    'tipo' => $tipo,
-                    'reporte' => $reporte,
-                ],
-                function ($message) use ($destinatarios, $contenidoPdf, $nombreArchivo, $titulo) {
-                    $message
-                        ->to($destinatarios)
-                        ->subject('Dulce Bocado - ' . $titulo)
-                        ->attachData($contenidoPdf, $nombreArchivo, [
-                            'mime' => 'application/pdf',
-                        ]);
-                }
+        $enviados = [];
+        $fallidos = [];
+        $detalleEnvios = [];
+
+        foreach ($destinatarios as $destinatario) {
+            $dominio = strtolower(
+                substr(strrchr($destinatario, '@'), 1)
             );
 
-            // Actualizar estado a ENVIADO
-            if ($envio) {
-                $envio->update([
-                    'estado' => ReporteEnvio::ESTADO_ENVIADO,
-                ]);
+            $esInterno = in_array(
+                $dominio,
+                ['mail.tecnoweb', 'tecnoweb'],
+                true
+            );
+
+            $mailer = $esInterno ? 'smtp' : 'gmail';
+            $servidor = $esInterno ? 'Tecnoweb' : 'Gmail';
+
+            try {
+                if ($esInterno) {
+                    $remitente = config('mail.from.address');
+                    $nombreRemitente = config(
+                        'mail.from.name',
+                        'Dulce Bocado'
+                    );
+                } else {
+                    if (
+                        empty(config('mail.mailers.gmail.username')) ||
+                        empty(config('mail.mailers.gmail.password')) ||
+                        empty(config('mail.mailers.gmail.from.address'))
+                    ) {
+                        throw new \RuntimeException(
+                            'El servidor SMTP externo no esta configurado.'
+                        );
+                    }
+
+                    $remitente = config(
+                        'mail.mailers.gmail.from.address'
+                    );
+
+                    $nombreRemitente = config(
+                        'mail.mailers.gmail.from.name',
+                        'Dulce Bocado'
+                    );
+                }
+
+                Mail::mailer($mailer)->send(
+                    'emails.reporte',
+                    [
+                        'titulo' => $titulo,
+                        'tipo' => $tipo,
+                        'reporte' => $reporte,
+                    ],
+                    function ($message) use (
+                        $destinatario,
+                        $remitente,
+                        $nombreRemitente,
+                        $contenidoPdf,
+                        $nombreArchivo,
+                        $titulo
+                    ) {
+                        $message
+                            ->from($remitente, $nombreRemitente)
+                            ->to($destinatario)
+                            ->subject('Dulce Bocado - ' . $titulo)
+                            ->attachData(
+                                $contenidoPdf,
+                                $nombreArchivo,
+                                ['mime' => 'application/pdf']
+                            );
+                    }
+                );
+
+                $enviados[] = $destinatario;
+
+                $detalleEnvios[] = [
+                    'correo' => $destinatario,
+                    'servidor' => $servidor,
+                    'estado' => 'ENVIADO',
+                ];
+
+            } catch (Throwable $e) {
+                report($e);
+
+                $fallidos[] = $destinatario;
+
+                $detalleEnvios[] = [
+                    'correo' => $destinatario,
+                    'servidor' => $servidor,
+                    'estado' => 'FALLIDO',
+                ];
             }
-
-            return [
-                'message' => 'Reporte generado y enviado correctamente.',
-                'envio' => true,
-                'tipo' => $tipo,
-                'correos' => $destinatarios,
-                'archivo' => $nombreArchivo,
-                'ruta_guardada' => $archivoInfo['ruta_relativa'],
-                'id_envio' => $envio?->id_envio,
-            ];
-        } catch (Throwable $e) {
-            report($e);
-
-            // Actualizar estado a FALLIDO
-            if ($envio) {
-                $envio->update([
-                    'estado' => ReporteEnvio::ESTADO_FALLIDO,
-                    'error_mensaje' => $e->getMessage(),
-                ]);
-            }
-
-            return [
-                'message' => 'El reporte fue generado y guardado, pero no pudo enviarse por correo.',
-                'envio' => false,
-                'tipo' => $tipo,
-                'correos' => $destinatarios,
-                'archivo' => $archivoInfo['nombre_archivo'],
-                'ruta_guardada' => $archivoInfo['ruta_relativa'],
-                'error' => $e->getMessage(),
-                'id_envio' => $envio?->id_envio,
-            ];
         }
+
+        $exito = empty($fallidos);
+        $parcial = !empty($enviados) && !empty($fallidos);
+
+        $errorResumen = $exito
+            ? null
+            : sprintf(
+                'Correos enviados: %d. Correos fallidos: %d.',
+                count($enviados),
+                count($fallidos)
+            );
+
+        if ($envio) {
+            try {
+                $envio->update([
+                    'estado' => $exito
+                        ? ReporteEnvio::ESTADO_ENVIADO
+                        : ReporteEnvio::ESTADO_FALLIDO,
+                    'error_mensaje' => $errorResumen,
+                ]);
+            } catch (Throwable $e) {
+                report($e);
+            }
+        }
+
+        if ($exito) {
+            $mensaje = 'Reporte generado y enviado correctamente.';
+        } elseif ($parcial) {
+            $mensaje = 'Reporte enviado parcialmente. Fallaron: '
+                . implode(', ', $fallidos);
+        } else {
+            $mensaje = 'El reporte fue generado y guardado, pero no pudo enviarse por correo.';
+        }
+
+        return [
+            'message' => $mensaje,
+            'envio' => $exito,
+            'envio_parcial' => $parcial,
+            'tipo' => $tipo,
+            'correos' => $destinatarios,
+            'correos_enviados' => $enviados,
+            'correos_fallidos' => $fallidos,
+            'detalle_envios' => $detalleEnvios,
+            'archivo' => $nombreArchivo,
+            'ruta_guardada' => $archivoInfo['ruta_relativa'],
+            'error' => $errorResumen,
+            'id_envio' => $envio?->id_envio,
+        ];
     }
 }
